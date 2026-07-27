@@ -1,3 +1,4 @@
+const generateSKU = require("../utils/generateSKU");
 const Product = require("../models/Product");
 
 // @desc    Create Product
@@ -17,9 +18,7 @@ const createProduct = async (req, res) => {
         } = req.body;
 
         // Generate SKU
-        const count = await Product.countDocuments();
-
-        const sku = `SF-${String(count + 1).padStart(6, "0")}`;
+        const sku= await generateSKU();
 
         const product = await Product.create({
             name,

@@ -57,6 +57,12 @@ const productSchema = new mongoose.Schema(
             min: 0,
         },
 
+        owner: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Owner",
+    required: true,
+},
+
         isActive: {
             type: Boolean,
             default: true,

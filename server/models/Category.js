@@ -5,14 +5,13 @@ const categorySchema = new mongoose.Schema(
         name: {
             type: String,
             required: true,
-            unique: true,
             trim: true,
         },
 
-        description: {
-            type: String,
-            default: "",
-            trim: true,
+        owner: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Owner",
+            required: true,
         },
 
         isActive: {

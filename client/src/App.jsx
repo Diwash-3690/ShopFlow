@@ -1,0 +1,46 @@
+import { Routes, Route, Navigate } from "react-router-dom";
+
+import Home from "./pages/Home";
+
+// Vendor Pages
+import VendorLogin from "./pages/vendor/VendorLogin";
+import VendorRegister from "./pages/vendor/VendorRegister";
+import VendorForgotPassword from "./pages/vendor/VendorForgotPassword";
+import VendorDashboard from "./pages/vendor/VendorDashboard";
+
+// Customer Pages
+import CustomerLogin from "./pages/customer/CustomerLogin";
+import CustomerRegister from "./pages/customer/CustomerRegister";
+import CustomerForgotPassword from "./pages/customer/CustomerForgotPassword";
+import CustomerDashboard from "./pages/customer/CustomerDashboard";
+
+function App() {
+  return (
+    <Routes>
+      {/* Landing Page */}
+      <Route path="/" element={<Home />} />
+
+      {/* Vendor Routes */}
+      <Route path="/vendor/login" element={<VendorLogin />} />
+      <Route path="/vendor/register" element={<VendorRegister />} />
+      <Route path="/vendor/forgot-password" element={<VendorForgotPassword />} />
+      <Route path="/vendor/dashboard" element={<VendorDashboard />} />
+
+      {/* Customer Routes */}
+      <Route path="/customer/login" element={<CustomerLogin />} />
+      <Route path="/customer/register" element={<CustomerRegister />} />
+      <Route path="/customer/forgot-password" element={<CustomerForgotPassword />} />
+      <Route path="/customer/dashboard" element={<CustomerDashboard />} />
+
+      {/* Backwards-Compatibility Aliases */}
+      <Route path="/login" element={<Navigate to="/vendor/login" replace />} />
+      <Route path="/register" element={<Navigate to="/vendor/register" replace />} />
+      <Route path="/dashboard" element={<Navigate to="/vendor/dashboard" replace />} />
+
+      {/* Fallback */}
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
+}
+
+export default App;

@@ -6,8 +6,11 @@ const createCategory = async (req, res) => {
     try {
         const { name, description } = req.body;
 
-        // Check if category already exists
-        const existingCategory = await Category.findOne({ name });
+        // Check if category already exists for this owner
+        const existingCategory = await Category.findOne({
+            name,
+            owner: req.owner._id
+        });
 
         if (existingCategory) {
             return res.status(400).json({
@@ -19,6 +22,7 @@ const createCategory = async (req, res) => {
         const category = await Category.create({
             name,
             description,
+            owner: req.owner._id,
         });
 
         res.status(201).json({
@@ -34,17 +38,23 @@ const createCategory = async (req, res) => {
         });
     }
 };
+
+
 // @desc Get All Categories
 // @route GET /api/categories
 const getCategories = async (req, res) => {
     try {
-        const categories = await Category.find({ isActive: true });
+        const categories = await Category.find({
+            owner: req.owner._id,
+            isActive: true
+        });
 
         res.status(200).json({
             success: true,
             count: categories.length,
             categories,
         });
+
     } catch (error) {
         res.status(500).json({
             success: false,
@@ -52,11 +62,17 @@ const getCategories = async (req, res) => {
         });
     }
 };
+
+
 // @desc Get Single Category
 // @route GET /api/categories/:id
 const getCategoryById = async (req, res) => {
     try {
-        const category = await Category.findById(req.params.id);
+
+        const category = await Category.findOne({
+            _id: req.params.id,
+            owner: req.owner._id
+        });
 
         if (!category || !category.isActive) {
             return res.status(404).json({
@@ -77,13 +93,19 @@ const getCategoryById = async (req, res) => {
         });
     }
 };
+
+
 // @desc Update Category
 // @route PUT /api/categories/:id
 const updateCategory = async (req, res) => {
     try {
+
         const { name, description } = req.body;
 
-        const category = await Category.findById(req.params.id);
+        const category = await Category.findOne({
+            _id: req.params.id,
+            owner: req.owner._id
+        });
 
         if (!category || !category.isActive) {
             return res.status(404).json({
@@ -92,10 +114,12 @@ const updateCategory = async (req, res) => {
             });
         }
 
+
         category.name = name || category.name;
         category.description = description || category.description;
 
         await category.save();
+
 
         res.status(200).json({
             success: true,
@@ -103,6 +127,7 @@ const updateCategory = async (req, res) => {
             category,
         });
 
+
     } catch (error) {
         res.status(500).json({
             success: false,
@@ -110,11 +135,18 @@ const updateCategory = async (req, res) => {
         });
     }
 };
+
+
 // @desc Soft Delete Category
 // @route DELETE /api/categories/:id
 const deleteCategory = async (req, res) => {
     try {
-        const category = await Category.findById(req.params.id);
+
+        const category = await Category.findOne({
+            _id: req.params.id,
+            owner: req.owner._id
+        });
+
 
         if (!category || !category.isActive) {
             return res.status(404).json({
@@ -123,14 +155,17 @@ const deleteCategory = async (req, res) => {
             });
         }
 
+
         category.isActive = false;
 
         await category.save();
+
 
         res.status(200).json({
             success: true,
             message: "Category deleted successfully",
         });
+
 
     } catch (error) {
         res.status(500).json({
@@ -139,6 +174,8 @@ const deleteCategory = async (req, res) => {
         });
     }
 };
+
+
 module.exports = {
     createCategory,
     getCategories,

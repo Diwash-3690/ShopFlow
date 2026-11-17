@@ -14,7 +14,6 @@ import {
   FiCopy,
   FiCheck,
   FiExternalLink,
-  FiPrinter,
 } from "react-icons/fi";
 import { getPublicShopById } from "../../services/shopService";
 import { getPublicShopProducts } from "../../services/productService";
@@ -22,7 +21,7 @@ import { getPublicShopCategories } from "../../services/categoryService";
 import {
   calculateCheckout,
   createOnlineOrder,
-  verifyPayment,
+  submitCustomerPayment,
 } from "../../services/orderService";
 import { useCart } from "../../context/CartContext";
 import BillModal from "../../components/BillModal";
@@ -171,24 +170,30 @@ function ShopStorefront() {
     }
   };
 
-  // Step 3: Verify payment and receive unique Pickup ID
-  const handleVerifyPayment = async () => {
+  // Step 3: Customer submits UPI payment reference for merchant verification (Zero-cost direct UPI)
+  const handleSubmitPayment = async () => {
     if (!upiOrderData) return;
 
     try {
       setVerifyingPayment(true);
-      const res = await verifyPayment(upiOrderData.order.id, {
+      await submitCustomerPayment(upiOrderData.order.id, {
         providerTransactionId: transactionRef || undefined,
       });
 
       // Clear the cart
       clearCart();
 
-      // Show confirmed order modal
-      setConfirmedOrder(res.order);
+      // Show payment recorded confirmation modal
+      setConfirmedOrder({
+        orderNumber: upiOrderData.order.orderNumber,
+        totalAmount: parseFloat(upiOrderData.order.totalAmount),
+        shop: upiOrderData.shop,
+        paymentStatus: "PENDING",
+        providerTransactionId: transactionRef || "Direct UPI",
+      });
       setUpiOrderData(null);
     } catch (err) {
-      alert(err.response?.data?.message || "Payment verification failed.");
+      alert(err.response?.data?.message || "Failed to submit payment reference.");
     } finally {
       setVerifyingPayment(false);
     }
@@ -711,11 +716,11 @@ function ShopStorefront() {
               </div>
 
               <button
-                onClick={handleVerifyPayment}
+                onClick={handleSubmitPayment}
                 disabled={verifyingPayment}
                 className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-xl text-sm transition shadow-sm cursor-pointer disabled:bg-emerald-400 flex items-center justify-center gap-2"
               >
-                {verifyingPayment ? "Verifying Payment..." : "Confirm Payment & Get Pickup ID"}
+                {verifyingPayment ? "Submitting..." : "I Have Paid via UPI • Submit for Verification"}
               </button>
 
               <button
@@ -729,7 +734,7 @@ function ShopStorefront() {
         </div>
       )}
 
-      {/* Step 3: Confirmed Order & Pickup ID Success Modal */}
+      {/* Step 3: Confirmed / Submitted Order Modal */}
       {confirmedOrder && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-slate-200 text-center space-y-5 animate-fadeIn">
@@ -738,31 +743,56 @@ function ShopStorefront() {
             </div>
 
             <div>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
-                Payment Verified • Order Confirmed
+              <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
+                confirmedOrder.pickupId
+                  ? "text-emerald-800 bg-emerald-50 border-emerald-200"
+                  : "text-purple-800 bg-purple-50 border-purple-200"
+              }`}>
+                {confirmedOrder.pickupId ? "Payment Verified • Order Confirmed" : "Direct UPI Payment Submitted"}
               </span>
-              <h3 className="text-2xl font-black text-slate-900 mt-2">Ready for Pickup!</h3>
+              <h3 className="text-2xl font-black text-slate-900 mt-2">
+                {confirmedOrder.pickupId ? "Ready for Pickup!" : "Payment Under Verification"}
+              </h3>
               <p className="text-xs text-slate-500 mt-1">
-                Show this unique Pickup ID to the shopkeeper at the store counter.
+                {confirmedOrder.pickupId
+                  ? "Show this unique Pickup ID to the shopkeeper at the store counter."
+                  : "Your direct UPI payment has been received. The merchant will verify the bank credit and activate your unique Pickup ID."}
               </p>
             </div>
 
-            {/* Huge Pickup ID Display */}
-            <div className="bg-slate-900 text-white p-5 rounded-2xl relative shadow-md">
-              <p className="text-[10px] text-slate-400 uppercase tracking-widest font-semibold">
-                Your Unique Pickup ID
-              </p>
-              <p className="text-3xl font-mono font-black tracking-wider text-emerald-400 mt-1">
-                {confirmedOrder.pickupId}
-              </p>
-              <button
-                onClick={() => copyToClipboard(confirmedOrder.pickupId)}
-                className="mt-3 inline-flex items-center gap-1.5 bg-white/10 hover:bg-white/20 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition cursor-pointer"
-              >
-                {copiedPickupId ? <FiCheck className="text-emerald-400" /> : <FiCopy />}
-                <span>{copiedPickupId ? "Copied!" : "Copy Pickup ID"}</span>
-              </button>
-            </div>
+            {/* Pickup ID Display if available, else Order Reference */}
+            {confirmedOrder.pickupId ? (
+              <div className="bg-slate-900 text-white p-5 rounded-2xl relative shadow-md">
+                <p className="text-[10px] text-slate-400 uppercase tracking-widest font-semibold">
+                  Your Unique Pickup ID
+                </p>
+                <p className="text-3xl font-mono font-black tracking-wider text-emerald-400 mt-1">
+                  {confirmedOrder.pickupId}
+                </p>
+                <button
+                  onClick={() => copyToClipboard(confirmedOrder.pickupId)}
+                  className="mt-3 inline-flex items-center gap-1.5 bg-white/10 hover:bg-white/20 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition cursor-pointer"
+                >
+                  {copiedPickupId ? <FiCheck className="text-emerald-400" /> : <FiCopy />}
+                  <span>{copiedPickupId ? "Copied!" : "Copy Pickup ID"}</span>
+                </button>
+              </div>
+            ) : (
+              <div className="bg-purple-50 border border-purple-200 p-4 rounded-2xl text-left space-y-2">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-purple-700 font-semibold">Order Number</span>
+                  <span className="font-mono font-bold text-purple-950">{confirmedOrder.orderNumber}</span>
+                </div>
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-purple-700 font-semibold">Total Amount</span>
+                  <span className="font-bold text-purple-950">₹{confirmedOrder.totalAmount.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-purple-700 font-semibold">Submitted Ref / UTR</span>
+                  <span className="font-mono text-purple-950">{confirmedOrder.providerTransactionId}</span>
+                </div>
+              </div>
+            )}
 
             {/* Shop Details */}
             <div className="p-3 bg-slate-50 rounded-xl text-left text-xs text-slate-600 space-y-1 border border-slate-100">
@@ -773,36 +803,17 @@ function ShopStorefront() {
                 <strong>Address:</strong> {confirmedOrder.shop?.address}
               </p>
               <p>
-                <strong>Total Paid:</strong> ₹{confirmedOrder.totalAmount.toFixed(2)}
+                <strong>Amount:</strong> ₹{confirmedOrder.totalAmount.toFixed(2)}
               </p>
             </div>
 
             {/* Actions */}
             <div className="space-y-2 pt-2">
-              {confirmedOrder.bill && (
-                <button
-                  onClick={() => {
-                    setActiveBill({
-                      ...confirmedOrder.bill,
-                      orderNumber: confirmedOrder.orderNumber,
-                      pickupId: confirmedOrder.pickupId,
-                      shop: confirmedOrder.shop,
-                      totalAmount: confirmedOrder.totalAmount,
-                      status: confirmedOrder.status,
-                      payment: { status: "VERIFIED", method: "UPI" },
-                    });
-                  }}
-                  className="w-full border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
-                >
-                  <FiPrinter size={14} /> View / Print Receipt Bill
-                </button>
-              )}
-
               <button
                 onClick={() => navigate("/customer/dashboard")}
                 className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl text-sm transition shadow-sm cursor-pointer"
               >
-                Go to My Orders Dashboard
+                Go to My Orders & Track Status
               </button>
             </div>
           </div>

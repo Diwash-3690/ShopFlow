@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import {
   FiLogOut,
@@ -17,13 +17,17 @@ import {
   FiBell,
   FiArrowRight,
   FiAlertTriangle,
+  FiDollarSign,
+  FiCalendar,
+  FiPrinter,
+  FiCheckCircle,
+  FiClock,
 } from "react-icons/fi";
 import { vendorGetMe, logout } from "../../services/authService";
 import { updateMyShop } from "../../services/shopService";
-import { getProducts } from "../../services/productService";
-import { getCategories } from "../../services/categoryService";
 import { getNotifications, markAsRead, markAllAsRead } from "../../services/notificationService";
-import { getVendorOrders } from "../../services/orderService";
+import { getVendorDashboardSummary } from "../../services/dashboardService";
+import BillModal from "../../components/BillModal";
 
 function VendorDashboard() {
   const [vendorData, setVendorData] = useState(null);
@@ -31,19 +35,20 @@ function VendorDashboard() {
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
 
-  // Stats
-  const [productCount, setProductCount] = useState(0);
-  const [categoryCount, setCategoryCount] = useState(0);
-  const [outOfStockCount, setOutOfStockCount] = useState(0);
-  const [pendingOrderCount, setPendingOrderCount] = useState(0);
+  // Summary Metrics from Backend
+  const [dashboardSummary, setDashboardSummary] = useState(null);
 
-  // Notifications
+  // Notification state
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showNotifDropdown, setShowNotifDropdown] = useState(false);
 
-  // Edit Shop Modal / Inline State
+  // Active Bill Modal state
+  const [activeBill, setActiveBill] = useState(null);
+
+  // Shop Edit state
   const [isEditing, setIsEditing] = useState(false);
+  const [savingShop, setSavingShop] = useState(false);
   const [editForm, setEditForm] = useState({
     shopName: "",
     address: "",
@@ -52,10 +57,49 @@ function VendorDashboard() {
     latitude: "",
     longitude: "",
   });
-  const [savingShop, setSavingShop] = useState(false);
   const [editError, setEditError] = useState("");
 
   const navigate = useNavigate();
+
+  const fetchAllData = useCallback(async () => {
+    try {
+      const [profRes, notifRes, summaryRes] = await Promise.all([
+        vendorGetMe(),
+        getNotifications().catch(() => ({ notifications: [], unreadCount: 0 })),
+        getVendorDashboardSummary().catch(() => ({ summary: null })),
+      ]);
+
+      setVendorData(profRes.vendor);
+      setShop(profRes.shop);
+      setNotifications(notifRes.notifications || []);
+      setUnreadCount(notifRes.unreadCount || 0);
+      setDashboardSummary(summaryRes?.summary || null);
+
+      if (profRes.shop) {
+        setEditForm({
+          shopName: profRes.shop.shopName || "",
+          address: profRes.shop.address || "",
+          contactNumber: profRes.shop.contactNumber || "",
+          upiId: profRes.shop.upiId || "",
+          latitude:
+            profRes.shop.latitude !== null && profRes.shop.latitude !== undefined
+              ? profRes.shop.latitude.toString()
+              : "",
+          longitude:
+            profRes.shop.longitude !== null && profRes.shop.longitude !== undefined
+              ? profRes.shop.longitude.toString()
+              : "",
+        });
+      }
+    } catch {
+      const cachedUser = localStorage.getItem("user");
+      const cachedShop = localStorage.getItem("shop");
+      if (cachedUser) setVendorData(JSON.parse(cachedUser));
+      if (cachedShop) setShop(JSON.parse(cachedShop));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -66,53 +110,8 @@ function VendorDashboard() {
       return;
     }
 
-    const fetchAllData = async () => {
-      try {
-        const [profRes, notifRes] = await Promise.all([
-          vendorGetMe(),
-          getNotifications().catch(() => ({ notifications: [], unreadCount: 0 })),
-        ]);
-
-        setVendorData(profRes.vendor);
-        setShop(profRes.shop);
-        setNotifications(notifRes.notifications || []);
-        setUnreadCount(notifRes.unreadCount || 0);
-
-        if (profRes.shop) {
-          setEditForm({
-            shopName: profRes.shop.shopName || "",
-            address: profRes.shop.address || "",
-            contactNumber: profRes.shop.contactNumber || "",
-            upiId: profRes.shop.upiId || "",
-            latitude: profRes.shop.latitude !== null && profRes.shop.latitude !== undefined ? profRes.shop.latitude.toString() : "",
-            longitude: profRes.shop.longitude !== null && profRes.shop.longitude !== undefined ? profRes.shop.longitude.toString() : "",
-          });
-
-          // Fetch products, categories & orders stats
-          const [prodsRes, catsRes, ordersRes] = await Promise.all([
-            getProducts().catch(() => ({ products: [] })),
-            getCategories().catch(() => ({ categories: [] })),
-            getVendorOrders({ status: "AWAITING_PICKUP" }).catch(() => ({ orders: [] })),
-          ]);
-
-          const prods = prodsRes.products || [];
-          setProductCount(prods.length);
-          setOutOfStockCount(prods.filter((p) => p.stockQuantity <= 0).length);
-          setCategoryCount(catsRes.categories?.length || 0);
-          setPendingOrderCount(ordersRes.orders?.length || 0);
-        }
-      } catch {
-        const cachedUser = localStorage.getItem("user");
-        const cachedShop = localStorage.getItem("shop");
-        if (cachedUser) setVendorData(JSON.parse(cachedUser));
-        if (cachedShop) setShop(JSON.parse(cachedShop));
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchAllData();
-  }, [navigate]);
+  }, [navigate, fetchAllData]);
 
   const handleLogout = () => {
     logout();
@@ -132,20 +131,22 @@ function VendorDashboard() {
     try {
       setSavingShop(true);
       setEditError("");
-      const res = await updateMyShop({
-        shopName: editForm.shopName.trim(),
-        address: editForm.address.trim(),
-        contactNumber: editForm.contactNumber.trim(),
-        upiId: editForm.upiId.trim() || undefined,
-        latitude: editForm.latitude ? parseFloat(editForm.latitude) : undefined,
-        longitude: editForm.longitude ? parseFloat(editForm.longitude) : undefined,
-      });
 
+      const payload = {
+        shopName: editForm.shopName,
+        address: editForm.address,
+        contactNumber: editForm.contactNumber,
+        upiId: editForm.upiId || null,
+        latitude: editForm.latitude ? parseFloat(editForm.latitude) : null,
+        longitude: editForm.longitude ? parseFloat(editForm.longitude) : null,
+      };
+
+      const res = await updateMyShop(payload);
       setShop(res.shop);
       localStorage.setItem("shop", JSON.stringify(res.shop));
       setIsEditing(false);
     } catch (err) {
-      setEditError(err.response?.data?.message || err.message || "Failed to update shop");
+      setEditError(err.response?.data?.message || err.message || "Failed to update shop details.");
     } finally {
       setSavingShop(false);
     }
@@ -159,27 +160,36 @@ function VendorDashboard() {
       );
       setUnreadCount((c) => Math.max(0, c - 1));
     } catch (err) {
-      console.error(err);
+      console.error("Failed to mark notification as read", err);
     }
   };
 
-  const handleMarkAllRead = async () => {
+  const handleMarkAllAsRead = async () => {
     try {
       await markAllAsRead();
       setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
       setUnreadCount(0);
     } catch (err) {
-      console.error(err);
+      console.error("Failed to mark all as read", err);
     }
   };
 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <p className="text-slate-600 font-medium">Loading vendor portal...</p>
+        <div className="text-center space-y-2">
+          <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-slate-600 font-semibold text-sm">Loading vendor control panel...</p>
+        </div>
       </div>
     );
   }
+
+  const sales = dashboardSummary?.sales || { today: 0, todayOrdersCount: 0, weekly: 0, monthly: 0, total: 0 };
+  const channels = dashboardSummary?.channels || { onlineCount: 0, onlineAmount: 0, walkInCount: 0, walkInAmount: 0 };
+  const orderStatus = dashboardSummary?.orderStatus || { pendingPaymentCount: 0, awaitingPickupCount: 0, completedOrdersCount: 0, totalVerifiedOrders: 0 };
+  const inventory = dashboardSummary?.inventory || { totalProducts: 0, outOfStockProducts: 0, lowStockProducts: 0, totalCategories: 0 };
+  const recentSales = dashboardSummary?.recentSales || [];
 
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col">
@@ -192,56 +202,68 @@ function VendorDashboard() {
         </div>
 
         <div className="flex items-center space-x-4">
-          {/* Notifications Bell */}
+          {/* Notification Bell with Badge */}
           <div className="relative">
             <button
               onClick={() => setShowNotifDropdown(!showNotifDropdown)}
-              className="relative p-2 text-slate-600 hover:text-blue-600 hover:bg-slate-100 rounded-xl transition cursor-pointer"
+              className="relative p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-50 rounded-xl transition cursor-pointer"
               title="Notifications"
             >
               <FiBell size={20} />
               {unreadCount > 0 && (
-                <span className="absolute top-1 right-1 w-4 h-4 bg-red-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
-                  {unreadCount}
+                <span className="absolute top-1 right-1 w-4 h-4 bg-red-600 text-white text-[10px] font-black rounded-full flex items-center justify-center animate-pulse">
+                  {unreadCount > 9 ? "9+" : unreadCount}
                 </span>
               )}
             </button>
 
-            {/* Dropdown */}
+            {/* Notification Dropdown Menu */}
             {showNotifDropdown && (
-              <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-xl border border-slate-200 p-4 z-50">
-                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                  <h4 className="font-bold text-sm text-slate-800">Notifications</h4>
+              <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-xl border border-slate-200 z-50 overflow-hidden animate-fadeIn">
+                <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+                  <h4 className="font-bold text-slate-800 text-sm flex items-center gap-1.5">
+                    <FiBell size={16} /> Alerts & Notifications
+                  </h4>
                   {unreadCount > 0 && (
                     <button
-                      onClick={handleMarkAllRead}
-                      className="text-xs font-semibold text-blue-600 hover:underline cursor-pointer"
+                      onClick={handleMarkAllAsRead}
+                      className="text-xs text-blue-600 hover:underline cursor-pointer font-medium"
                     >
                       Mark all as read
                     </button>
                   )}
                 </div>
 
-                <div className="max-h-72 overflow-y-auto divide-y divide-slate-100 mt-2">
+                <div className="max-h-80 overflow-y-auto divide-y divide-slate-100">
                   {notifications.length === 0 ? (
-                    <p className="py-6 text-center text-xs text-slate-400">No notifications yet.</p>
+                    <div className="p-6 text-center text-xs text-slate-400">
+                      No notifications yet.
+                    </div>
                   ) : (
                     notifications.map((n) => (
                       <div
                         key={n.id}
                         onClick={() => !n.isRead && handleMarkAsRead(n.id)}
-                        className={`p-3 rounded-xl transition text-xs cursor-pointer ${
+                        className={`p-3.5 text-xs transition cursor-pointer ${
                           n.isRead ? "bg-white text-slate-600" : "bg-blue-50/70 text-slate-900 font-medium"
                         }`}
                       >
-                        <div className="flex items-start justify-between gap-2">
-                          <p className="font-bold text-slate-800">{n.title}</p>
-                          {!n.isRead && <span className="w-2 h-2 rounded-full bg-blue-600 shrink-0 mt-1" />}
+                        <div className="flex items-center justify-between">
+                          <span
+                            className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${
+                              n.type === "OUT_OF_STOCK"
+                                ? "bg-red-100 text-red-700"
+                                : "bg-emerald-100 text-emerald-800"
+                            }`}
+                          >
+                            {n.type === "OUT_OF_STOCK" ? "Stock Alert" : "Incoming Order"}
+                          </span>
+                          <span className="text-[10px] text-slate-400">
+                            {new Date(n.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                          </span>
                         </div>
-                        <p className="text-[11px] text-slate-600 mt-0.5">{n.message}</p>
-                        <p className="text-[10px] text-slate-400 mt-1">
-                          {new Date(n.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                        </p>
+                        <p className="font-bold mt-1 text-slate-800">{n.title}</p>
+                        <p className="text-[11px] text-slate-600 mt-0.5 leading-relaxed">{n.message}</p>
                       </div>
                     ))
                   )}
@@ -265,16 +287,16 @@ function VendorDashboard() {
       </nav>
 
       {/* Main Container */}
-      <main className="max-w-7xl mx-auto px-6 py-8 flex-1 w-full space-y-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 flex-1 w-full space-y-8">
         {/* Out of stock alert banner if any */}
-        {outOfStockCount > 0 && (
+        {inventory.outOfStockProducts > 0 && (
           <div className="bg-red-50 border border-red-200 text-red-800 rounded-2xl p-4 flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-red-100 text-red-600 flex items-center justify-center shrink-0">
                 <FiAlertTriangle size={18} />
               </div>
               <p className="text-sm font-medium">
-                You have <strong>{outOfStockCount} product{outOfStockCount > 1 ? "s" : ""}</strong> currently out of stock. Customers cannot place orders for them.
+                You have <strong>{inventory.outOfStockProducts} product{inventory.outOfStockProducts > 1 ? "s" : ""}</strong> currently out of stock. Customers cannot place orders for them.
               </p>
             </div>
             <Link
@@ -360,7 +382,7 @@ function VendorDashboard() {
                   <FiCreditCard size={16} />
                 </div>
                 <div>
-                  <p className="text-xs text-slate-400 font-medium">UPI Destination</p>
+                  <p className="text-xs text-slate-400 font-medium">Direct Vendor UPI Destination</p>
                   <p className="font-semibold font-mono text-xs">{shop.upiId || "Not Configured"}</p>
                 </div>
               </div>
@@ -420,12 +442,12 @@ function VendorDashboard() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">UPI Destination ID</label>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Direct Vendor UPI Destination</label>
                     <input
                       type="text"
                       value={editForm.upiId}
                       onChange={(e) => setEditForm({ ...editForm, upiId: e.target.value })}
-                      placeholder="name@okhdfcbank"
+                      placeholder="merchant@okaxis"
                       className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm"
                     />
                   </div>
@@ -472,7 +494,97 @@ function VendorDashboard() {
           </div>
         )}
 
-        {/* Milestone Quick Action Cards */}
+        {/* Section 1: Sales & Financial Performance (Milestone 6) */}
+        {shop && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-black text-slate-900 tracking-tight flex items-center gap-2">
+                  <FiTrendingUp className="text-emerald-600" /> Sales & Revenue Performance
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Calculated strictly from verified bank payments (0% gateway fees)
+                </p>
+              </div>
+              <span className="text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full">
+                Live Analytics
+              </span>
+            </div>
+
+            {/* 4 Financial KPI Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs">
+                <div className="flex items-center justify-between text-xs text-slate-400 font-bold uppercase">
+                  <span>Today's Sales</span>
+                  <FiDollarSign className="text-emerald-600" size={16} />
+                </div>
+                <h2 className="text-2xl font-black text-slate-900 mt-2">
+                  ₹{sales.today.toFixed(2)}
+                </h2>
+                <p className="text-[11px] text-slate-500 mt-1">
+                  {sales.todayOrdersCount} verified order{sales.todayOrdersCount === 1 ? "" : "s"} today
+                </p>
+              </div>
+
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs">
+                <div className="flex items-center justify-between text-xs text-slate-400 font-bold uppercase">
+                  <span>This Week</span>
+                  <FiCalendar className="text-blue-600" size={16} />
+                </div>
+                <h2 className="text-2xl font-black text-slate-900 mt-2">
+                  ₹{sales.weekly.toFixed(2)}
+                </h2>
+                <p className="text-[11px] text-slate-500 mt-1">Last 7 rolling days</p>
+              </div>
+
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs">
+                <div className="flex items-center justify-between text-xs text-slate-400 font-bold uppercase">
+                  <span>This Month</span>
+                  <FiTrendingUp className="text-indigo-600" size={16} />
+                </div>
+                <h2 className="text-2xl font-black text-slate-900 mt-2">
+                  ₹{sales.monthly.toFixed(2)}
+                </h2>
+                <p className="text-[11px] text-slate-500 mt-1">Last 30 rolling days</p>
+              </div>
+
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs">
+                <div className="flex items-center justify-between text-xs text-slate-400 font-bold uppercase">
+                  <span>Total Sales</span>
+                  <FiCheckCircle className="text-purple-600" size={16} />
+                </div>
+                <h2 className="text-2xl font-black text-slate-900 mt-2">
+                  ₹{sales.total.toFixed(2)}
+                </h2>
+                <p className="text-[11px] text-slate-500 mt-1">
+                  {orderStatus.totalVerifiedOrders} lifetime completed sale{orderStatus.totalVerifiedOrders === 1 ? "" : "s"}
+                </p>
+              </div>
+            </div>
+
+            {/* Sales Channel Ratio Bar */}
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="text-xs">
+                <span className="font-bold text-slate-800">Sales Channels:</span>
+                <span className="ml-2 text-slate-600">
+                  Online Pre-orders: <strong>₹{channels.onlineAmount.toFixed(2)}</strong> ({channels.onlineCount} orders) • Walk-in Counter: <strong>₹{channels.walkInAmount.toFixed(2)}</strong> ({channels.walkInCount} sales)
+                </span>
+              </div>
+              <div className="flex items-center gap-2 text-xs">
+                {orderStatus.pendingPaymentCount > 0 && (
+                  <Link
+                    to="/vendor/orders"
+                    className="bg-purple-100 hover:bg-purple-200 text-purple-900 font-bold px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 animate-pulse"
+                  >
+                    <span>⚡ {orderStatus.pendingPaymentCount} UPI payments awaiting verification</span>
+                  </Link>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Section 2: Action Control Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {/* Products & Inventory Card */}
           <Link
@@ -485,7 +597,7 @@ function VendorDashboard() {
                   <FiBox size={20} />
                 </div>
                 <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full">
-                  {productCount} items
+                  {inventory.totalProducts} items
                 </span>
               </div>
               <h4 className="font-bold text-slate-800 group-hover:text-blue-600 transition">
@@ -512,7 +624,7 @@ function VendorDashboard() {
                   <FiList size={20} />
                 </div>
                 <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full">
-                  {categoryCount} categories
+                  {inventory.totalCategories} categories
                 </span>
               </div>
               <h4 className="font-bold text-slate-800 group-hover:text-indigo-600 transition">
@@ -528,7 +640,7 @@ function VendorDashboard() {
             </div>
           </Link>
 
-          {/* Incoming Orders Card (Milestone 5) */}
+          {/* Incoming Orders Card */}
           <Link
             to="/vendor/orders"
             className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-emerald-300 transition flex flex-col justify-between group"
@@ -538,19 +650,21 @@ function VendorDashboard() {
                 <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center">
                   <FiShoppingBag size={20} />
                 </div>
-                <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
-                  pendingOrderCount > 0
-                    ? "bg-amber-100 text-amber-800 animate-pulse"
-                    : "bg-emerald-50 text-emerald-700"
-                }`}>
-                  {pendingOrderCount} ready for pickup
+                <span
+                  className={`text-xs font-bold px-2.5 py-1 rounded-full ${
+                    orderStatus.awaitingPickupCount > 0
+                      ? "bg-amber-100 text-amber-800 animate-pulse"
+                      : "bg-emerald-50 text-emerald-700"
+                  }`}
+                >
+                  {orderStatus.awaitingPickupCount} ready for pickup
                 </span>
               </div>
               <h4 className="font-bold text-slate-800 group-hover:text-emerald-600 transition">
-                Incoming Orders
+                Incoming Orders & Pickups
               </h4>
               <p className="text-xs text-slate-500 mt-1">
-                Verify customer pickup IDs and hand over verified purchases.
+                Verify customer direct UPI payments and match pickup IDs.
               </p>
             </div>
             <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-emerald-600">
@@ -559,7 +673,7 @@ function VendorDashboard() {
             </div>
           </Link>
 
-          {/* Walk-in Billing POS Card (Milestone 5) */}
+          {/* Walk-in POS Billing Card */}
           <Link
             to="/vendor/pos"
             className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-purple-300 transition flex flex-col justify-between group"
@@ -567,7 +681,7 @@ function VendorDashboard() {
             <div>
               <div className="flex items-center justify-between mb-4">
                 <div className="w-10 h-10 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center">
-                  <FiTrendingUp size={20} />
+                  <FiDollarSign size={20} />
                 </div>
                 <span className="text-xs font-bold text-purple-700 bg-purple-50 px-2.5 py-1 rounded-full">
                   Quick POS
@@ -577,7 +691,7 @@ function VendorDashboard() {
                 Walk-in POS Billing
               </h4>
               <p className="text-xs text-slate-500 mt-1">
-                Point of sale counter terminal with instant bill printing.
+                Point of sale counter terminal with instant receipt printing.
               </p>
             </div>
             <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-purple-600">
@@ -586,7 +700,87 @@ function VendorDashboard() {
             </div>
           </Link>
         </div>
+
+        {/* Section 3: Recent Verified Sales Activity */}
+        {recentSales.length > 0 && (
+          <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-sm space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <div>
+                <h3 className="text-lg font-black text-slate-900 tracking-tight flex items-center gap-2">
+                  <FiClock className="text-slate-600" /> Recent Sales Transactions
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Latest verified purchases and in-store walk-in orders
+                </p>
+              </div>
+              <Link
+                to="/vendor/orders"
+                className="text-xs font-bold text-blue-600 hover:underline"
+              >
+                View all orders
+              </Link>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-slate-100 text-slate-400 uppercase text-[10px] tracking-wider pb-2">
+                    <th className="py-2.5 font-semibold">Order / Pickup ID</th>
+                    <th className="py-2.5 font-semibold">Channel</th>
+                    <th className="py-2.5 font-semibold">Customer</th>
+                    <th className="py-2.5 font-semibold">Items</th>
+                    <th className="py-2.5 text-right font-semibold">Amount</th>
+                    <th className="py-2.5 text-right font-semibold">Bill</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {recentSales.map((s) => (
+                    <tr key={s.id} className="hover:bg-slate-50/50">
+                      <td className="py-3 font-medium">
+                        <span className="font-bold text-slate-900">{s.orderNumber}</span>
+                        {s.pickupId && (
+                          <span className="ml-2 text-[10px] font-mono bg-emerald-50 text-emerald-800 px-1.5 py-0.5 rounded font-bold">
+                            {s.pickupId}
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3">
+                        <span
+                          className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
+                            s.orderType === "ONLINE"
+                              ? "bg-blue-100 text-blue-800"
+                              : "bg-purple-100 text-purple-800"
+                          }`}
+                        >
+                          {s.orderType === "ONLINE" ? "Online" : "Walk-in"}
+                        </span>
+                      </td>
+                      <td className="py-3 text-slate-600">{s.customerMobile}</td>
+                      <td className="py-3 text-slate-600">{s.itemCount} items</td>
+                      <td className="py-3 text-right font-black text-slate-900">
+                        ₹{s.totalAmount.toFixed(2)}
+                      </td>
+                      <td className="py-3 text-right">
+                        <Link
+                          to="/vendor/orders"
+                          className="inline-flex items-center gap-1 border border-slate-200 hover:border-slate-300 bg-white px-2.5 py-1 rounded-lg text-slate-700 font-semibold text-xs transition"
+                        >
+                          <FiPrinter size={12} /> Receipt
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </main>
+
+      {/* Bill Receipt Modal if opened */}
+      {activeBill && (
+        <BillModal bill={activeBill} onClose={() => setActiveBill(null)} />
+      )}
     </div>
   );
 }

@@ -14,11 +14,13 @@ import {
 } from "react-icons/fi";
 import { customerGetMe, logout } from "../../services/authService";
 import { getCustomerOrders } from "../../services/orderService";
+import { getCustomerDashboardSummary } from "../../services/dashboardService";
 import BillModal from "../../components/BillModal";
 
 function CustomerDashboard() {
   const [customer, setCustomer] = useState(null);
   const [orders, setOrders] = useState([]);
+  const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [copiedId, setCopiedId] = useState("");
@@ -27,9 +29,10 @@ function CustomerDashboard() {
 
   const fetchDashboardData = useCallback(async () => {
     try {
-      const [meRes, ordersRes] = await Promise.all([
+      const [meRes, ordersRes, sumRes] = await Promise.all([
         customerGetMe().catch(() => null),
         getCustomerOrders().catch(() => ({ orders: [] })),
+        getCustomerDashboardSummary().catch(() => ({ summary: null })),
       ]);
 
       if (meRes?.customer) {
@@ -40,6 +43,7 @@ function CustomerDashboard() {
       }
 
       setOrders(ordersRes?.orders || []);
+      setSummary(sumRes?.summary || null);
     } catch (err) {
       console.error("Dashboard data load error:", err);
     } finally {
@@ -153,6 +157,32 @@ function CustomerDashboard() {
           </button>
         </div>
 
+        {/* Customer Shopping Summary Cards (Milestone 6) */}
+        {summary && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Total Spent</p>
+              <h3 className="text-xl font-black text-slate-900 mt-1">₹{summary.totalSpent.toFixed(2)}</h3>
+              <p className="text-[10px] text-slate-500 mt-0.5">Across local stores</p>
+            </div>
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-amber-600">Active Pickups</p>
+              <h3 className="text-xl font-black text-amber-700 mt-1">{summary.activePickupsCount}</h3>
+              <p className="text-[10px] text-slate-500 mt-0.5">Ready at counters</p>
+            </div>
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-600">Completed Orders</p>
+              <h3 className="text-xl font-black text-emerald-700 mt-1">{summary.completedCount}</h3>
+              <p className="text-[10px] text-slate-500 mt-0.5">Collected purchases</p>
+            </div>
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-blue-600">Shops Visited</p>
+              <h3 className="text-xl font-black text-blue-700 mt-1">{summary.shopsCount}</h3>
+              <p className="text-[10px] text-slate-500 mt-0.5">Supported vendors</p>
+            </div>
+          </div>
+        )}
+
         {/* Section 1: Active Pickup Orders */}
         <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-sm space-y-6">
           <div className="flex items-center justify-between border-b border-slate-100 pb-4">
@@ -210,17 +240,17 @@ function CustomerDashboard() {
                       </span>
                     </div>
 
-                    {/* Big Highlight: Pickup ID */}
-                    <div className="mt-4 p-4 rounded-xl bg-slate-900 text-white flex items-center justify-between">
-                      <div>
-                        <p className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">
-                          Counter Pickup ID
-                        </p>
-                        <p className="text-2xl font-mono font-black text-emerald-400 tracking-wider mt-0.5">
-                          {o.pickupId || "PENDING"}
-                        </p>
-                      </div>
-                      {o.pickupId && (
+                    {/* Pickup ID or Verification Status */}
+                    {o.pickupId ? (
+                      <div className="mt-4 p-4 rounded-xl bg-slate-900 text-white flex items-center justify-between">
+                        <div>
+                          <p className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">
+                            Counter Pickup ID
+                          </p>
+                          <p className="text-2xl font-mono font-black text-emerald-400 tracking-wider mt-0.5">
+                            {o.pickupId}
+                          </p>
+                        </div>
                         <button
                           onClick={() => copyPickupId(o.pickupId)}
                           className="bg-white/10 hover:bg-white/20 text-white p-2 rounded-lg text-xs flex items-center gap-1 transition cursor-pointer"
@@ -235,8 +265,17 @@ function CustomerDashboard() {
                             {copiedId === o.pickupId ? "Copied" : "Copy"}
                           </span>
                         </button>
-                      )}
-                    </div>
+                      </div>
+                    ) : (
+                      <div className="mt-4 p-3.5 rounded-xl bg-purple-50 border border-purple-200 text-purple-900 text-xs">
+                        <p className="font-bold flex items-center gap-1.5">
+                          ⏳ Direct UPI Payment Awaiting Merchant Verification
+                        </p>
+                        <p className="text-[11px] text-purple-700 mt-1 leading-relaxed">
+                          The shopkeeper is matching your payment in their UPI/bank account. Your unique Pickup ID will appear here as soon as verified.
+                        </p>
+                      </div>
+                    )}
 
                     {/* Item list */}
                     <div className="mt-3 divide-y divide-slate-100 text-xs">

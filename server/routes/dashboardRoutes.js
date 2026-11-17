@@ -1,13 +1,19 @@
 const express = require("express");
-
 const router = express.Router();
-
-const protect = require("../middleware/authMiddleware");
-
 const {
-    getDashboardSummary,
+  getVendorDashboardSummary,
+  getCustomerDashboardSummary,
 } = require("../controllers/dashboardController");
+const {
+  protectVendor,
+  protectCustomer,
+} = require("../middleware/authMiddleware");
 
-router.get("/summary", protect, getDashboardSummary);
+// Vendor dashboard analytics
+router.get("/vendor-summary", protectVendor, getVendorDashboardSummary);
+router.get("/summary", protectVendor, getVendorDashboardSummary);
+
+// Customer dashboard summary
+router.get("/customer-summary", protectCustomer, getCustomerDashboardSummary);
 
 module.exports = router;

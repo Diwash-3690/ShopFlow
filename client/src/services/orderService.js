@@ -6,19 +6,33 @@ export const calculateCheckout = async ({ shopId, items }) => {
   return response.data;
 };
 
-// Customer: Place an online order and get UPI payment intent
+// Customer: Place an online order and receive direct merchant UPI payment intent
 export const createOnlineOrder = async ({ shopId, items }) => {
   const response = await api.post("/orders/online", { shopId, items });
   return response.data;
 };
 
-// Customer / Gateway: Verify payment and generate unique Pickup ID
+// Customer: Submit UPI UTR / reference after payment
+export const submitCustomerPayment = async (orderId, { providerTransactionId }) => {
+  const response = await api.post(`/orders/${orderId}/submit-payment`, {
+    providerTransactionId,
+  });
+  return response.data;
+};
+
+// Merchant / Gateway: Verify payment and generate unique Pickup ID
 export const verifyPayment = async (orderId, payload = {}) => {
   const response = await api.post(`/orders/${orderId}/verify-payment`, payload);
   return response.data;
 };
 
-// Customer: Get my placed orders history & active pickups
+// Vendor: Reject unverified order and restore inventory stock
+export const rejectPayment = async (orderId) => {
+  const response = await api.post(`/orders/${orderId}/reject-payment`);
+  return response.data;
+};
+
+// Customer: Get placed orders history & active pickups
 export const getCustomerOrders = async () => {
   const response = await api.get("/orders/customer/my-orders");
   return response.data;

@@ -143,8 +143,8 @@ const calculateCheckout = async (req, res) => {
   }
 };
 
-// @desc    Initiate an online order for a customer and generate UPI payment intent
-//          Creates order, items, payment(PENDING) and decrements stock in atomic transaction
+// @desc    Initiate an online order for a customer and generate direct merchant UPI payment intent
+//          Zero-cost flow: generates dynamic UPI link with vendor's own UPI ID and order reference
 // @route   POST /api/orders/online
 const createOnlineOrder = async (req, res) => {
   try {
@@ -177,7 +177,7 @@ const createOnlineOrder = async (req, res) => {
     if (!shop.upiId) {
       return res.status(400).json({
         success: false,
-        message: "This shop has not configured a UPI ID to receive payments yet",
+        message: "This shop has not configured a UPI ID to receive direct payments yet",
       });
     }
 
@@ -233,13 +233,12 @@ const createOnlineOrder = async (req, res) => {
           lineTotal: lineTotal,
         });
 
-        // Decrement stock atomically
+        // Decrement stock atomically to reserve items during payment window
         const updatedProduct = await tx.product.update({
           where: { id: product.id },
           data: { stockQuantity: { decrement: qty } },
         });
 
-        // Trigger notification if newly out of stock
         if (updatedProduct.stockQuantity === 0) {
           await tx.notification.create({
             data: {
@@ -258,7 +257,7 @@ const createOnlineOrder = async (req, res) => {
 
       const orderNumber = await generateOrderNumber(tx);
 
-      // Create Order (pickupId is null until payment is verified)
+      // Create Order (pickupId remains NULL until vendor or gateway verifies payment)
       const order = await tx.order.create({
         data: {
           orderNumber,
@@ -280,7 +279,7 @@ const createOnlineOrder = async (req, res) => {
         })),
       });
 
-      // Create Payment (PENDING status)
+      // Create Payment record (PENDING status)
       const payment = await tx.payment.create({
         data: {
           orderId: order.id,
@@ -291,7 +290,7 @@ const createOnlineOrder = async (req, res) => {
         },
       });
 
-      // Construct standard UPI Intent URI
+      // Construct standard Direct Merchant UPI Intent URI
       const upiUrl = `upi://pay?pa=${encodeURIComponent(shop.upiId)}&pn=${encodeURIComponent(
         shop.shopName
       )}&am=${totalAmount.toFixed(2)}&tr=${order.orderNumber}&cu=INR`;
@@ -313,7 +312,7 @@ const createOnlineOrder = async (req, res) => {
 
     return res.status(201).json({
       success: true,
-      message: "Order placed. Complete UPI payment to receive your Pickup ID.",
+      message: "Order placed. Complete direct UPI payment to the merchant.",
       data: result,
     });
   } catch (error) {
@@ -325,8 +324,68 @@ const createOnlineOrder = async (req, res) => {
   }
 };
 
-// @desc    Verify and confirm payment for an online order
-//          Transitions payment PENDING -> VERIFIED, generates Pickup ID & Bill, sends vendor notification
+// @desc    Customer submits UPI Transaction Reference (UTR) after completing payment in their UPI app
+//          Does NOT confirm payment automatically; alerts vendor to verify bank receipt
+// @route   POST /api/orders/:orderId/submit-payment
+const submitCustomerPayment = async (req, res) => {
+  try {
+    const customerId = req.customer?.id;
+    const { orderId } = req.params;
+    const { providerTransactionId } = req.body;
+
+    const order = await prisma.order.findFirst({
+      where: { id: orderId, customerId },
+      include: { payment: true, shop: true },
+    });
+
+    if (!order) {
+      return res.status(404).json({ success: false, message: "Order not found" });
+    }
+
+    if (order.payment?.status === "VERIFIED") {
+      return res.status(200).json({
+        success: true,
+        message: "Payment is already verified by merchant",
+        order,
+      });
+    }
+
+    // Record customer transaction reference
+    const updatedPayment = await prisma.payment.update({
+      where: { orderId: order.id },
+      data: {
+        providerTransactionId: providerTransactionId ? providerTransactionId.trim() : null,
+      },
+    });
+
+    // Alert vendor via notification
+    await prisma.notification.create({
+      data: {
+        shopId: order.shopId,
+        orderId: order.id,
+        type: "NEW_ORDER",
+        title: "New UPI Payment Verification Request",
+        message: `Order #${order.orderNumber}: Customer submitted UPI Ref ${providerTransactionId || "N/A"} for ₹${parseFloat(order.totalAmount).toFixed(2)}. Please verify in your bank app and confirm.`,
+      },
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Payment reference submitted! Awaiting merchant verification.",
+      payment: updatedPayment,
+    });
+  } catch (error) {
+    console.error("submitCustomerPayment error:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to submit payment reference",
+    });
+  }
+};
+
+// @desc    Vendor or payment provider verifies received payment
+//          CRITICAL ZERO-COST FLOW: Vendor verifies credit in their UPI/bank app, then clicks confirm.
+//          Transitions payment PENDING -> VERIFIED, generates unique Pickup ID & Bill.
 // @route   POST /api/orders/:orderId/verify-payment
 const verifyAndConfirmPayment = async (req, res) => {
   try {
@@ -347,7 +406,15 @@ const verifyAndConfirmPayment = async (req, res) => {
       return res.status(404).json({ success: false, message: "Order not found" });
     }
 
-    // Idempotent check: if already verified, return confirmed state
+    // Access authorization: allow if Vendor owns the shop, or authorized customer/gateway
+    if (req.vendor && req.shop && req.shop.id !== existingOrder.shopId) {
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized: this order belongs to another shop",
+      });
+    }
+
+    // Idempotent check: if already verified, return confirmed state safely
     if (existingOrder.payment?.status === "VERIFIED" && existingOrder.pickupId) {
       return res.status(200).json({
         success: true,
@@ -380,7 +447,10 @@ const verifyAndConfirmPayment = async (req, res) => {
         data: {
           status: "VERIFIED",
           paidAt: new Date(),
-          providerTransactionId: providerTransactionId || `UPI-VERIFIED-${Date.now()}`,
+          providerTransactionId:
+            providerTransactionId ||
+            existingOrder.payment?.providerTransactionId ||
+            `UPI-VERIFIED-${Date.now()}`,
         },
       });
 
@@ -404,13 +474,13 @@ const verifyAndConfirmPayment = async (req, res) => {
         },
       });
 
-      // 5. Trigger NEW_ORDER notification for the shop owner
+      // 5. Trigger notification
       await tx.notification.create({
         data: {
           shopId: existingOrder.shopId,
           orderId: existingOrder.id,
           type: "NEW_ORDER",
-          title: "New Incoming Order!",
+          title: "Payment Confirmed • Pickup ID Generated",
           message: `Order #${existingOrder.orderNumber} confirmed. Pickup ID: ${pickupId}. Total: ₹${parseFloat(
             existingOrder.totalAmount
           ).toFixed(2)}`,
@@ -427,7 +497,7 @@ const verifyAndConfirmPayment = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: "Payment successfully verified! Your order is confirmed for pickup.",
+      message: "Payment successfully verified! Pickup ID generated for customer collection.",
       order: {
         id: confirmed.order.id,
         orderNumber: confirmed.order.orderNumber,
@@ -448,6 +518,59 @@ const verifyAndConfirmPayment = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: error.message || "Failed to verify payment",
+    });
+  }
+};
+
+// @desc    Vendor rejects an unverified order (payment not received)
+//          Restores inventory stock back to the shop
+// @route   POST /api/orders/:orderId/reject-payment
+const rejectPaymentAndRestoreStock = async (req, res) => {
+  try {
+    const shopId = req.shop?.id;
+    const { orderId } = req.params;
+
+    const order = await prisma.order.findFirst({
+      where: { id: orderId, shopId },
+      include: { payment: true, items: true },
+    });
+
+    if (!order) {
+      return res.status(404).json({ success: false, message: "Order not found in your shop" });
+    }
+
+    if (order.payment?.status === "VERIFIED") {
+      return res.status(400).json({
+        success: false,
+        message: "Cannot reject an order whose payment is already verified",
+      });
+    }
+
+    await prisma.$transaction(async (tx) => {
+      // 1. Update payment to FAILED
+      await tx.payment.update({
+        where: { orderId: order.id },
+        data: { status: "FAILED" },
+      });
+
+      // 2. Restore stock for all products in this order
+      for (const item of order.items) {
+        await tx.product.update({
+          where: { id: item.productId },
+          data: { stockQuantity: { increment: item.quantity } },
+        });
+      }
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Order payment marked as FAILED and reserved stock restored.",
+    });
+  } catch (error) {
+    console.error("rejectPayment error:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to reject payment",
     });
   }
 };
@@ -675,8 +798,7 @@ const markOrderCompleted = async (req, res) => {
 };
 
 // @desc    Get all orders for the authenticated vendor's shop
-//          Filters: status ('AWAITING_PICKUP', 'COMPLETED', 'ALL'), orderType ('ONLINE', 'WALK_IN'), search (pickupId/orderNumber)
-//          Enforces rule 3.6: unverified online orders are excluded from incoming queue
+//          Supports filtering by paymentStatus ('PENDING', 'VERIFIED'), order status, and search
 // @route   GET /api/orders/vendor/orders
 const getVendorOrders = async (req, res) => {
   try {
@@ -685,7 +807,7 @@ const getVendorOrders = async (req, res) => {
       return res.status(403).json({ success: false, message: "Shop context required" });
     }
 
-    const { status, type, search } = req.query;
+    const { status, type, search, paymentStatus } = req.query;
 
     const where = { shopId };
 
@@ -697,10 +819,9 @@ const getVendorOrders = async (req, res) => {
       where.orderType = type;
     }
 
-    // Exclude unverified online orders
-    where.payment = {
-      status: "VERIFIED",
-    };
+    if (paymentStatus && paymentStatus !== "ALL") {
+      where.payment = { status: paymentStatus };
+    }
 
     if (search && search.trim()) {
       const term = search.trim();
@@ -786,6 +907,7 @@ const getCustomerOrders = async (req, res) => {
             shopName: true,
             address: true,
             contactNumber: true,
+            upiId: true,
           },
         },
         items: true,
@@ -887,7 +1009,6 @@ const getOrderBill = async (req, res) => {
       });
     }
 
-    // Access check: allow if vendor owns the shop OR customer is the order owner
     const isVendorOwner = req.vendor && req.shop && req.shop.id === order.shopId;
     const isCustomerOwner = req.customer && req.customer.id === order.customerId;
 
@@ -942,7 +1063,9 @@ const getOrderBill = async (req, res) => {
 module.exports = {
   calculateCheckout,
   createOnlineOrder,
+  submitCustomerPayment,
   verifyAndConfirmPayment,
+  rejectPaymentAndRestoreStock,
   createWalkInOrder,
   markOrderCompleted,
   getVendorOrders,

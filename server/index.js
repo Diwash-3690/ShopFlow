@@ -17,6 +17,7 @@ app.use(express.json());
 
 // Routes
 const authRoutes = require("./routes/authRoutes");
+const shopRoutes = require("./routes/shopRoutes");
 const productRoutes = require("./routes/productRoutes");
 const categoryRoutes = require("./routes/categoryRoutes");
 const customerRoutes = require("./routes/customerRoutes");
@@ -27,6 +28,7 @@ const dashboardRoutes = require("./routes/dashboardRoutes");
 
 // Mount API Routes
 app.use("/api/auth", authRoutes);
+app.use("/api/shops", shopRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/customers", customerRoutes);

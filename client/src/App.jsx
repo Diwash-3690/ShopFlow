@@ -7,6 +7,7 @@ import VendorLogin from "./pages/vendor/VendorLogin";
 import VendorRegister from "./pages/vendor/VendorRegister";
 import VendorForgotPassword from "./pages/vendor/VendorForgotPassword";
 import VendorDashboard from "./pages/vendor/VendorDashboard";
+import ShopRegistration from "./pages/vendor/ShopRegistration";
 
 // Customer Pages
 import CustomerLogin from "./pages/customer/CustomerLogin";
@@ -24,6 +25,7 @@ function App() {
       <Route path="/vendor/login" element={<VendorLogin />} />
       <Route path="/vendor/register" element={<VendorRegister />} />
       <Route path="/vendor/forgot-password" element={<VendorForgotPassword />} />
+      <Route path="/vendor/register-shop" element={<ShopRegistration />} />
       <Route path="/vendor/dashboard" element={<VendorDashboard />} />
 
       {/* Customer Routes */}

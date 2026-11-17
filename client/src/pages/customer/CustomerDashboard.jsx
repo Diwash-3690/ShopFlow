@@ -85,7 +85,7 @@ function CustomerDashboard() {
             </p>
           </div>
           <button
-            onClick={() => alert("Shop discovery & map search will be unlocked in Milestone 4!")}
+            onClick={() => navigate("/shops")}
             className="bg-white text-emerald-800 font-bold px-6 py-3 rounded-xl hover:bg-emerald-50 transition shadow-sm flex items-center gap-2 text-sm whitespace-nowrap cursor-pointer"
           >
             <FiSearch size={18} /> Discover Shops

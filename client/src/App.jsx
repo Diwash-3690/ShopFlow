@@ -16,6 +16,8 @@ import CustomerLogin from "./pages/customer/CustomerLogin";
 import CustomerRegister from "./pages/customer/CustomerRegister";
 import CustomerForgotPassword from "./pages/customer/CustomerForgotPassword";
 import CustomerDashboard from "./pages/customer/CustomerDashboard";
+import ShopDiscovery from "./pages/customer/ShopDiscovery";
+import ShopStorefront from "./pages/customer/ShopStorefront";
 
 function App() {
   return (
@@ -37,6 +39,8 @@ function App() {
       <Route path="/customer/register" element={<CustomerRegister />} />
       <Route path="/customer/forgot-password" element={<CustomerForgotPassword />} />
       <Route path="/customer/dashboard" element={<CustomerDashboard />} />
+      <Route path="/shops" element={<ShopDiscovery />} />
+      <Route path="/shops/:shopId" element={<ShopStorefront />} />
 
       {/* Backwards-Compatibility Aliases */}
       <Route path="/login" element={<Navigate to="/vendor/login" replace />} />

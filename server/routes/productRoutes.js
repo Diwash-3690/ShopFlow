@@ -1,4 +1,3 @@
-const protect = require("../middleware/authMiddleware");
 const express = require("express");
 const router = express.Router();
 
@@ -7,17 +6,22 @@ const {
     getProducts,
     getProductById,
     updateProduct,
+    updateProductStock,
     deleteProduct,
+    getPublicShopProducts,
 } = require("../controllers/productController");
 
-router.get("/", protect, getProducts);
+const { protectVendor } = require("../middleware/authMiddleware");
 
-router.get("/:id", protect, getProductById);
+// Public Customer Shop Catalog Route
+router.get("/public/shop/:shopId", getPublicShopProducts);
 
-router.post("/", protect, createProduct);
-
-router.put("/:id", protect, updateProduct);
-
-router.delete("/:id", protect, deleteProduct);
+// Protected Vendor Product Routes
+router.post("/", protectVendor, createProduct);
+router.get("/", protectVendor, getProducts);
+router.get("/:id", protectVendor, getProductById);
+router.put("/:id", protectVendor, updateProduct);
+router.patch("/:id/stock", protectVendor, updateProductStock);
+router.delete("/:id", protectVendor, deleteProduct);
 
 module.exports = router;

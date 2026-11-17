@@ -1,180 +1,304 @@
-const Category = require("../models/Category");
+const prisma = require("../config/prisma");
 
-// @desc Create Category
-// @route POST /api/categories
+// @desc    Create Category for Vendor's Shop
+// @route   POST /api/categories
 const createCategory = async (req, res) => {
     try {
-        const { name, description } = req.body;
-
-        // Check if category already exists for this owner
-        const existingCategory = await Category.findOne({
-            name,
-            owner: req.owner._id
-        });
-
-        if (existingCategory) {
+        if (!req.shop) {
             return res.status(400).json({
                 success: false,
-                message: "Category already exists",
+                message: "Please register your shop before creating categories.",
             });
         }
 
-        const category = await Category.create({
-            name,
-            description,
-            owner: req.owner._id,
+        const { name } = req.body;
+
+        if (!name || !name.trim()) {
+            return res.status(400).json({
+                success: false,
+                message: "Category name is required",
+            });
+        }
+
+        const cleanName = name.trim();
+
+        // Check if category name exists within this shop
+        const existing = await prisma.category.findUnique({
+            where: {
+                shopId_name: {
+                    shopId: req.shop.id,
+                    name: cleanName,
+                },
+            },
         });
 
-        res.status(201).json({
+        if (existing) {
+            return res.status(400).json({
+                success: false,
+                message: "A category with this name already exists in your shop",
+            });
+        }
+
+        const category = await prisma.category.create({
+            data: {
+                shopId: req.shop.id,
+                name: cleanName,
+            },
+        });
+
+        return res.status(201).json({
             success: true,
             message: "Category created successfully",
             category,
         });
-
     } catch (error) {
-        res.status(500).json({
+        console.error("createCategory error:", error);
+        return res.status(500).json({
             success: false,
-            message: error.message,
+            message: error.message || "Failed to create category",
         });
     }
 };
 
-
-// @desc Get All Categories
-// @route GET /api/categories
+// @desc    Get All Categories for Vendor's Shop
+// @route   GET /api/categories
 const getCategories = async (req, res) => {
     try {
-        const categories = await Category.find({
-            owner: req.owner._id,
-            isActive: true
+        if (!req.shop) {
+            return res.status(200).json({
+                success: true,
+                categories: [],
+                count: 0,
+            });
+        }
+
+        const categories = await prisma.category.findMany({
+            where: {
+                shopId: req.shop.id,
+            },
+            include: {
+                _count: {
+                    select: { products: true },
+                },
+            },
+            orderBy: {
+                name: "asc",
+            },
         });
 
-        res.status(200).json({
+        return res.status(200).json({
             success: true,
             count: categories.length,
             categories,
         });
-
     } catch (error) {
-        res.status(500).json({
+        console.error("getCategories error:", error);
+        return res.status(500).json({
             success: false,
-            message: error.message,
+            message: error.message || "Failed to fetch categories",
         });
     }
 };
 
-
-// @desc Get Single Category
-// @route GET /api/categories/:id
+// @desc    Get Single Category by ID
+// @route   GET /api/categories/:id
 const getCategoryById = async (req, res) => {
     try {
+        if (!req.shop) {
+            return res.status(404).json({ success: false, message: "Category not found" });
+        }
 
-        const category = await Category.findOne({
-            _id: req.params.id,
-            owner: req.owner._id
+        const category = await prisma.category.findFirst({
+            where: {
+                id: req.params.id,
+                shopId: req.shop.id,
+            },
+            include: {
+                products: true,
+            },
         });
 
-        if (!category || !category.isActive) {
+        if (!category) {
             return res.status(404).json({
                 success: false,
                 message: "Category not found",
             });
         }
 
-        res.status(200).json({
+        return res.status(200).json({
             success: true,
             category,
         });
-
     } catch (error) {
-        res.status(500).json({
+        console.error("getCategoryById error:", error);
+        return res.status(500).json({
             success: false,
-            message: error.message,
+            message: error.message || "Failed to fetch category",
         });
     }
 };
 
-
-// @desc Update Category
-// @route PUT /api/categories/:id
+// @desc    Update Category
+// @route   PUT /api/categories/:id
 const updateCategory = async (req, res) => {
     try {
+        if (!req.shop) {
+            return res.status(404).json({ success: false, message: "Category not found" });
+        }
 
-        const { name, description } = req.body;
+        const { name } = req.body;
 
-        const category = await Category.findOne({
-            _id: req.params.id,
-            owner: req.owner._id
+        if (!name || !name.trim()) {
+            return res.status(400).json({
+                success: false,
+                message: "Category name is required",
+            });
+        }
+
+        const cleanName = name.trim();
+
+        const category = await prisma.category.findFirst({
+            where: {
+                id: req.params.id,
+                shopId: req.shop.id,
+            },
         });
 
-        if (!category || !category.isActive) {
+        if (!category) {
             return res.status(404).json({
                 success: false,
                 message: "Category not found",
             });
         }
 
+        // Check duplicate name within shop
+        const duplicate = await prisma.category.findFirst({
+            where: {
+                shopId: req.shop.id,
+                name: cleanName,
+                id: { not: req.params.id },
+            },
+        });
 
-        category.name = name || category.name;
-        category.description = description || category.description;
+        if (duplicate) {
+            return res.status(400).json({
+                success: false,
+                message: "Another category with this name already exists in your shop",
+            });
+        }
 
-        await category.save();
+        const updated = await prisma.category.update({
+            where: { id: req.params.id },
+            data: { name: cleanName },
+        });
 
-
-        res.status(200).json({
+        return res.status(200).json({
             success: true,
             message: "Category updated successfully",
-            category,
+            category: updated,
         });
-
-
     } catch (error) {
-        res.status(500).json({
+        console.error("updateCategory error:", error);
+        return res.status(500).json({
             success: false,
-            message: error.message,
+            message: error.message || "Failed to update category",
         });
     }
 };
 
-
-// @desc Soft Delete Category
-// @route DELETE /api/categories/:id
+// @desc    Delete Category Safely (unlinks associated products)
+// @route   DELETE /api/categories/:id
 const deleteCategory = async (req, res) => {
     try {
+        if (!req.shop) {
+            return res.status(404).json({ success: false, message: "Category not found" });
+        }
 
-        const category = await Category.findOne({
-            _id: req.params.id,
-            owner: req.owner._id
+        const category = await prisma.category.findFirst({
+            where: {
+                id: req.params.id,
+                shopId: req.shop.id,
+            },
         });
 
-
-        if (!category || !category.isActive) {
+        if (!category) {
             return res.status(404).json({
                 success: false,
                 message: "Category not found",
             });
         }
 
+        // Transaction to safely detach products before deleting category
+        await prisma.$transaction([
+            prisma.product.updateMany({
+                where: {
+                    categoryId: req.params.id,
+                    shopId: req.shop.id,
+                },
+                data: {
+                    categoryId: null,
+                },
+            }),
+            prisma.category.delete({
+                where: { id: req.params.id },
+            }),
+        ]);
 
-        category.isActive = false;
-
-        await category.save();
-
-
-        res.status(200).json({
+        return res.status(200).json({
             success: true,
-            message: "Category deleted successfully",
+            message: "Category deleted successfully. Associated products have been unassigned safely.",
         });
-
-
     } catch (error) {
-        res.status(500).json({
+        console.error("deleteCategory error:", error);
+        return res.status(500).json({
             success: false,
-            message: error.message,
+            message: error.message || "Failed to delete category",
         });
     }
 };
 
+// @desc    Public endpoint for customers to get a shop's categories
+// @route   GET /api/categories/public/shop/:shopId
+const getPublicShopCategories = async (req, res) => {
+    try {
+        const { shopId } = req.params;
+
+        // Resolve shop by user-facing shopId or database id
+        const shop = await prisma.shop.findFirst({
+            where: {
+                OR: [{ shopId }, { id: shopId }],
+            },
+            select: { id: true },
+        });
+
+        if (!shop) {
+            return res.status(404).json({ success: false, message: "Shop not found" });
+        }
+
+        const categories = await prisma.category.findMany({
+            where: { shopId: shop.id },
+            select: {
+                id: true,
+                name: true,
+                _count: {
+                    select: { products: true },
+                },
+            },
+            orderBy: { name: "asc" },
+        });
+
+        return res.status(200).json({
+            success: true,
+            categories,
+        });
+    } catch (error) {
+        console.error("getPublicShopCategories error:", error);
+        return res.status(500).json({
+            success: false,
+            message: error.message || "Failed to fetch categories",
+        });
+    }
+};
 
 module.exports = {
     createCategory,
@@ -182,4 +306,5 @@ module.exports = {
     getCategoryById,
     updateCategory,
     deleteCategory,
+    getPublicShopCategories,
 };

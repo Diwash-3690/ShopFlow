@@ -1,356 +1,507 @@
-const Category = require("../models/Category");
-const generateSKU = require("../utils/generateSKU");
-const Product = require("../models/Product");
+const prisma = require("../config/prisma");
 
+// Helper to trigger out-of-stock notification for vendor
+const triggerOutOfStockNotification = async (shopId, productId, productName) => {
+    try {
+        // Prevent duplicate unread notifications for the same product
+        const existing = await prisma.notification.findFirst({
+            where: {
+                shopId,
+                productId,
+                type: "OUT_OF_STOCK",
+                isRead: false,
+            },
+        });
 
-// @desc    Create Product
+        if (!existing) {
+            await prisma.notification.create({
+                data: {
+                    shopId,
+                    productId,
+                    type: "OUT_OF_STOCK",
+                    title: "Product Out of Stock",
+                    message: `Product "${productName}" has reached 0 stock and is now marked as Out of Stock.`,
+                },
+            });
+        }
+    } catch (err) {
+        console.error("Error creating stock notification:", err);
+    }
+};
+
+// @desc    Create a Product for Vendor's Shop
 // @route   POST /api/products
 const createProduct = async (req, res) => {
     try {
+        if (!req.shop) {
+            return res.status(400).json({
+                success: false,
+                message: "Please register your shop before adding products.",
+            });
+        }
 
         const {
             name,
-            category,
-            brand,
-            unit,
+            categoryId,
+            description,
+            imageUrl,
             costPrice,
             sellingPrice,
-            stock,
-            minimumStock,
+            stockQuantity = 0,
+            unit = "piece",
         } = req.body;
 
-
-        const categoryExists = await Category.findOne({
-            _id: category,
-            owner: req.owner._id,
-            isActive: true
-        });
-
-
-        if (!categoryExists) {
-            return res.status(404).json({
-                success: false,
-                message: "Category not found",
-            });
-        }
-
-
-        const sku = await generateSKU();
-
-
-        const existingProduct = await Product.findOne({
-            sku,
-            owner: req.owner._id
-        });
-
-
-        if (existingProduct) {
+        if (!name || !name.trim()) {
             return res.status(400).json({
                 success: false,
-                message: "Product SKU already exists",
+                message: "Product name is required",
             });
         }
 
+        if (sellingPrice === undefined || isNaN(parseFloat(sellingPrice))) {
+            return res.status(400).json({
+                success: false,
+                message: "Valid selling price is required",
+            });
+        }
 
-        const product = await Product.create({
+        if (costPrice === undefined || isNaN(parseFloat(costPrice))) {
+            return res.status(400).json({
+                success: false,
+                message: "Valid cost price is required",
+            });
+        }
 
-            name,
-            category,
-            brand,
-            sku,
-            unit,
-            costPrice,
-            sellingPrice,
-            stock,
-            minimumStock,
-            owner: req.owner._id,
+        // Strict category validation: category must belong to vendor's shop
+        if (categoryId && categoryId.trim()) {
+            const categoryExists = await prisma.category.findFirst({
+                where: {
+                    id: categoryId.trim(),
+                    shopId: req.shop.id,
+                },
+            });
 
+            if (!categoryExists) {
+                return res.status(400).json({
+                    success: false,
+                    message: "The selected category does not belong to your shop",
+                });
+            }
+        }
+
+        const stock = parseInt(stockQuantity, 10) || 0;
+
+        const product = await prisma.product.create({
+            data: {
+                shopId: req.shop.id,
+                name: name.trim(),
+                categoryId: categoryId && categoryId.trim() ? categoryId.trim() : null,
+                description: description ? description.trim() : null,
+                imageUrl: imageUrl ? imageUrl.trim() : null,
+                costPrice: parseFloat(costPrice),
+                sellingPrice: parseFloat(sellingPrice),
+                stockQuantity: stock,
+                unit: unit ? unit.trim() : "piece",
+            },
+            include: {
+                category: {
+                    select: { id: true, name: true },
+                },
+            },
         });
 
+        if (stock === 0) {
+            await triggerOutOfStockNotification(req.shop.id, product.id, product.name);
+        }
 
-        res.status(201).json({
+        return res.status(201).json({
             success: true,
-            message: "Product created successfully",
+            message: "Product added successfully",
             product,
         });
-
-
     } catch (error) {
-
-        res.status(500).json({
+        console.error("createProduct error:", error);
+        return res.status(500).json({
             success: false,
-            message: error.message,
+            message: error.message || "Failed to create product",
         });
-
     }
 };
 
-
-
-// @desc Get All Products
-// @route GET /api/products
+// @desc    Get All Products for Vendor's Shop (Private - includes costPrice & stock)
+// @route   GET /api/products
 const getProducts = async (req, res) => {
-
     try {
+        if (!req.shop) {
+            return res.status(200).json({
+                success: true,
+                count: 0,
+                products: [],
+            });
+        }
 
-        const products = await Product.find({
-            owner: req.owner._id,
-            isActive: true
-        })
-        .populate("category", "name");
+        const { search, categoryId, status } = req.query;
 
+        const where = {
+            shopId: req.shop.id,
+        };
 
-        res.status(200).json({
+        if (search && search.trim()) {
+            where.name = { contains: search.trim(), mode: "insensitive" };
+        }
 
+        if (categoryId && categoryId !== "ALL") {
+            where.categoryId = categoryId;
+        }
+
+        if (status === "OUT_OF_STOCK") {
+            where.stockQuantity = { lte: 0 };
+        } else if (status === "AVAILABLE") {
+            where.stockQuantity = { gt: 0 };
+        }
+
+        const products = await prisma.product.findMany({
+            where,
+            include: {
+                category: {
+                    select: { id: true, name: true },
+                },
+            },
+            orderBy: {
+                createdAt: "desc",
+            },
+        });
+
+        return res.status(200).json({
             success: true,
             count: products.length,
             products,
-
         });
-
-
     } catch (error) {
-
-        res.status(500).json({
+        console.error("getProducts error:", error);
+        return res.status(500).json({
             success: false,
-            message: error.message,
+            message: error.message || "Failed to fetch products",
         });
-
     }
-
 };
 
-
-
-// @desc Get Single Product
-// @route GET /api/products/:id
+// @desc    Get Single Product (Private Vendor)
+// @route   GET /api/products/:id
 const getProductById = async (req, res) => {
-
     try {
-
-        const product = await Product.findOne({
-
-            _id: req.params.id,
-            owner: req.owner._id
-
-        })
-        .populate("category", "name");
-
-
-        if (!product || !product.isActive) {
-
-            return res.status(404).json({
-
-                success: false,
-                message: "Product not found",
-
-            });
-
+        if (!req.shop) {
+            return res.status(404).json({ success: false, message: "Product not found" });
         }
 
+        const product = await prisma.product.findFirst({
+            where: {
+                id: req.params.id,
+                shopId: req.shop.id,
+            },
+            include: {
+                category: {
+                    select: { id: true, name: true },
+                },
+            },
+        });
 
-        res.status(200).json({
+        if (!product) {
+            return res.status(404).json({
+                success: false,
+                message: "Product not found",
+            });
+        }
 
+        return res.status(200).json({
             success: true,
             product,
-
         });
-
-
     } catch (error) {
-
-        res.status(500).json({
-
+        console.error("getProductById error:", error);
+        return res.status(500).json({
             success: false,
-            message: error.message,
-
+            message: error.message || "Failed to fetch product",
         });
-
     }
-
 };
 
-
-
-// @desc Update Product
-// @route PUT /api/products/:id
+// @desc    Update Product
+// @route   PUT /api/products/:id
 const updateProduct = async (req, res) => {
-
     try {
+        if (!req.shop) {
+            return res.status(404).json({ success: false, message: "Product not found" });
+        }
+
+        const existing = await prisma.product.findFirst({
+            where: {
+                id: req.params.id,
+                shopId: req.shop.id,
+            },
+        });
+
+        if (!existing) {
+            return res.status(404).json({
+                success: false,
+                message: "Product not found in your shop",
+            });
+        }
 
         const {
-
             name,
-            category,
-            brand,
-            unit,
+            categoryId,
+            description,
+            imageUrl,
             costPrice,
             sellingPrice,
-            stock,
-            minimumStock,
-
+            stockQuantity,
+            unit,
         } = req.body;
 
-
-
-        const product = await Product.findOne({
-
-            _id: req.params.id,
-            owner: req.owner._id
-
-        });
-
-
-
-        if (!product || !product.isActive) {
-
-            return res.status(404).json({
-
-                success: false,
-                message: "Product not found",
-
+        // Verify category belongs to vendor's shop
+        if (categoryId && categoryId.trim()) {
+            const categoryExists = await prisma.category.findFirst({
+                where: {
+                    id: categoryId.trim(),
+                    shopId: req.shop.id,
+                },
             });
-
-        }
-
-
-
-        if (category) {
-
-            const categoryExists = await Category.findOne({
-
-                _id: category,
-                owner: req.owner._id,
-                isActive: true
-
-            });
-
-
 
             if (!categoryExists) {
-
-                return res.status(404).json({
-
+                return res.status(400).json({
                     success: false,
-                    message: "Category not found",
-
+                    message: "The selected category does not belong to your shop",
                 });
-
             }
-
-
-            product.category = category;
-
         }
 
+        const updateData = {};
+        if (name) updateData.name = name.trim();
+        if (categoryId !== undefined) updateData.categoryId = categoryId && categoryId.trim() ? categoryId.trim() : null;
+        if (description !== undefined) updateData.description = description ? description.trim() : null;
+        if (imageUrl !== undefined) updateData.imageUrl = imageUrl ? imageUrl.trim() : null;
+        if (costPrice !== undefined) updateData.costPrice = parseFloat(costPrice);
+        if (sellingPrice !== undefined) updateData.sellingPrice = parseFloat(sellingPrice);
+        if (stockQuantity !== undefined) updateData.stockQuantity = parseInt(stockQuantity, 10);
+        if (unit) updateData.unit = unit.trim();
 
+        const updated = await prisma.product.update({
+            where: { id: req.params.id },
+            data: updateData,
+            include: {
+                category: {
+                    select: { id: true, name: true },
+                },
+            },
+        });
 
-        product.name = name || product.name;
-        product.brand = brand || product.brand;
-        product.unit = unit || product.unit;
+        if (updated.stockQuantity === 0) {
+            await triggerOutOfStockNotification(req.shop.id, updated.id, updated.name);
+        }
 
-        product.costPrice = costPrice ?? product.costPrice;
-        product.sellingPrice = sellingPrice ?? product.sellingPrice;
-        product.stock = stock ?? product.stock;
-        product.minimumStock = minimumStock ?? product.minimumStock;
-
-
-
-        await product.save();
-
-
-
-        res.status(200).json({
-
+        return res.status(200).json({
             success: true,
             message: "Product updated successfully",
-            product,
-
+            product: updated,
         });
-
-
-
     } catch (error) {
-
-        res.status(500).json({
-
+        console.error("updateProduct error:", error);
+        return res.status(500).json({
             success: false,
-            message: error.message,
-
+            message: error.message || "Failed to update product",
         });
-
     }
-
 };
 
-
-
-// @desc Delete Product (Soft Delete)
-// @route DELETE /api/products/:id
-const deleteProduct = async (req, res) => {
-
+// @desc    Update Product Stock Quantity (Inventory quick-update)
+// @route   PATCH /api/products/:id/stock
+const updateProductStock = async (req, res) => {
     try {
-
-
-        const product = await Product.findOne({
-
-            _id: req.params.id,
-            owner: req.owner._id
-
-        });
-
-
-
-        if (!product || !product.isActive) {
-
-            return res.status(404).json({
-
-                success: false,
-                message: "Product not found",
-
-            });
-
+        if (!req.shop) {
+            return res.status(404).json({ success: false, message: "Product not found" });
         }
 
+        const { stockQuantity, delta } = req.body;
 
+        const product = await prisma.product.findFirst({
+            where: {
+                id: req.params.id,
+                shopId: req.shop.id,
+            },
+        });
 
-        product.isActive = false;
+        if (!product) {
+            return res.status(404).json({
+                success: false,
+                message: "Product not found",
+            });
+        }
 
+        let newStock = product.stockQuantity;
 
-        await product.save();
+        if (stockQuantity !== undefined) {
+            newStock = Math.max(0, parseInt(stockQuantity, 10));
+        } else if (delta !== undefined) {
+            newStock = Math.max(0, product.stockQuantity + parseInt(delta, 10));
+        }
 
+        const updated = await prisma.product.update({
+            where: { id: req.params.id },
+            data: { stockQuantity: newStock },
+            include: {
+                category: { select: { id: true, name: true } },
+            },
+        });
 
+        if (newStock === 0) {
+            await triggerOutOfStockNotification(req.shop.id, updated.id, updated.name);
+        }
 
-        res.status(200).json({
-
+        return res.status(200).json({
             success: true,
-            message: "Product deleted successfully",
-
+            message: "Stock updated successfully",
+            product: updated,
+            availability: newStock > 0 ? "AVAILABLE" : "OUT_OF_STOCK",
         });
-
-
-
     } catch (error) {
-
-        res.status(500).json({
-
+        console.error("updateProductStock error:", error);
+        return res.status(500).json({
             success: false,
-            message: error.message,
-
+            message: error.message || "Failed to update stock",
         });
-
     }
-
 };
 
+// @desc    Delete Product
+// @route   DELETE /api/products/:id
+const deleteProduct = async (req, res) => {
+    try {
+        if (!req.shop) {
+            return res.status(404).json({ success: false, message: "Product not found" });
+        }
 
+        const product = await prisma.product.findFirst({
+            where: {
+                id: req.params.id,
+                shopId: req.shop.id,
+            },
+        });
+
+        if (!product) {
+            return res.status(404).json({
+                success: false,
+                message: "Product not found",
+            });
+        }
+
+        // Delete any notifications linked to this product first to satisfy foreign keys
+        await prisma.notification.deleteMany({
+            where: { productId: req.params.id },
+        });
+
+        await prisma.product.delete({
+            where: { id: req.params.id },
+        });
+
+        return res.status(200).json({
+            success: true,
+            message: "Product deleted successfully",
+        });
+    } catch (error) {
+        console.error("deleteProduct error:", error);
+        return res.status(500).json({
+            success: false,
+            message: error.message || "Failed to delete product",
+        });
+    }
+};
+
+// @desc    Public Customer Product Catalog for a Single Shop
+//          Hides costPrice and exact stockQuantity, returns computed availability
+// @route   GET /api/products/public/shop/:shopId
+const getPublicShopProducts = async (req, res) => {
+    try {
+        const { shopId } = req.params;
+        const { categoryId, search } = req.query;
+
+        // Resolve shop by user-facing shopId or database id
+        const shop = await prisma.shop.findFirst({
+            where: {
+                OR: [{ shopId }, { id: shopId }],
+            },
+            select: { id: true, shopId: true, shopName: true },
+        });
+
+        if (!shop) {
+            return res.status(404).json({
+                success: false,
+                message: "Shop not found",
+            });
+        }
+
+        const where = {
+            shopId: shop.id,
+        };
+
+        if (categoryId && categoryId !== "ALL") {
+            where.categoryId = categoryId;
+        }
+
+        if (search && search.trim()) {
+            where.name = { contains: search.trim(), mode: "insensitive" };
+        }
+
+        const products = await prisma.product.findMany({
+            where,
+            select: {
+                id: true,
+                name: true,
+                description: true,
+                imageUrl: true,
+                sellingPrice: true,
+                unit: true,
+                stockQuantity: true,
+                category: {
+                    select: { id: true, name: true },
+                },
+            },
+            orderBy: {
+                name: "asc",
+            },
+        });
+
+        // Safe transformation: remove costPrice completely, omit exact stock quantity
+        const safeProducts = products.map((p) => {
+            const { stockQuantity, ...rest } = p;
+            return {
+                ...rest,
+                availability: stockQuantity > 0 ? "AVAILABLE" : "OUT_OF_STOCK",
+                isAvailable: stockQuantity > 0,
+            };
+        });
+
+        return res.status(200).json({
+            success: true,
+            count: safeProducts.length,
+            shop,
+            products: safeProducts,
+        });
+    } catch (error) {
+        console.error("getPublicShopProducts error:", error);
+        return res.status(500).json({
+            success: false,
+            message: error.message || "Failed to fetch shop catalog",
+        });
+    }
+};
 
 module.exports = {
-
     createProduct,
     getProducts,
     getProductById,
     updateProduct,
+    updateProductStock,
     deleteProduct,
-
+    getPublicShopProducts,
 };

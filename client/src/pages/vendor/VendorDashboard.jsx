@@ -14,15 +14,31 @@ import {
   FiMapPin,
   FiPhone,
   FiCreditCard,
+  FiBell,
+  FiArrowRight,
+  FiAlertTriangle,
 } from "react-icons/fi";
 import { vendorGetMe, logout } from "../../services/authService";
 import { updateMyShop } from "../../services/shopService";
+import { getProducts } from "../../services/productService";
+import { getCategories } from "../../services/categoryService";
+import { getNotifications, markAsRead, markAllAsRead } from "../../services/notificationService";
 
 function VendorDashboard() {
   const [vendorData, setVendorData] = useState(null);
   const [shop, setShop] = useState(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+
+  // Stats
+  const [productCount, setProductCount] = useState(0);
+  const [categoryCount, setCategoryCount] = useState(0);
+  const [outOfStockCount, setOutOfStockCount] = useState(0);
+
+  // Notifications
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [showNotifDropdown, setShowNotifDropdown] = useState(false);
 
   // Edit Shop Modal / Inline State
   const [isEditing, setIsEditing] = useState(false);
@@ -48,43 +64,50 @@ function VendorDashboard() {
       return;
     }
 
-    const fetchProfile = async () => {
+    const fetchAllData = async () => {
       try {
-        const res = await vendorGetMe();
-        setVendorData(res.vendor);
-        setShop(res.shop);
-        if (res.shop) {
+        const [profRes, notifRes] = await Promise.all([
+          vendorGetMe(),
+          getNotifications().catch(() => ({ notifications: [], unreadCount: 0 })),
+        ]);
+
+        setVendorData(profRes.vendor);
+        setShop(profRes.shop);
+        setNotifications(notifRes.notifications || []);
+        setUnreadCount(notifRes.unreadCount || 0);
+
+        if (profRes.shop) {
           setEditForm({
-            shopName: res.shop.shopName || "",
-            address: res.shop.address || "",
-            contactNumber: res.shop.contactNumber || "",
-            upiId: res.shop.upiId || "",
-            latitude: res.shop.latitude !== null && res.shop.latitude !== undefined ? res.shop.latitude.toString() : "",
-            longitude: res.shop.longitude !== null && res.shop.longitude !== undefined ? res.shop.longitude.toString() : "",
+            shopName: profRes.shop.shopName || "",
+            address: profRes.shop.address || "",
+            contactNumber: profRes.shop.contactNumber || "",
+            upiId: profRes.shop.upiId || "",
+            latitude: profRes.shop.latitude !== null && profRes.shop.latitude !== undefined ? profRes.shop.latitude.toString() : "",
+            longitude: profRes.shop.longitude !== null && profRes.shop.longitude !== undefined ? profRes.shop.longitude.toString() : "",
           });
+
+          // Fetch products & categories stats
+          const [prodsRes, catsRes] = await Promise.all([
+            getProducts().catch(() => ({ products: [] })),
+            getCategories().catch(() => ({ categories: [] })),
+          ]);
+
+          const prods = prodsRes.products || [];
+          setProductCount(prods.length);
+          setOutOfStockCount(prods.filter((p) => p.stockQuantity <= 0).length);
+          setCategoryCount(catsRes.categories?.length || 0);
         }
       } catch {
         const cachedUser = localStorage.getItem("user");
         const cachedShop = localStorage.getItem("shop");
         if (cachedUser) setVendorData(JSON.parse(cachedUser));
-        if (cachedShop) {
-          const s = JSON.parse(cachedShop);
-          setShop(s);
-          setEditForm({
-            shopName: s.shopName || "",
-            address: s.address || "",
-            contactNumber: s.contactNumber || "",
-            upiId: s.upiId || "",
-            latitude: s.latitude ? s.latitude.toString() : "",
-            longitude: s.longitude ? s.longitude.toString() : "",
-          });
-        }
+        if (cachedShop) setShop(JSON.parse(cachedShop));
       } finally {
         setLoading(false);
       }
     };
 
-    fetchProfile();
+    fetchAllData();
   }, [navigate]);
 
   const handleLogout = () => {
@@ -124,6 +147,28 @@ function VendorDashboard() {
     }
   };
 
+  const handleMarkAsRead = async (id) => {
+    try {
+      await markAsRead(id);
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
+      );
+      setUnreadCount((c) => Math.max(0, c - 1));
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleMarkAllRead = async () => {
+    try {
+      await markAllAsRead();
+      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+      setUnreadCount(0);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
@@ -135,7 +180,7 @@ function VendorDashboard() {
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col">
       {/* Top Navbar */}
-      <nav className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
+      <nav className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-0 z-20">
         <div className="flex items-center space-x-3">
           <Link to="/" className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
             <span>🛒</span> ShopFlow <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-bold uppercase">Vendor</span>
@@ -143,10 +188,69 @@ function VendorDashboard() {
         </div>
 
         <div className="flex items-center space-x-4">
+          {/* Notifications Bell */}
+          <div className="relative">
+            <button
+              onClick={() => setShowNotifDropdown(!showNotifDropdown)}
+              className="relative p-2 text-slate-600 hover:text-blue-600 hover:bg-slate-100 rounded-xl transition cursor-pointer"
+              title="Notifications"
+            >
+              <FiBell size={20} />
+              {unreadCount > 0 && (
+                <span className="absolute top-1 right-1 w-4 h-4 bg-red-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                  {unreadCount}
+                </span>
+              )}
+            </button>
+
+            {/* Dropdown */}
+            {showNotifDropdown && (
+              <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-xl border border-slate-200 p-4 z-50">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                  <h4 className="font-bold text-sm text-slate-800">Notifications</h4>
+                  {unreadCount > 0 && (
+                    <button
+                      onClick={handleMarkAllRead}
+                      className="text-xs font-semibold text-blue-600 hover:underline cursor-pointer"
+                    >
+                      Mark all as read
+                    </button>
+                  )}
+                </div>
+
+                <div className="max-h-72 overflow-y-auto divide-y divide-slate-100 mt-2">
+                  {notifications.length === 0 ? (
+                    <p className="py-6 text-center text-xs text-slate-400">No notifications yet.</p>
+                  ) : (
+                    notifications.map((n) => (
+                      <div
+                        key={n.id}
+                        onClick={() => !n.isRead && handleMarkAsRead(n.id)}
+                        className={`p-3 rounded-xl transition text-xs cursor-pointer ${
+                          n.isRead ? "bg-white text-slate-600" : "bg-blue-50/70 text-slate-900 font-medium"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="font-bold text-slate-800">{n.title}</p>
+                          {!n.isRead && <span className="w-2 h-2 rounded-full bg-blue-600 shrink-0 mt-1" />}
+                        </div>
+                        <p className="text-[11px] text-slate-600 mt-0.5">{n.message}</p>
+                        <p className="text-[10px] text-slate-400 mt-1">
+                          {new Date(n.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        </p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
           <div className="text-right hidden sm:block">
             <p className="text-sm font-semibold text-slate-800">{vendorData?.ownerName || "Shop Owner"}</p>
             <p className="text-xs text-slate-500">{vendorData?.mobile}</p>
           </div>
+
           <button
             onClick={handleLogout}
             className="flex items-center gap-1.5 border border-slate-200 text-slate-600 hover:text-red-600 hover:border-red-200 px-3 py-1.5 rounded-lg text-sm transition cursor-pointer"
@@ -158,6 +262,26 @@ function VendorDashboard() {
 
       {/* Main Container */}
       <main className="max-w-7xl mx-auto px-6 py-8 flex-1 w-full space-y-8">
+        {/* Out of stock alert banner if any */}
+        {outOfStockCount > 0 && (
+          <div className="bg-red-50 border border-red-200 text-red-800 rounded-2xl p-4 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-red-100 text-red-600 flex items-center justify-center shrink-0">
+                <FiAlertTriangle size={18} />
+              </div>
+              <p className="text-sm font-medium">
+                You have <strong>{outOfStockCount} product{outOfStockCount > 1 ? "s" : ""}</strong> currently out of stock. Customers cannot place orders for them.
+              </p>
+            </div>
+            <Link
+              to="/vendor/products"
+              className="bg-red-600 hover:bg-red-700 text-white font-semibold text-xs px-3.5 py-2 rounded-lg transition whitespace-nowrap"
+            >
+              Update Stock
+            </Link>
+          </div>
+        )}
+
         {/* Shop Status Banner or Active Shop Card */}
         {!shop ? (
           <div className="bg-amber-50 border border-amber-200 rounded-3xl p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-sm">
@@ -346,40 +470,100 @@ function VendorDashboard() {
 
         {/* Milestone Quick Action Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-            <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center mb-4">
-              <FiBox size={20} />
+          {/* Products & Inventory Card */}
+          <Link
+            to="/vendor/products"
+            className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-300 transition flex flex-col justify-between group"
+          >
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center">
+                  <FiBox size={20} />
+                </div>
+                <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full">
+                  {productCount} items
+                </span>
+              </div>
+              <h4 className="font-bold text-slate-800 group-hover:text-blue-600 transition">
+                Products & Inventory
+              </h4>
+              <p className="text-xs text-slate-500 mt-1">
+                Add products, set cost/selling prices, and update stock counts.
+              </p>
             </div>
-            <h4 className="font-bold text-slate-800">Products & Stock</h4>
-            <p className="text-xs text-slate-500 mt-1">Manage catalog, cost & selling prices, and stock counts.</p>
-            <span className="inline-block mt-4 text-xs font-semibold text-blue-600">Milestone 3</span>
+            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-blue-600">
+              <span>Manage Products</span>
+              <FiArrowRight />
+            </div>
+          </Link>
+
+          {/* Categories Card */}
+          <Link
+            to="/vendor/categories"
+            className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-indigo-300 transition flex flex-col justify-between group"
+          >
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center">
+                  <FiList size={20} />
+                </div>
+                <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full">
+                  {categoryCount} categories
+                </span>
+              </div>
+              <h4 className="font-bold text-slate-800 group-hover:text-indigo-600 transition">
+                Categories
+              </h4>
+              <p className="text-xs text-slate-500 mt-1">
+                Organize products into shop-specific categories.
+              </p>
+            </div>
+            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-indigo-600">
+              <span>Manage Categories</span>
+              <FiArrowRight />
+            </div>
+          </Link>
+
+          {/* Incoming Orders Card (Milestone 5) */}
+          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between opacity-80">
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                  <FiShoppingBag size={20} />
+                </div>
+                <span className="text-xs font-bold text-slate-400 bg-slate-100 px-2.5 py-1 rounded-full">
+                  Milestone 5
+                </span>
+              </div>
+              <h4 className="font-bold text-slate-800">Incoming Orders</h4>
+              <p className="text-xs text-slate-500 mt-1">
+                Verify pickup IDs and hand over verified purchases.
+              </p>
+            </div>
+            <span className="inline-block mt-4 text-xs font-semibold text-emerald-600">
+              Pickup verification coming next
+            </span>
           </div>
 
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-            <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center mb-4">
-              <FiList size={20} />
+          {/* Walk-in Billing Card (Milestone 5) */}
+          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between opacity-80">
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-10 h-10 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center">
+                  <FiTrendingUp size={20} />
+                </div>
+                <span className="text-xs font-bold text-slate-400 bg-slate-100 px-2.5 py-1 rounded-full">
+                  Milestone 5
+                </span>
+              </div>
+              <h4 className="font-bold text-slate-800">Walk-in Billing & POS</h4>
+              <p className="text-xs text-slate-500 mt-1">
+                Generate PDF receipts for in-store customers.
+              </p>
             </div>
-            <h4 className="font-bold text-slate-800">Categories</h4>
-            <p className="text-xs text-slate-500 mt-1">Organize products into shop-specific categories.</p>
-            <span className="inline-block mt-4 text-xs font-semibold text-indigo-600">Milestone 3</span>
-          </div>
-
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-            <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center mb-4">
-              <FiShoppingBag size={20} />
-            </div>
-            <h4 className="font-bold text-slate-800">Incoming Orders</h4>
-            <p className="text-xs text-slate-500 mt-1">Verify pickup IDs and hand over verified purchases.</p>
-            <span className="inline-block mt-4 text-xs font-semibold text-emerald-600">Milestone 5</span>
-          </div>
-
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-            <div className="w-10 h-10 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center mb-4">
-              <FiTrendingUp size={20} />
-            </div>
-            <h4 className="font-bold text-slate-800">Walk-in Billing & POS</h4>
-            <p className="text-xs text-slate-500 mt-1">Generate PDF receipts for in-store customers.</p>
-            <span className="inline-block mt-4 text-xs font-semibold text-purple-600">Milestone 5</span>
+            <span className="inline-block mt-4 text-xs font-semibold text-purple-600">
+              POS Billing coming next
+            </span>
           </div>
         </div>
       </main>

@@ -1,29 +1,25 @@
 const express = require("express");
+const router = express.Router();
 
 const {
     createCategory,
     getCategories,
     getCategoryById,
     updateCategory,
-    deleteCategory
+    deleteCategory,
+    getPublicShopCategories,
 } = require("../controllers/categoryController");
 
-const protect = require("../middleware/authMiddleware");
+const { protectVendor } = require("../middleware/authMiddleware");
 
+// Public Customer Route
+router.get("/public/shop/:shopId", getPublicShopCategories);
 
-const router = express.Router();
-
-
-// All category routes are protected
-router.post("/", protect, createCategory);
-
-router.get("/", protect, getCategories);
-
-router.get("/:id", protect, getCategoryById);
-
-router.put("/:id", protect, updateCategory);
-
-router.delete("/:id", protect, deleteCategory);
-
+// Protected Vendor Category Routes
+router.post("/", protectVendor, createCategory);
+router.get("/", protectVendor, getCategories);
+router.get("/:id", protectVendor, getCategoryById);
+router.put("/:id", protectVendor, updateCategory);
+router.delete("/:id", protectVendor, deleteCategory);
 
 module.exports = router;

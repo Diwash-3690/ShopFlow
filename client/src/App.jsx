@@ -10,6 +10,8 @@ import VendorDashboard from "./pages/vendor/VendorDashboard";
 import ShopRegistration from "./pages/vendor/ShopRegistration";
 import Products from "./pages/vendor/Products";
 import Categories from "./pages/vendor/Categories";
+import VendorOrders from "./pages/vendor/VendorOrders";
+import WalkInPos from "./pages/vendor/WalkInPos";
 
 // Customer Pages
 import CustomerLogin from "./pages/customer/CustomerLogin";
@@ -33,6 +35,8 @@ function App() {
       <Route path="/vendor/dashboard" element={<VendorDashboard />} />
       <Route path="/vendor/products" element={<Products />} />
       <Route path="/vendor/categories" element={<Categories />} />
+      <Route path="/vendor/orders" element={<VendorOrders />} />
+      <Route path="/vendor/pos" element={<WalkInPos />} />
 
       {/* Customer Routes */}
       <Route path="/customer/login" element={<CustomerLogin />} />

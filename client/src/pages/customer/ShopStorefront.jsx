@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import {
   FiArrowLeft,
   FiShoppingBag,
@@ -11,15 +11,25 @@ import {
   FiX,
   FiAlertCircle,
   FiCheckCircle,
+  FiCopy,
+  FiCheck,
+  FiExternalLink,
+  FiPrinter,
 } from "react-icons/fi";
 import { getPublicShopById } from "../../services/shopService";
 import { getPublicShopProducts } from "../../services/productService";
 import { getPublicShopCategories } from "../../services/categoryService";
-import { calculateCheckout } from "../../services/orderService";
+import {
+  calculateCheckout,
+  createOnlineOrder,
+  verifyPayment,
+} from "../../services/orderService";
 import { useCart } from "../../context/CartContext";
+import BillModal from "../../components/BillModal";
 
 function ShopStorefront() {
   const { shopId } = useParams();
+  const navigate = useNavigate();
 
   const [shop, setShop] = useState(null);
   const [categories, setCategories] = useState([]);
@@ -50,50 +60,54 @@ function ShopStorefront() {
   const [calculating, setCalculating] = useState(false);
   const [checkoutError, setCheckoutError] = useState("");
 
+  // Payment & Order Confirmation Modals
+  const [placingOrder, setPlacingOrder] = useState(false);
+  const [upiOrderData, setUpiOrderData] = useState(null);
+  const [verifyingPayment, setVerifyingPayment] = useState(false);
+  const [transactionRef, setTransactionRef] = useState("");
+  const [confirmedOrder, setConfirmedOrder] = useState(null);
+  const [copiedPickupId, setCopiedPickupId] = useState(false);
+  const [activeBill, setActiveBill] = useState(null);
+
   const loadStoreData = useCallback(async () => {
     try {
       setLoading(true);
       const [shopRes, catsRes, prodsRes] = await Promise.all([
         getPublicShopById(shopId),
-        getPublicShopCategories(shopId).catch(() => ({ categories: [] })),
-        getPublicShopProducts(shopId, {
-          categoryId: selectedCategory !== "ALL" ? selectedCategory : undefined,
-          search: searchQuery || undefined,
-        }),
+        getPublicShopCategories(shopId),
+        getPublicShopProducts(shopId),
       ]);
 
       setShop(shopRes.shop);
       setCategories(catsRes.categories || []);
       setProducts(prodsRes.products || []);
     } catch (err) {
-      console.error("Failed to load storefront data:", err);
+      console.error("Failed to load shop storefront:", err);
     } finally {
       setLoading(false);
     }
-  }, [shopId, selectedCategory, searchQuery]);
+  }, [shopId]);
 
   useEffect(() => {
     loadStoreData();
   }, [loadStoreData]);
 
   const handleAddToCart = (product) => {
-    if (!product.isAvailable) return;
-
-    const res = addToCart(product, shop, 1);
-    if (res && res.conflict) {
+    if (!shop) return;
+    const res = addToCart(product, shop);
+    if (res?.conflict) {
       setConflictModal({
-        product,
-        shop,
         currentShop: res.currentShop,
+        newShop: res.newShop,
+        pendingProduct: res.pendingProduct,
       });
     }
   };
 
-  const handleConfirmConflict = () => {
-    if (conflictModal) {
-      forceAddFromNewShop(conflictModal.product, conflictModal.shop, 1);
-      setConflictModal(null);
-    }
+  const handleConfirmSwitchShop = () => {
+    if (!conflictModal) return;
+    forceAddFromNewShop(conflictModal.pendingProduct, conflictModal.newShop);
+    setConflictModal(null);
   };
 
   const handleProceedToCheckout = async () => {
@@ -121,202 +135,300 @@ function ShopStorefront() {
     }
   };
 
-  if (loading && !shop) {
+  // Step 2: Customer initiates order & receives UPI intent
+  const handleInitiatePayment = async () => {
+    const token = localStorage.getItem("token");
+    const role = localStorage.getItem("role");
+
+    if (!token || role !== "CUSTOMER") {
+      alert("Please log in to your Customer account to complete this order.");
+      navigate("/customer/login");
+      return;
+    }
+
+    try {
+      setPlacingOrder(true);
+      setCheckoutError("");
+
+      const res = await createOnlineOrder({
+        shopId: activeShop.id,
+        items: cartItems.map((i) => ({
+          productId: i.productId,
+          quantity: i.quantity,
+        })),
+      });
+
+      // Close verified summary, open UPI Payment modal
+      setVerifiedCheckout(null);
+      setIsCartOpen(false);
+      setUpiOrderData(res.data);
+    } catch (err) {
+      setCheckoutError(
+        err.response?.data?.message || err.message || "Could not initiate order."
+      );
+    } finally {
+      setPlacingOrder(false);
+    }
+  };
+
+  // Step 3: Verify payment and receive unique Pickup ID
+  const handleVerifyPayment = async () => {
+    if (!upiOrderData) return;
+
+    try {
+      setVerifyingPayment(true);
+      const res = await verifyPayment(upiOrderData.order.id, {
+        providerTransactionId: transactionRef || undefined,
+      });
+
+      // Clear the cart
+      clearCart();
+
+      // Show confirmed order modal
+      setConfirmedOrder(res.order);
+      setUpiOrderData(null);
+    } catch (err) {
+      alert(err.response?.data?.message || "Payment verification failed.");
+    } finally {
+      setVerifyingPayment(false);
+    }
+  };
+
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text);
+    setCopiedPickupId(true);
+    setTimeout(() => setCopiedPickupId(false), 2000);
+  };
+
+  // Filter products by category & search
+  const filteredProducts = products.filter((p) => {
+    const matchesCategory =
+      selectedCategory === "ALL" || p.categoryId === selectedCategory;
+    const matchesSearch =
+      !searchQuery.trim() ||
+      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (p.description && p.description.toLowerCase().includes(searchQuery.toLowerCase()));
+    return matchesCategory && matchesSearch;
+  });
+
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <p className="text-slate-600 font-medium">Loading store catalog...</p>
+        <div className="text-center space-y-2">
+          <div className="w-10 h-10 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-sm font-semibold text-slate-600">Loading storefront...</p>
+        </div>
       </div>
     );
   }
 
   if (!shop) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-6">
-        <h2 className="text-2xl font-bold text-slate-800">Shop Not Found</h2>
-        <p className="text-sm text-slate-500 mt-2">The requested store could not be found or has been moved.</p>
-        <Link to="/shops" className="mt-4 bg-slate-900 text-white px-5 py-2.5 rounded-xl text-sm font-semibold">
-          Browse All Shops
+      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-6 text-center">
+        <FiPackage size={48} className="text-slate-300 mb-3" />
+        <h2 className="text-xl font-bold text-slate-800">Shop Not Found</h2>
+        <p className="text-xs text-slate-500 mt-1 max-w-sm">
+          The shop you are looking for may have updated its profile or is currently inactive.
+        </p>
+        <Link
+          to="/shops"
+          className="mt-4 px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700 transition"
+        >
+          Browse Nearby Stores
         </Link>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 flex flex-col">
-      {/* Top Navbar */}
-      <nav className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-0 z-20">
-        <div className="flex items-center space-x-3">
+    <div className="min-h-screen bg-slate-50 flex flex-col">
+      {/* Top Navigation */}
+      <nav className="bg-white border-b border-slate-200 px-4 sm:px-6 py-3.5 sticky top-0 z-30 flex items-center justify-between">
+        <div className="flex items-center gap-3">
           <Link
             to="/shops"
-            className="text-slate-500 hover:text-slate-800 transition flex items-center gap-1.5 text-sm font-medium"
+            className="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition"
+            title="Back to shops"
           >
-            <FiArrowLeft /> All Shops
+            <FiArrowLeft size={20} />
           </Link>
-          <span className="text-slate-300">/</span>
-          <span className="font-bold text-slate-900 text-sm truncate max-w-[180px] sm:max-w-none">
-            {shop.shopName}
-          </span>
+          <div>
+            <h1 className="text-lg font-black text-slate-900 tracking-tight leading-tight">
+              {shop.shopName}
+            </h1>
+            <span className="text-[11px] font-mono font-bold bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">
+              {shop.shopId}
+            </span>
+          </div>
         </div>
 
-        {/* Floating Cart Button */}
+        {/* Cart Button */}
         <button
           onClick={() => setIsCartOpen(true)}
-          className="relative bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white px-4 py-2 rounded-xl text-sm font-semibold transition flex items-center gap-2 shadow-sm cursor-pointer"
+          className="relative flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl font-bold text-xs shadow-sm transition cursor-pointer"
         >
-          <FiShoppingBag size={18} />
+          <FiShoppingBag size={16} />
           <span>Cart</span>
           {totalCount > 0 && (
-            <span className="bg-white text-emerald-800 text-xs font-black px-2 py-0.5 rounded-full">
-              {totalCount} • ₹{subtotal.toFixed(2)}
+            <span className="bg-white text-emerald-800 rounded-full px-2 py-0.5 text-[11px] font-black">
+              {totalCount}
             </span>
           )}
         </button>
       </nav>
 
-      {/* Main Container */}
-      <main className="max-w-7xl mx-auto px-6 py-8 flex-1 w-full space-y-6">
-        {/* Store Banner */}
-        <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-sm">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div>
-              <span className="text-xs font-mono font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-lg">
-                Shop ID: {shop.shopId}
+      {/* Store Header Banner */}
+      <header className="bg-white border-b border-slate-200 px-4 sm:px-6 py-6">
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+              Verified Local Merchant
+            </span>
+            <h2 className="text-2xl font-black text-slate-900 tracking-tight">
+              {shop.shopName}
+            </h2>
+            <div className="flex flex-wrap items-center gap-4 text-xs text-slate-600 pt-1">
+              <span className="flex items-center gap-1">
+                <FiMapPin className="text-emerald-600" /> {shop.address}
               </span>
-              <h1 className="text-3xl font-black text-slate-900 mt-2 tracking-tight">
-                {shop.shopName}
-              </h1>
-              <p className="text-sm text-slate-500 mt-1 flex items-center gap-1.5">
-                <FiMapPin size={14} className="text-slate-400" /> {shop.address}
-              </p>
-            </div>
-
-            <div className="bg-slate-50 border border-slate-200 p-3.5 rounded-2xl text-xs space-y-1">
-              <p className="text-slate-500 flex items-center gap-1.5">
-                <FiPhone size={14} className="text-slate-400" /> <strong>Contact:</strong> {shop.contactNumber}
-              </p>
+              <span className="flex items-center gap-1">
+                <FiPhone className="text-slate-400" /> {shop.contactNumber}
+              </span>
               {shop.upiId && (
-                <p className="text-slate-600">
-                  <span className="font-semibold text-emerald-700">UPI Accepted:</span> <code>{shop.upiId}</code>
-                </p>
+                <span className="bg-purple-50 text-purple-800 border border-purple-200 px-2 py-0.5 rounded font-mono text-[11px]">
+                  UPI: {shop.upiId}
+                </span>
               )}
             </div>
           </div>
-        </div>
 
-        {/* Filter & Search Bar */}
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="flex-1 relative">
-            <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-            <input
-              type="text"
-              placeholder={`Search products in ${shop.shopName}...`}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-white border border-slate-200 rounded-2xl pl-11 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-xs"
-            />
+          {/* Quick Notice */}
+          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3 text-xs text-slate-600 max-w-sm">
+            <p className="font-semibold text-slate-800">🛍️ Storefront Pickup</p>
+            <p className="text-[11px] text-slate-500 mt-0.5">
+              Order items from this store, pay securely via UPI, and pick them up at the counter with your unique Pickup ID.
+            </p>
           </div>
+        </div>
+      </header>
 
-          {/* Category Chips Scroll */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
+      {/* Main Content Area */}
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 flex-1 w-full space-y-6">
+        {/* Controls: Category Filter & Search Bar */}
+        <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between">
+          {/* Category Chips */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-none">
             <button
               onClick={() => setSelectedCategory("ALL")}
-              className={`px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
                 selectedCategory === "ALL"
-                  ? "bg-slate-900 text-white"
-                  : "bg-white text-slate-600 hover:bg-slate-50 border border-slate-200"
+                  ? "bg-slate-900 text-white shadow-xs"
+                  : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
               }`}
             >
-              All Categories
+              All Items ({products.length})
             </button>
             {categories.map((c) => (
               <button
                 key={c.id}
                 onClick={() => setSelectedCategory(c.id)}
-                className={`px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
                   selectedCategory === c.id
-                    ? "bg-slate-900 text-white"
-                    : "bg-white text-slate-600 hover:bg-slate-50 border border-slate-200"
+                    ? "bg-slate-900 text-white shadow-xs"
+                    : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
                 }`}
               >
                 {c.name}
               </button>
             ))}
           </div>
+
+          {/* Search Box */}
+          <div className="relative w-full md:w-72">
+            <FiSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search products..."
+              className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-2xs"
+            />
+          </div>
         </div>
 
-        {/* Product Catalog Grid */}
-        {loading ? (
-          <div className="p-16 text-center text-slate-500 text-sm bg-white rounded-3xl border border-slate-200">
-            Loading products...
-          </div>
-        ) : products.length === 0 ? (
-          <div className="p-16 text-center text-slate-400 text-sm bg-white rounded-3xl border border-slate-200 shadow-sm">
-            <FiPackage size={40} className="mx-auto text-slate-300 mb-3" />
-            <p className="font-semibold text-slate-700">No products available in this view</p>
-            <p className="text-xs text-slate-400 mt-1">Try switching categories or clearing your search term.</p>
+        {/* Product Grid */}
+        {filteredProducts.length === 0 ? (
+          <div className="bg-white rounded-3xl border border-slate-200 p-12 text-center text-slate-500 space-y-2">
+            <FiPackage size={40} className="mx-auto text-slate-300" />
+            <p className="font-semibold text-slate-700">No products match your criteria</p>
+            <p className="text-xs text-slate-400">
+              Try selecting a different category or clearing your search query.
+            </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {products.map((p) => {
-              const inCartItem = cartItems.find((i) => i.productId === p.id);
-              const qtyInCart = inCartItem ? inCartItem.quantity : 0;
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+            {filteredProducts.map((p) => {
+              const itemInCart = cartItems.find((ci) => ci.productId === p.id);
+              const qtyInCart = itemInCart ? itemInCart.quantity : 0;
+              const isOutOfStock = !p.isAvailable;
 
               return (
                 <div
                   key={p.id}
-                  className="bg-white rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition overflow-hidden flex flex-col justify-between"
+                  className="bg-white rounded-2xl border border-slate-200 overflow-hidden flex flex-col shadow-2xs hover:shadow-md transition duration-200"
                 >
-                  <div>
-                    {/* Product Image */}
+                  {/* Product Image / Placeholder */}
+                  <div className="h-36 sm:h-44 bg-slate-100 flex items-center justify-center overflow-hidden relative">
                     {p.imageUrl ? (
                       <img
                         src={p.imageUrl}
                         alt={p.name}
-                        className="w-full h-44 object-cover border-b border-slate-100"
+                        className="w-full h-full object-cover"
                       />
                     ) : (
-                      <div className="w-full h-44 bg-slate-50 border-b border-slate-100 flex items-center justify-center text-slate-300">
-                        <FiPackage size={40} />
+                      <div className="text-slate-300 flex flex-col items-center">
+                        <FiPackage size={36} />
                       </div>
                     )}
+                    {/* Availability Tag */}
+                    <span
+                      className={`absolute top-2 right-2 px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider ${
+                        p.isAvailable
+                          ? "bg-emerald-100 text-emerald-800"
+                          : "bg-red-100 text-red-800"
+                      }`}
+                    >
+                      {p.availability === "OUT_OF_STOCK" ? "Out of Stock" : "In Stock"}
+                    </span>
+                  </div>
 
-                    <div className="p-5">
-                      <div className="flex items-center justify-between gap-2 mb-2">
-                        <span className="text-[11px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
-                          {p.category?.name || "General"}
-                        </span>
-                        <span
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                            p.isAvailable
-                              ? "bg-emerald-50 text-emerald-700"
-                              : "bg-red-50 text-red-700"
-                          }`}
-                        >
-                          {p.availability === "AVAILABLE" ? "Available" : "Out of Stock"}
-                        </span>
-                      </div>
-
-                      <h3 className="font-bold text-slate-900 text-base leading-snug">
+                  {/* Body */}
+                  <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
+                    <div>
+                      <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                        {p.categoryName || "General"}
+                      </p>
+                      <h3 className="font-bold text-slate-900 text-sm line-clamp-1 mt-0.5">
                         {p.name}
                       </h3>
                       {p.description && (
-                        <p className="text-xs text-slate-500 mt-1 line-clamp-2">
+                        <p className="text-xs text-slate-500 line-clamp-2 mt-1">
                           {p.description}
                         </p>
                       )}
+                    </div>
 
-                      <div className="mt-4 flex items-baseline gap-1">
-                        <span className="text-xl font-extrabold text-slate-900">
-                          ₹{parseFloat(p.sellingPrice).toFixed(2)}
+                    <div className="flex items-baseline justify-between pt-1">
+                      <div>
+                        <span className="text-base font-black text-slate-900">
+                          ₹{p.sellingPrice.toFixed(2)}
                         </span>
-                        <span className="text-xs text-slate-400">/ {p.unit}</span>
+                        <span className="text-[11px] text-slate-400 ml-1">/ {p.unit}</span>
                       </div>
                     </div>
-                  </div>
 
-                  {/* Add to Cart Footer */}
-                  <div className="p-5 pt-0">
-                    {!p.isAvailable ? (
+                    {/* Action: Add to Cart / Qty Controls */}
+                    {isOutOfStock ? (
                       <button
                         disabled
                         className="w-full py-2.5 rounded-xl bg-slate-100 text-slate-400 text-xs font-bold cursor-not-allowed"
@@ -464,7 +576,7 @@ function ShopStorefront() {
         </div>
       )}
 
-      {/* Verified Checkout Summary Modal (Ready for Milestone 5 Payment) */}
+      {/* Step 1: Verified Checkout Summary Modal */}
       {verifiedCheckout && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-slate-200">
@@ -482,18 +594,26 @@ function ShopStorefront() {
             </div>
 
             <div className="py-4 space-y-3 text-sm">
-              <div className="p-3 bg-slate-50 rounded-xl text-xs text-slate-600">
-                <p><strong>Shop:</strong> {verifiedCheckout.shop.shopName}</p>
-                <p><strong>Address:</strong> {verifiedCheckout.shop.address}</p>
+              <div className="p-3 bg-slate-50 rounded-xl text-xs text-slate-600 space-y-1">
+                <p>
+                  <strong>Shop:</strong> {verifiedCheckout.shop.shopName}
+                </p>
+                <p>
+                  <strong>Address:</strong> {verifiedCheckout.shop.address}
+                </p>
                 {verifiedCheckout.shop.upiId && (
-                  <p><strong>UPI Destination:</strong> <code>{verifiedCheckout.shop.upiId}</code></p>
+                  <p>
+                    <strong>UPI Destination:</strong> <code>{verifiedCheckout.shop.upiId}</code>
+                  </p>
                 )}
               </div>
 
               <div className="max-h-48 overflow-y-auto divide-y divide-slate-100">
                 {verifiedCheckout.items.map((i) => (
                   <div key={i.productId} className="py-2 flex justify-between text-xs">
-                    <span>{i.productName} × {i.quantity} {i.unit}</span>
+                    <span>
+                      {i.productName} × {i.quantity} {i.unit}
+                    </span>
                     <span className="font-bold">₹{i.lineTotal.toFixed(2)}</span>
                   </div>
                 ))}
@@ -507,10 +627,11 @@ function ShopStorefront() {
 
             <div className="pt-2 flex flex-col gap-2">
               <button
-                onClick={() => alert("Milestone 5 will complete online payment & pickup ID generation!")}
-                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl text-sm transition shadow-sm cursor-pointer"
+                onClick={handleInitiatePayment}
+                disabled={placingOrder}
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-xl text-sm transition shadow-sm cursor-pointer disabled:bg-emerald-400 flex items-center justify-center gap-2"
               >
-                Pay & Generate Pickup ID (Milestone 5)
+                {placingOrder ? "Initiating Order..." : "Proceed to UPI Payment"}
               </button>
               <button
                 onClick={() => setVerifiedCheckout(null)}
@@ -523,6 +644,176 @@ function ShopStorefront() {
         </div>
       )}
 
+      {/* Step 2: UPI Intent & Payment Screen */}
+      {upiOrderData && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-slate-200 space-y-5 animate-fadeIn">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-200">
+                  Step 2 of 2: UPI Payment
+                </span>
+                <h3 className="text-xl font-black text-slate-900 mt-1">Pay with UPI</h3>
+              </div>
+              <button
+                onClick={() => setUpiOrderData(null)}
+                className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+              >
+                <FiX size={20} />
+              </button>
+            </div>
+
+            {/* Payment Details Box */}
+            <div className="bg-purple-50/70 border border-purple-200 rounded-2xl p-4 text-center space-y-2">
+              <p className="text-xs text-purple-800 font-medium">Paying directly to merchant:</p>
+              <h4 className="text-lg font-black text-purple-950">{upiOrderData.shop.shopName}</h4>
+              <p className="font-mono text-xs bg-white px-3 py-1.5 rounded-lg border border-purple-200 inline-block text-purple-900 font-bold">
+                {upiOrderData.shop.upiId}
+              </p>
+              <div className="pt-2">
+                <span className="text-3xl font-black text-purple-950">
+                  ₹{parseFloat(upiOrderData.order.totalAmount).toFixed(2)}
+                </span>
+                <p className="text-[10px] text-purple-600 mt-0.5">
+                  Order Ref: {upiOrderData.order.orderNumber}
+                </p>
+              </div>
+            </div>
+
+            {/* Quick UPI Intent Link */}
+            <div className="space-y-3">
+              <a
+                href={upiOrderData.upiUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded-xl text-sm transition shadow-sm flex items-center justify-center gap-2"
+              >
+                <FiExternalLink size={16} /> Open UPI App (GPay / PhonePe / Paytm)
+              </a>
+              <p className="text-[11px] text-slate-400 text-center leading-relaxed">
+                On mobile devices, this will open your preferred UPI application with the exact merchant UPI ID and amount prefilled.
+              </p>
+            </div>
+
+            {/* Verification trigger */}
+            <div className="border-t border-slate-100 pt-4 space-y-3">
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                  UPI Reference / UTR Number (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={transactionRef}
+                  onChange={(e) => setTransactionRef(e.target.value)}
+                  placeholder="e.g. 431289456721"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+
+              <button
+                onClick={handleVerifyPayment}
+                disabled={verifyingPayment}
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-xl text-sm transition shadow-sm cursor-pointer disabled:bg-emerald-400 flex items-center justify-center gap-2"
+              >
+                {verifyingPayment ? "Verifying Payment..." : "Confirm Payment & Get Pickup ID"}
+              </button>
+
+              <button
+                onClick={() => setUpiOrderData(null)}
+                className="w-full text-xs text-slate-400 hover:text-slate-600 py-1"
+              >
+                Cancel Order
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Step 3: Confirmed Order & Pickup ID Success Modal */}
+      {confirmedOrder && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-slate-200 text-center space-y-5 animate-fadeIn">
+            <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-inner">
+              <FiCheckCircle size={36} />
+            </div>
+
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                Payment Verified • Order Confirmed
+              </span>
+              <h3 className="text-2xl font-black text-slate-900 mt-2">Ready for Pickup!</h3>
+              <p className="text-xs text-slate-500 mt-1">
+                Show this unique Pickup ID to the shopkeeper at the store counter.
+              </p>
+            </div>
+
+            {/* Huge Pickup ID Display */}
+            <div className="bg-slate-900 text-white p-5 rounded-2xl relative shadow-md">
+              <p className="text-[10px] text-slate-400 uppercase tracking-widest font-semibold">
+                Your Unique Pickup ID
+              </p>
+              <p className="text-3xl font-mono font-black tracking-wider text-emerald-400 mt-1">
+                {confirmedOrder.pickupId}
+              </p>
+              <button
+                onClick={() => copyToClipboard(confirmedOrder.pickupId)}
+                className="mt-3 inline-flex items-center gap-1.5 bg-white/10 hover:bg-white/20 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition cursor-pointer"
+              >
+                {copiedPickupId ? <FiCheck className="text-emerald-400" /> : <FiCopy />}
+                <span>{copiedPickupId ? "Copied!" : "Copy Pickup ID"}</span>
+              </button>
+            </div>
+
+            {/* Shop Details */}
+            <div className="p-3 bg-slate-50 rounded-xl text-left text-xs text-slate-600 space-y-1 border border-slate-100">
+              <p>
+                <strong>Pickup Shop:</strong> {confirmedOrder.shop?.shopName}
+              </p>
+              <p>
+                <strong>Address:</strong> {confirmedOrder.shop?.address}
+              </p>
+              <p>
+                <strong>Total Paid:</strong> ₹{confirmedOrder.totalAmount.toFixed(2)}
+              </p>
+            </div>
+
+            {/* Actions */}
+            <div className="space-y-2 pt-2">
+              {confirmedOrder.bill && (
+                <button
+                  onClick={() => {
+                    setActiveBill({
+                      ...confirmedOrder.bill,
+                      orderNumber: confirmedOrder.orderNumber,
+                      pickupId: confirmedOrder.pickupId,
+                      shop: confirmedOrder.shop,
+                      totalAmount: confirmedOrder.totalAmount,
+                      status: confirmedOrder.status,
+                      payment: { status: "VERIFIED", method: "UPI" },
+                    });
+                  }}
+                  className="w-full border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <FiPrinter size={14} /> View / Print Receipt Bill
+                </button>
+              )}
+
+              <button
+                onClick={() => navigate("/customer/dashboard")}
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl text-sm transition shadow-sm cursor-pointer"
+              >
+                Go to My Orders Dashboard
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bill Receipt Modal */}
+      {activeBill && (
+        <BillModal bill={activeBill} onClose={() => setActiveBill(null)} />
+      )}
+
       {/* Cross-Shop Conflict Modal */}
       {conflictModal && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
@@ -532,22 +823,23 @@ function ShopStorefront() {
               Your cart currently contains items from <strong>{conflictModal.currentShop.shopName}</strong>.
               ShopFlow orders are fulfilled shop-by-shop for store pickup.
             </p>
-            <p className="text-xs text-amber-700 font-semibold mt-2">
-              Would you like to clear your current cart and start a new order with <strong>{conflictModal.shop.shopName}</strong>?
+            <p className="text-xs font-semibold text-amber-700 mt-2">
+              Would you like to clear your existing cart and start a new order with{" "}
+              <strong>{conflictModal.newShop.shopName}</strong>?
             </p>
 
-            <div className="mt-6 flex justify-end gap-3">
+            <div className="mt-6 flex justify-end gap-2">
               <button
                 onClick={() => setConflictModal(null)}
-                className="border border-slate-300 text-slate-600 px-4 py-2 rounded-xl text-xs font-semibold hover:bg-slate-50 cursor-pointer"
+                className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer"
               >
                 Keep Existing Cart
               </button>
               <button
-                onClick={handleConfirmConflict}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition shadow-sm cursor-pointer"
+                onClick={handleConfirmSwitchShop}
+                className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700 cursor-pointer shadow-xs"
               >
-                Clear Cart & Add Item
+                Start New Cart
               </button>
             </div>
           </div>

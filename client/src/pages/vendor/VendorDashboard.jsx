@@ -23,6 +23,7 @@ import { updateMyShop } from "../../services/shopService";
 import { getProducts } from "../../services/productService";
 import { getCategories } from "../../services/categoryService";
 import { getNotifications, markAsRead, markAllAsRead } from "../../services/notificationService";
+import { getVendorOrders } from "../../services/orderService";
 
 function VendorDashboard() {
   const [vendorData, setVendorData] = useState(null);
@@ -34,6 +35,7 @@ function VendorDashboard() {
   const [productCount, setProductCount] = useState(0);
   const [categoryCount, setCategoryCount] = useState(0);
   const [outOfStockCount, setOutOfStockCount] = useState(0);
+  const [pendingOrderCount, setPendingOrderCount] = useState(0);
 
   // Notifications
   const [notifications, setNotifications] = useState([]);
@@ -86,16 +88,18 @@ function VendorDashboard() {
             longitude: profRes.shop.longitude !== null && profRes.shop.longitude !== undefined ? profRes.shop.longitude.toString() : "",
           });
 
-          // Fetch products & categories stats
-          const [prodsRes, catsRes] = await Promise.all([
+          // Fetch products, categories & orders stats
+          const [prodsRes, catsRes, ordersRes] = await Promise.all([
             getProducts().catch(() => ({ products: [] })),
             getCategories().catch(() => ({ categories: [] })),
+            getVendorOrders({ status: "AWAITING_PICKUP" }).catch(() => ({ orders: [] })),
           ]);
 
           const prods = prodsRes.products || [];
           setProductCount(prods.length);
           setOutOfStockCount(prods.filter((p) => p.stockQuantity <= 0).length);
           setCategoryCount(catsRes.categories?.length || 0);
+          setPendingOrderCount(ordersRes.orders?.length || 0);
         }
       } catch {
         const cachedUser = localStorage.getItem("user");
@@ -525,46 +529,62 @@ function VendorDashboard() {
           </Link>
 
           {/* Incoming Orders Card (Milestone 5) */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between opacity-80">
+          <Link
+            to="/vendor/orders"
+            className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-emerald-300 transition flex flex-col justify-between group"
+          >
             <div>
               <div className="flex items-center justify-between mb-4">
                 <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center">
                   <FiShoppingBag size={20} />
                 </div>
-                <span className="text-xs font-bold text-slate-400 bg-slate-100 px-2.5 py-1 rounded-full">
-                  Milestone 5
+                <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
+                  pendingOrderCount > 0
+                    ? "bg-amber-100 text-amber-800 animate-pulse"
+                    : "bg-emerald-50 text-emerald-700"
+                }`}>
+                  {pendingOrderCount} ready for pickup
                 </span>
               </div>
-              <h4 className="font-bold text-slate-800">Incoming Orders</h4>
+              <h4 className="font-bold text-slate-800 group-hover:text-emerald-600 transition">
+                Incoming Orders
+              </h4>
               <p className="text-xs text-slate-500 mt-1">
-                Verify pickup IDs and hand over verified purchases.
+                Verify customer pickup IDs and hand over verified purchases.
               </p>
             </div>
-            <span className="inline-block mt-4 text-xs font-semibold text-emerald-600">
-              Pickup verification coming next
-            </span>
-          </div>
+            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-emerald-600">
+              <span>View Order Queue</span>
+              <FiArrowRight />
+            </div>
+          </Link>
 
-          {/* Walk-in Billing Card (Milestone 5) */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between opacity-80">
+          {/* Walk-in Billing POS Card (Milestone 5) */}
+          <Link
+            to="/vendor/pos"
+            className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-purple-300 transition flex flex-col justify-between group"
+          >
             <div>
               <div className="flex items-center justify-between mb-4">
                 <div className="w-10 h-10 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center">
                   <FiTrendingUp size={20} />
                 </div>
-                <span className="text-xs font-bold text-slate-400 bg-slate-100 px-2.5 py-1 rounded-full">
-                  Milestone 5
+                <span className="text-xs font-bold text-purple-700 bg-purple-50 px-2.5 py-1 rounded-full">
+                  Quick POS
                 </span>
               </div>
-              <h4 className="font-bold text-slate-800">Walk-in Billing & POS</h4>
+              <h4 className="font-bold text-slate-800 group-hover:text-purple-600 transition">
+                Walk-in POS Billing
+              </h4>
               <p className="text-xs text-slate-500 mt-1">
-                Generate PDF receipts for in-store customers.
+                Point of sale counter terminal with instant bill printing.
               </p>
             </div>
-            <span className="inline-block mt-4 text-xs font-semibold text-purple-600">
-              POS Billing coming next
-            </span>
-          </div>
+            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-purple-600">
+              <span>Open POS Counter</span>
+              <FiArrowRight />
+            </div>
+          </Link>
         </div>
       </main>
     </div>

@@ -1,12 +1,27 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { FiArrowLeft, FiPlus, FiEdit2, FiTrash2, FiCheck, FiX, FiLayers } from "react-icons/fi";
+import {
+  ArrowLeft,
+  Plus,
+  Edit2,
+  Trash2,
+  Check,
+  X,
+  Layers,
+  AlertCircle,
+  CheckCircle2,
+} from "lucide-react";
 import {
   getCategories,
   createCategory,
   updateCategory,
   deleteCategory,
 } from "../../services/categoryService";
+import { Button } from "../../components/ui/button";
+import { Badge } from "../../components/ui/badge";
+import { Card, CardHeader, CardTitle, CardContent } from "../../components/ui/card";
+import { Input } from "../../components/ui/input";
+import { Alert, AlertDescription } from "../../components/ui/alert";
 
 function Categories() {
   const navigate = useNavigate();
@@ -96,138 +111,162 @@ function Categories() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 flex flex-col">
+    <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
       {/* Top Navbar */}
-      <nav className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
+      <nav className="bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-4 sm:px-8 py-3.5 flex items-center justify-between sticky top-0 z-20 shadow-2xs">
         <div className="flex items-center space-x-3">
-          <Link to="/vendor/dashboard" className="text-slate-500 hover:text-slate-800 transition flex items-center gap-1.5 text-sm font-medium">
-            <FiArrowLeft /> Dashboard
+          <Link
+            to="/vendor/dashboard"
+            className="text-slate-500 hover:text-slate-900 transition flex items-center gap-1.5 text-xs sm:text-sm font-semibold"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Dashboard</span>
           </Link>
           <span className="text-slate-300">/</span>
-          <span className="font-bold text-slate-900 text-sm">Categories</span>
+          <span className="font-bold text-slate-900 text-xs sm:text-sm">Categories</span>
         </div>
       </nav>
 
       {/* Main Container */}
-      <main className="max-w-4xl mx-auto px-6 py-8 flex-1 w-full space-y-6">
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8 flex-1 w-full space-y-6">
         <div>
-          <span className="text-xs font-bold uppercase tracking-wider text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full">
+          <Badge variant="secondary" className="text-[10px] font-bold uppercase tracking-wider py-0.5 px-2 bg-blue-50 text-blue-700 border-blue-200">
             Shop Catalog
-          </span>
-          <h1 className="text-3xl font-extrabold text-slate-900 mt-2 tracking-tight">
+          </Badge>
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 mt-2 tracking-tight">
             Manage Product Categories
           </h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <p className="text-xs text-slate-500 mt-1">
             Group products into shop categories so customers can easily browse your catalog.
           </p>
         </div>
 
         {errorMsg && (
-          <div className="p-4 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl">
-            {errorMsg}
-          </div>
+          <Alert variant="destructive" className="py-2.5 text-xs font-medium">
+            <AlertDescription className="flex items-center gap-1.5">
+              <AlertCircle className="w-4 h-4 text-rose-600" />
+              <span>{errorMsg}</span>
+            </AlertDescription>
+          </Alert>
         )}
 
         {successMsg && (
-          <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm rounded-xl">
-            {successMsg}
-          </div>
+          <Alert variant="success" className="py-2.5 text-xs font-medium">
+            <AlertDescription className="flex items-center gap-1.5">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              <span>{successMsg}</span>
+            </AlertDescription>
+          </Alert>
         )}
 
         {/* Create Category Bar */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+        <Card className="rounded-3xl border-slate-200/90 shadow-2xs p-5 sm:p-6 bg-white">
           <form onSubmit={handleCreate} className="flex flex-col sm:flex-row gap-3">
-            <input
+            <Input
               type="text"
               placeholder="e.g. Dairy & Eggs, Snacks, Beverages, Bakery"
               value={newCatName}
               onChange={(e) => setNewCatName(e.target.value)}
-              className="flex-1 border border-slate-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="flex-1 text-xs bg-slate-50 border-slate-200 rounded-xl h-11"
             />
-            <button
+            <Button
               type="submit"
               disabled={creating || !newCatName.trim()}
-              className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-semibold px-6 py-3 rounded-xl transition flex items-center justify-center gap-2 text-sm whitespace-nowrap cursor-pointer"
+              className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 h-11 rounded-xl text-xs gap-1.5 shadow-xs whitespace-nowrap"
             >
-              <FiPlus /> {creating ? "Adding..." : "Add Category"}
-            </button>
+              <Plus className="w-4 h-4" />
+              <span>{creating ? "Adding..." : "Add Category"}</span>
+            </Button>
           </form>
-        </div>
+        </Card>
 
         {/* Categories List */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-            <h3 className="font-bold text-slate-800 text-sm flex items-center gap-2">
-              <FiLayers className="text-blue-600" /> Categories ({categories.length})
-            </h3>
-          </div>
+        <Card className="rounded-3xl border-slate-200/90 shadow-sm bg-white overflow-hidden">
+          <CardHeader className="border-b border-slate-100 p-4 sm:p-5 flex flex-row items-center justify-between">
+            <CardTitle className="text-sm font-black text-slate-900 flex items-center gap-2">
+              <Layers className="w-4 h-4 text-blue-600" />
+              <span>Categories ({categories.length})</span>
+            </CardTitle>
+          </CardHeader>
 
-          {loading ? (
-            <div className="p-8 text-center text-slate-500 text-sm">Loading categories...</div>
-          ) : categories.length === 0 ? (
-            <div className="p-12 text-center text-slate-400 text-sm">
-              <p className="font-medium text-slate-600">No categories created yet.</p>
-              <p className="text-xs text-slate-400 mt-1">Add your first category above to begin organizing your products.</p>
-            </div>
-          ) : (
-            <ul className="divide-y divide-slate-100">
-              {categories.map((cat) => (
-                <li key={cat.id} className="px-6 py-4 flex items-center justify-between gap-4 hover:bg-slate-50/50 transition">
-                  {editingId === cat.id ? (
-                    <div className="flex-1 flex items-center gap-2">
-                      <input
-                        type="text"
-                        value={editName}
-                        onChange={(e) => setEditName(e.target.value)}
-                        className="flex-1 border border-blue-500 rounded-lg px-3 py-1.5 text-sm focus:outline-none"
-                      />
-                      <button
-                        onClick={() => handleSaveEdit(cat.id)}
-                        className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition"
-                        title="Save"
-                      >
-                        <FiCheck size={18} />
-                      </button>
-                      <button
-                        onClick={() => setEditingId(null)}
-                        className="p-2 text-slate-400 hover:bg-slate-100 rounded-lg transition"
-                        title="Cancel"
-                      >
-                        <FiX size={18} />
-                      </button>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="flex items-center gap-3">
-                        <span className="font-semibold text-slate-800 text-sm">{cat.name}</span>
-                        <span className="text-xs bg-slate-100 text-slate-600 px-2.5 py-0.5 rounded-full font-medium">
-                          {cat._count?.products || 0} products
-                        </span>
+          <CardContent className="p-0">
+            {loading ? (
+              <div className="p-12 text-center text-slate-500 text-xs">
+                <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+                <p>Loading categories...</p>
+              </div>
+            ) : categories.length === 0 ? (
+              <div className="p-12 text-center text-slate-400 text-xs space-y-1">
+                <p className="font-bold text-slate-700 text-sm">No categories created yet.</p>
+                <p className="text-xs text-slate-400">Add your first category above to begin organizing your products.</p>
+              </div>
+            ) : (
+              <ul className="divide-y divide-slate-100">
+                {categories.map((cat) => (
+                  <li key={cat.id} className="px-6 py-3.5 flex items-center justify-between gap-4 hover:bg-slate-50/70 transition text-xs">
+                    {editingId === cat.id ? (
+                      <div className="flex-1 flex items-center gap-2">
+                        <Input
+                          type="text"
+                          value={editName}
+                          onChange={(e) => setEditName(e.target.value)}
+                          className="flex-1 text-xs h-9 bg-white"
+                        />
+                        <Button
+                          size="icon"
+                          onClick={() => handleSaveEdit(cat.id)}
+                          className="h-9 w-9 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow-xs"
+                          title="Save"
+                        >
+                          <Check className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setEditingId(null)}
+                          className="h-9 w-9 text-slate-400 hover:text-slate-700 rounded-lg"
+                          title="Cancel"
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
                       </div>
+                    ) : (
+                      <>
+                        <div className="flex items-center gap-3">
+                          <span className="font-bold text-slate-900 text-xs sm:text-sm">{cat.name}</span>
+                          <Badge variant="outline" className="text-[10px] font-semibold bg-slate-50">
+                            {cat._count?.products || 0} products
+                          </Badge>
+                        </div>
 
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handleStartEdit(cat)}
-                          className="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
-                          title="Edit"
-                        >
-                          <FiEdit2 size={16} />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(cat.id, cat.name)}
-                          className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
-                          title="Delete"
-                        >
-                          <FiTrash2 size={16} />
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleStartEdit(cat)}
+                            className="h-8 w-8 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg"
+                            title="Edit"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDelete(cat.id, cat.name)}
+                            className="h-8 w-8 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                      </>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
       </main>
     </div>
   );

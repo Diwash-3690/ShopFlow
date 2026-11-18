@@ -1,20 +1,26 @@
-import { useEffect, useState, useCallback } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import React, { useEffect, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import {
-  FiArrowLeft,
-  FiShoppingBag,
-  FiSearch,
-  FiPlus,
-  FiMinus,
-  FiTrash2,
-  FiDollarSign,
-  FiCheckCircle,
-  FiPackage,
-} from "react-icons/fi";
+  ArrowLeft,
+  ShoppingBag,
+  Search,
+  Plus,
+  Minus,
+  Trash2,
+  DollarSign,
+  CheckCircle2,
+  Package,
+  Receipt,
+  Smartphone,
+  Coins,
+} from "lucide-react";
 import { getProducts } from "../../services/productService";
 import { getCategories } from "../../services/categoryService";
 import { createWalkInOrder } from "../../services/orderService";
 import BillModal from "../../components/BillModal";
+import { Button } from "../../components/ui/button";
+import { Card } from "../../components/ui/card";
+import { Input } from "../../components/ui/input";
 
 function WalkInPos() {
   const [products, setProducts] = useState([]);
@@ -179,95 +185,104 @@ function WalkInPos() {
   });
 
   return (
-    <div className="min-h-screen bg-slate-100 flex flex-col">
+    <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
       {/* Top Navbar */}
-      <nav className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-0 z-20">
+      <nav className="bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-4 sm:px-8 py-3.5 flex items-center justify-between sticky top-0 z-30 shadow-2xs">
         <div className="flex items-center space-x-3">
-          <Link
-            to="/vendor/dashboard"
-            className="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition"
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate("/vendor/dashboard")}
+            className="h-9 w-9 text-slate-500 hover:text-slate-900 rounded-xl"
             title="Back to Dashboard"
           >
-            <FiArrowLeft size={20} />
-          </Link>
+            <ArrowLeft className="w-4 h-4" />
+          </Button>
           <div className="flex items-center gap-2">
-            <span className="p-2 rounded-xl bg-purple-50 text-purple-700">
-              <FiDollarSign size={20} />
-            </span>
+            <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center font-bold">
+              <DollarSign className="w-4 h-4" />
+            </div>
             <div>
-              <h1 className="text-xl font-black text-slate-900 tracking-tight leading-tight">
+              <h1 className="text-base sm:text-lg font-black text-slate-900 tracking-tight leading-tight">
                 Walk-In Point of Sale (POS)
               </h1>
-              <p className="text-xs text-slate-400">Quick counter sales & instant billing</p>
+              <p className="text-[11px] text-slate-400">Quick counter sales & instant billing</p>
             </div>
           </div>
         </div>
 
         <div className="flex items-center space-x-3">
-          <Link
-            to="/vendor/orders"
-            className="flex items-center gap-1.5 border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs px-4 py-2.5 rounded-xl transition"
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate("/vendor/orders")}
+            className="h-9 text-xs font-bold text-slate-700 hover:bg-slate-100 border-slate-200 rounded-xl gap-1.5"
           >
-            <FiShoppingBag size={14} /> <span>Incoming Orders</span>
-          </Link>
+            <ShoppingBag className="w-3.5 h-3.5 text-slate-500" />
+            <span>Incoming Orders</span>
+          </Button>
         </div>
       </nav>
 
       {/* Main Dual-Panel View */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 flex-1 w-full grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Panel: Inventory Product Catalog (7 cols) */}
         <div className="lg:col-span-7 flex flex-col space-y-4">
           {/* Search & Category Filter */}
-          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
+          <Card className="rounded-2xl border-slate-200/90 shadow-2xs p-4 bg-white space-y-3">
             <div className="relative">
-              <FiSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-              <input
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+              <Input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search products by name to add to sale ticket..."
-                className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="pl-9 text-xs bg-slate-50 border-slate-200 rounded-xl h-9"
               />
             </div>
 
             {/* Category Chips */}
             <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-              <button
+              <Button
+                variant={selectedCategory === "ALL" ? "default" : "secondary"}
+                size="sm"
                 onClick={() => setSelectedCategory("ALL")}
-                className={`px-3 py-1 rounded-lg text-xs font-bold transition whitespace-nowrap cursor-pointer ${
+                className={`rounded-xl text-xs font-bold whitespace-nowrap h-7 px-3 ${
                   selectedCategory === "ALL"
-                    ? "bg-purple-600 text-white shadow-xs"
+                    ? "bg-purple-700 text-white"
                     : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                 }`}
               >
                 All Products ({products.length})
-              </button>
+              </Button>
               {categories.map((c) => (
-                <button
+                <Button
                   key={c.id}
+                  variant={selectedCategory === c.id ? "default" : "secondary"}
+                  size="sm"
                   onClick={() => setSelectedCategory(c.id)}
-                  className={`px-3 py-1 rounded-lg text-xs font-bold transition whitespace-nowrap cursor-pointer ${
+                  className={`rounded-xl text-xs font-bold whitespace-nowrap h-7 px-3 ${
                     selectedCategory === c.id
-                      ? "bg-purple-600 text-white shadow-xs"
+                      ? "bg-purple-700 text-white"
                       : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                   }`}
                 >
                   {c.name}
-                </button>
+                </Button>
               ))}
             </div>
-          </div>
+          </Card>
 
           {/* Product Grid */}
-          <div className="flex-1 bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs overflow-y-auto max-h-[600px]">
+          <Card className="flex-1 rounded-2xl border-slate-200/90 shadow-2xs p-4 bg-white overflow-y-auto max-h-[600px]">
             {loading ? (
               <div className="py-12 text-center text-xs text-slate-400">
                 Loading shop products...
               </div>
             ) : filteredProducts.length === 0 ? (
-              <div className="py-12 text-center text-xs text-slate-400">
-                <FiPackage size={36} className="mx-auto text-slate-300 mb-2" />
-                No products found matching search.
+              <div className="py-12 text-center text-xs text-slate-400 space-y-2">
+                <Package className="w-8 h-8 mx-auto text-slate-300" />
+                <p>No products found matching search.</p>
               </div>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -280,7 +295,7 @@ function WalkInPos() {
                       key={p.id}
                       onClick={() => addToTicket(p)}
                       disabled={isOutOfStock}
-                      className={`text-left p-3 rounded-xl border transition flex flex-col justify-between relative cursor-pointer ${
+                      className={`text-left p-3 rounded-2xl border transition flex flex-col justify-between relative cursor-pointer ${
                         isOutOfStock
                           ? "bg-slate-50 border-slate-200 opacity-50 cursor-not-allowed"
                           : itemInTicket
@@ -289,7 +304,7 @@ function WalkInPos() {
                       }`}
                     >
                       {itemInTicket && (
-                        <span className="absolute top-2 right-2 bg-purple-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                        <span className="absolute top-2 right-2 bg-purple-700 text-white text-[10px] font-bold px-1.5 py-0.2 rounded-full">
                           {itemInTicket.quantity}
                         </span>
                       )}
@@ -297,16 +312,16 @@ function WalkInPos() {
                         <p className="font-bold text-slate-900 text-xs line-clamp-1">
                           {p.name}
                         </p>
-                        <p className="text-[10px] text-slate-400">
+                        <p className="text-[10px] text-slate-400 mt-0.5">
                           Stock: {p.stockQuantity} {p.unit}
                         </p>
                       </div>
-                      <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between">
+                      <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between">
                         <span className="font-black text-slate-900 text-xs">
                           ₹{parseFloat(p.sellingPrice).toFixed(2)}
                         </span>
-                        <span className="text-[10px] text-purple-600 font-bold flex items-center">
-                          <FiPlus size={12} /> Add
+                        <span className="text-[10px] text-purple-700 font-bold flex items-center gap-0.5">
+                          <Plus className="w-3 h-3" /> Add
                         </span>
                       </div>
                     </button>
@@ -314,22 +329,22 @@ function WalkInPos() {
                 })}
               </div>
             )}
-          </div>
+          </Card>
         </div>
 
         {/* Right Panel: Current Bill Ticket (5 cols) */}
         <div className="lg:col-span-5 flex flex-col">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex flex-col h-full justify-between space-y-4">
+          <Card className="rounded-3xl border-slate-200/90 shadow-sm p-6 flex flex-col h-full justify-between space-y-4 bg-white">
             <div>
               <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                 <div className="flex items-center gap-2">
-                  <span className="text-lg">🧾</span>
+                  <Receipt className="w-5 h-5 text-purple-700" />
                   <h3 className="font-black text-slate-900 text-base">Current Sale Ticket</h3>
                 </div>
                 {ticketItems.length > 0 && (
                   <button
                     onClick={clearTicket}
-                    className="text-slate-400 hover:text-red-600 text-xs font-semibold cursor-pointer"
+                    className="text-slate-400 hover:text-rose-600 text-xs font-semibold cursor-pointer transition"
                   >
                     Clear Ticket
                   </button>
@@ -339,15 +354,15 @@ function WalkInPos() {
               {/* Items in ticket */}
               <div className="py-4 space-y-2.5 max-h-72 overflow-y-auto">
                 {ticketItems.length === 0 ? (
-                  <div className="text-center py-12 text-slate-400 text-xs">
-                    <FiShoppingBag size={32} className="mx-auto text-slate-300 mb-2" />
-                    Click products on the left to add them to this counter bill.
+                  <div className="text-center py-16 text-slate-400 text-xs space-y-2">
+                    <ShoppingBag className="w-8 h-8 mx-auto text-slate-300" />
+                    <p>Click products on the left to add them to this counter bill.</p>
                   </div>
                 ) : (
                   ticketItems.map((item) => (
                     <div
                       key={item.productId}
-                      className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100 text-xs"
+                      className="flex items-center justify-between p-3 rounded-2xl bg-slate-50/70 border border-slate-100 text-xs"
                     >
                       <div className="flex-1 pr-2">
                         <p className="font-bold text-slate-900">{item.productName}</p>
@@ -358,32 +373,34 @@ function WalkInPos() {
 
                       <div className="flex items-center gap-2">
                         {/* Qty +- */}
-                        <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-lg p-0.5">
+                        <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-lg p-0.5 shadow-2xs">
                           <button
                             onClick={() => updateQuantity(item.productId, item.quantity - 1)}
                             className="w-5 h-5 flex items-center justify-center text-slate-600 hover:bg-slate-100 rounded cursor-pointer"
                           >
-                            <FiMinus size={10} />
+                            <Minus className="w-3 h-3" />
                           </button>
                           <span className="w-5 text-center font-bold text-xs">{item.quantity}</span>
                           <button
                             onClick={() => updateQuantity(item.productId, item.quantity + 1)}
                             className="w-5 h-5 flex items-center justify-center text-slate-600 hover:bg-slate-100 rounded cursor-pointer"
                           >
-                            <FiPlus size={10} />
+                            <Plus className="w-3 h-3" />
                           </button>
                         </div>
 
-                        <span className="font-bold text-slate-900 w-16 text-right">
+                        <span className="font-black text-slate-900 w-16 text-right">
                           ₹{(parseFloat(item.unitPrice || 0) * item.quantity).toFixed(2)}
                         </span>
 
-                        <button
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           onClick={() => removeFromTicket(item.productId)}
-                          className="text-slate-400 hover:text-red-600 p-1 cursor-pointer"
+                          className="h-7 w-7 text-slate-400 hover:text-rose-600 rounded-lg"
                         >
-                          <FiTrash2 size={13} />
-                        </button>
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
                       </div>
                     </div>
                   ))
@@ -394,31 +411,37 @@ function WalkInPos() {
             {/* Bottom: Payment Selector & Checkout Action */}
             <div className="border-t border-slate-100 pt-4 space-y-4">
               {/* Payment Method Toggle */}
-              <div>
-                <label className="block text-[11px] uppercase font-bold text-slate-400 mb-1.5 tracking-wider">
+              <div className="space-y-1.5">
+                <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
                   Payment Method Received
                 </label>
                 <div className="grid grid-cols-2 gap-2">
-                  <button
+                  <Button
+                    type="button"
+                    variant={paymentMethod === "CASH" ? "default" : "secondary"}
                     onClick={() => setPaymentMethod("CASH")}
-                    className={`py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                    className={`h-10 rounded-xl text-xs font-bold gap-1.5 ${
                       paymentMethod === "CASH"
-                        ? "bg-slate-900 text-white shadow-xs"
+                        ? "bg-slate-900 text-white"
                         : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                     }`}
                   >
-                    💵 Cash Received
-                  </button>
-                  <button
+                    <Coins className="w-4 h-4" />
+                    <span>Cash Received</span>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={paymentMethod === "UPI" ? "default" : "secondary"}
                     onClick={() => setPaymentMethod("UPI")}
-                    className={`py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                    className={`h-10 rounded-xl text-xs font-bold gap-1.5 ${
                       paymentMethod === "UPI"
-                        ? "bg-purple-600 text-white shadow-xs"
+                        ? "bg-purple-700 text-white"
                         : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                     }`}
                   >
-                    📱 Counter UPI
-                  </button>
+                    <Smartphone className="w-4 h-4" />
+                    <span>Counter UPI</span>
+                  </Button>
                 </div>
               </div>
 
@@ -429,16 +452,16 @@ function WalkInPos() {
               </div>
 
               {/* Submit Button */}
-              <button
+              <Button
                 onClick={handleCompleteSale}
                 disabled={ticketItems.length === 0 || submitting}
-                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-xl text-sm transition shadow-sm cursor-pointer disabled:bg-slate-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-12 rounded-2xl text-xs gap-2 shadow-sm disabled:bg-slate-200 disabled:text-slate-400"
               >
-                <FiCheckCircle size={18} />
-                {submitting ? "Processing Sale..." : "Complete Sale & Print Bill"}
-              </button>
+                <CheckCircle2 className="w-4 h-4" />
+                <span>{submitting ? "Processing Sale..." : "Complete Sale & Print Bill"}</span>
+              </Button>
             </div>
-          </div>
+          </Card>
         </div>
       </main>
 

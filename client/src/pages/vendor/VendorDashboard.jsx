@@ -1,30 +1,31 @@
-import { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import {
-  FiLogOut,
-  FiBriefcase,
-  FiBox,
-  FiList,
-  FiTrendingUp,
-  FiShoppingBag,
-  FiPlus,
-  FiCopy,
-  FiCheck,
-  FiEdit2,
-  FiMapPin,
-  FiPhone,
-  FiCreditCard,
-  FiBell,
-  FiArrowRight,
-  FiAlertTriangle,
-  FiDollarSign,
-  FiCalendar,
-  FiPrinter,
-  FiCheckCircle,
-  FiClock,
-  FiTrash2,
-  FiUser,
-} from "react-icons/fi";
+  LogOut,
+  Briefcase,
+  Box,
+  List,
+  TrendingUp,
+  ShoppingBag,
+  Plus,
+  Copy,
+  Check,
+  Edit2,
+  MapPin,
+  Phone,
+  CreditCard,
+  Bell,
+  ArrowRight,
+  AlertTriangle,
+  DollarSign,
+  Calendar,
+  Printer,
+  CheckCircle2,
+  Clock,
+  Trash2,
+  User,
+  Zap,
+} from "lucide-react";
 import {
   vendorGetMe,
   vendorUpdateProfile,
@@ -36,6 +37,18 @@ import { getNotifications, markAsRead, markAllAsRead } from "../../services/noti
 import { getVendorDashboardSummary } from "../../services/dashboardService";
 import BillModal from "../../components/BillModal";
 import ReportIssueModal from "../../components/ReportIssueModal";
+import { Button } from "../../components/ui/button";
+import { Badge } from "../../components/ui/badge";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "../../components/ui/card";
+import { Input } from "../../components/ui/input";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableHead,
+  TableRow,
+  TableCell,
+} from "../../components/ui/table";
 
 function VendorDashboard() {
   const [vendorData, setVendorData] = useState(null);
@@ -72,6 +85,7 @@ function VendorDashboard() {
   const [editError, setEditError] = useState("");
 
   const navigate = useNavigate();
+  const location = useLocation();
 
   const fetchAllData = useCallback(async () => {
     try {
@@ -113,8 +127,6 @@ function VendorDashboard() {
       setLoading(false);
     }
   }, []);
-
-  const location = useLocation();
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -254,8 +266,8 @@ function VendorDashboard() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="text-center space-y-2">
-          <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" />
+        <div className="text-center space-y-3">
+          <div className="w-10 h-10 border-3 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" />
           <p className="text-slate-600 font-semibold text-sm">Loading vendor control panel...</p>
         </div>
       </div>
@@ -269,42 +281,51 @@ function VendorDashboard() {
   const recentSales = dashboardSummary?.recentSales || [];
 
   return (
-    <div className="min-h-screen bg-slate-100 flex flex-col">
+    <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
       {/* Top Navbar */}
-      <nav className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-0 z-20">
+      <nav className="bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-4 sm:px-8 py-3 flex items-center justify-between sticky top-0 z-30 shadow-2xs">
         <div className="flex items-center space-x-3">
-          <Link to="/vendor/dashboard" className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-            <span>🛒</span> ShopFlow <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-bold uppercase">Vendor</span>
+          <Link to="/vendor/dashboard" className="text-slate-900 font-black text-xl tracking-tight flex items-center gap-2 group">
+            <span className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center text-sm font-black shadow-xs group-hover:scale-105 transition">
+              🛒
+            </span>
+            <span className="hidden sm:inline">ShopFlow</span>
+            <Badge variant="secondary" className="text-[10px] font-bold uppercase tracking-wider py-0.5 px-2 bg-blue-50 text-blue-700 border-blue-200">
+              Vendor
+            </Badge>
           </Link>
         </div>
 
-        <div className="flex items-center space-x-4">
-          {/* Notification Bell with Badge */}
+        <div className="flex items-center space-x-2 sm:space-x-3">
+          {/* Notification Bell with Dropdown */}
           <div className="relative">
-            <button
+            <Button
+              variant="outline"
+              size="icon"
               onClick={() => setShowNotifDropdown(!showNotifDropdown)}
-              className="relative p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-50 rounded-xl transition cursor-pointer"
+              className="relative h-9 w-9 rounded-xl border-slate-200 text-slate-600 hover:text-slate-900"
               title="Notifications"
             >
-              <FiBell size={20} />
+              <Bell className="w-4 h-4" />
               {unreadCount > 0 && (
-                <span className="absolute top-1 right-1 w-4 h-4 bg-red-600 text-white text-[10px] font-black rounded-full flex items-center justify-center animate-pulse">
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-600 text-white text-[10px] font-black rounded-full flex items-center justify-center animate-pulse">
                   {unreadCount > 9 ? "9+" : unreadCount}
                 </span>
               )}
-            </button>
+            </Button>
 
             {/* Notification Dropdown Menu */}
             {showNotifDropdown && (
               <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-xl border border-slate-200 z-50 overflow-hidden animate-fadeIn">
-                <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-                  <h4 className="font-bold text-slate-800 text-sm flex items-center gap-1.5">
-                    <FiBell size={16} /> Alerts & Notifications
+                <div className="p-3.5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+                  <h4 className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
+                    <Bell className="w-3.5 h-3.5 text-blue-600" />
+                    <span>Alerts & Notifications</span>
                   </h4>
                   {unreadCount > 0 && (
                     <button
                       onClick={handleMarkAllAsRead}
-                      className="text-xs text-blue-600 hover:underline cursor-pointer font-medium"
+                      className="text-[11px] text-blue-600 hover:underline cursor-pointer font-semibold"
                     >
                       Mark all as read
                     </button>
@@ -329,7 +350,7 @@ function VendorDashboard() {
                           <span
                             className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${
                               n.type === "OUT_OF_STOCK"
-                                ? "bg-red-100 text-red-700"
+                                ? "bg-rose-100 text-rose-700"
                                 : "bg-emerald-100 text-emerald-800"
                             }`}
                           >
@@ -349,50 +370,59 @@ function VendorDashboard() {
             )}
           </div>
 
-          <div className="text-right hidden sm:block">
-            <p className="text-sm font-semibold text-slate-800">{vendorData?.ownerName || "Shop Owner"}</p>
-            <p className="text-xs text-slate-500">{vendorData?.mobile}</p>
+          <div className="text-right hidden md:block px-2">
+            <p className="text-xs font-bold text-slate-800">{vendorData?.ownerName || "Shop Owner"}</p>
+            <p className="text-[10px] text-slate-400 font-mono">{vendorData?.mobile}</p>
           </div>
 
-          <button
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => setIsReportModalOpen(true)}
-            className="flex items-center gap-1.5 border border-rose-200 text-rose-700 bg-rose-50 hover:bg-rose-100 px-3 py-1.5 rounded-lg text-sm font-semibold transition cursor-pointer"
+            className="h-9 text-rose-700 bg-rose-50/70 hover:bg-rose-100 border-rose-200 text-xs font-bold rounded-xl gap-1.5"
           >
-            <span>⚠️</span> <span>Report Issue</span>
-          </button>
+            <AlertTriangle className="w-3.5 h-3.5 text-rose-500" />
+            <span className="hidden sm:inline">Report Issue</span>
+          </Button>
 
-          <button
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => setIsEditing(!isEditing)}
-            className="flex items-center gap-1.5 border border-slate-200 text-slate-700 hover:bg-slate-50 px-3 py-1.5 rounded-lg text-sm transition cursor-pointer"
+            className="h-9 text-slate-700 hover:bg-slate-100 border-slate-200 text-xs font-bold rounded-xl gap-1.5"
           >
-            <FiUser size={14} /> <span>{isEditing ? "Close Editor" : "Profile & Shop"}</span>
-          </button>
+            <User className="w-3.5 h-3.5 text-slate-500" />
+            <span className="hidden sm:inline">{isEditing ? "Close Editor" : "Profile & Shop"}</span>
+          </Button>
 
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={handleLogout}
-            className="flex items-center gap-1.5 border border-slate-200 text-slate-600 hover:text-red-600 hover:border-red-200 px-3 py-1.5 rounded-lg text-sm transition cursor-pointer"
+            className="h-9 text-slate-600 hover:text-rose-600 hover:bg-rose-50 rounded-xl text-xs font-semibold gap-1.5"
           >
-            <FiLogOut size={16} /> <span>Sign Out</span>
-          </button>
+            <LogOut className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Sign Out</span>
+          </Button>
         </div>
       </nav>
 
       {/* Main Container */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 flex-1 w-full space-y-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full space-y-8">
         {/* Out of stock alert banner if any */}
         {inventory.outOfStockProducts > 0 && (
-          <div className="bg-red-50 border border-red-200 text-red-800 rounded-2xl p-4 flex items-center justify-between gap-4">
+          <div className="bg-rose-50 border border-rose-200 text-rose-800 rounded-2xl p-4 flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-red-100 text-red-600 flex items-center justify-center shrink-0">
-                <FiAlertTriangle size={18} />
+              <div className="w-8 h-8 rounded-lg bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-4 h-4" />
               </div>
-              <p className="text-sm font-medium">
+              <p className="text-xs sm:text-sm font-semibold">
                 You have <strong>{inventory.outOfStockProducts} product{inventory.outOfStockProducts > 1 ? "s" : ""}</strong> currently out of stock. Customers cannot place orders for them.
               </p>
             </div>
             <Link
               to="/vendor/products"
-              className="bg-red-600 hover:bg-red-700 text-white font-semibold text-xs px-3.5 py-2 rounded-lg transition whitespace-nowrap"
+              className="bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs px-3.5 py-2 rounded-xl transition whitespace-nowrap shadow-xs"
             >
               Update Stock
             </Link>
@@ -402,115 +432,123 @@ function VendorDashboard() {
         {/* Shop Status Banner or Active Shop Card */}
         {!shop ? (
           <div className="space-y-6">
-            <div className="bg-amber-50 border border-amber-200 rounded-3xl p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-sm">
-              <div>
-                <span className="text-xs font-bold uppercase tracking-wider text-amber-800 bg-amber-100 px-3 py-1 rounded-full">
-                  Action Required
-                </span>
-                <h2 className="text-2xl font-black text-amber-950 mt-2 flex items-center gap-2">
-                  <FiBriefcase /> Register Your Shop Profile
-                </h2>
-                <p className="text-sm text-amber-800/90 mt-1 max-w-xl">
-                  You have authenticated your vendor account. Register your physical shop name, address, GPS location, and UPI ID to unlock product management, inventory, and incoming orders.
-                </p>
+            <Card className="rounded-3xl border-amber-200/90 bg-amber-50/40 p-6 sm:p-8 shadow-sm">
+              <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                <div>
+                  <Badge variant="warning" className="text-[10px] font-bold uppercase tracking-wider py-0.5 px-2">
+                    Action Required
+                  </Badge>
+                  <h2 className="text-2xl font-black text-amber-950 mt-2 flex items-center gap-2">
+                    <Briefcase className="w-6 h-6 text-amber-700" /> Register Your Shop Profile
+                  </h2>
+                  <p className="text-xs sm:text-sm text-amber-900/80 mt-1 max-w-xl leading-relaxed">
+                    You have authenticated your vendor account. Register your physical shop name, address, GPS location, and UPI ID to unlock product management, inventory, and incoming orders.
+                  </p>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsEditing(!isEditing)}
+                    className="border-amber-300 text-amber-900 hover:bg-amber-100 font-bold text-xs h-10 rounded-xl"
+                  >
+                    {isEditing ? "Close Profile Editor" : "Manage Profile"}
+                  </Button>
+                  <Button
+                    onClick={() => navigate("/vendor/register-shop")}
+                    className="bg-amber-600 hover:bg-amber-700 text-white font-bold h-10 px-5 rounded-xl gap-2 text-xs shadow-sm"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Register Shop Now</span>
+                  </Button>
+                </div>
               </div>
-              <div className="flex flex-col sm:flex-row gap-3">
-                <button
-                  onClick={() => setIsEditing(!isEditing)}
-                  className="bg-white border border-amber-300 hover:bg-amber-100 text-amber-900 font-bold px-4 py-3 rounded-xl transition text-sm cursor-pointer shadow-xs"
-                >
-                  {isEditing ? "Close Profile Editor" : "Manage Profile"}
-                </button>
-                <Link
-                  to="/vendor/register-shop"
-                  className="bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white font-bold px-6 py-3 rounded-xl transition flex items-center gap-2 text-sm whitespace-nowrap shadow-sm cursor-pointer"
-                >
-                  <FiPlus size={18} /> Register Shop Now
-                </Link>
-              </div>
-            </div>
+            </Card>
 
             {/* Profile editor when no shop is registered */}
             {isEditing && (
-              <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-sm">
+              <Card className="rounded-3xl border-slate-200/90 p-6 sm:p-8 shadow-sm bg-white">
                 <form onSubmit={handleSaveShop} className="space-y-6">
                   <div>
-                    <h3 className="text-base font-bold text-slate-800">Edit Vendor Profile</h3>
+                    <h3 className="text-base font-black text-slate-900">Edit Vendor Profile</h3>
                     <p className="text-xs text-slate-500 mt-0.5">Manage your personal credentials.</p>
                   </div>
 
                   {editError && (
-                    <div className="p-3 bg-red-50 text-red-700 text-xs rounded-xl font-medium">{editError}</div>
+                    <div className="p-3 bg-rose-50 text-rose-700 text-xs rounded-xl font-medium border border-rose-200">{editError}</div>
                   )}
 
-                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
+                  <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200/80 space-y-3">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs font-medium text-slate-700 mb-1">Owner Full Name</label>
-                        <input
+                      <div className="space-y-1">
+                        <label className="text-xs font-bold text-slate-700">Owner Full Name</label>
+                        <Input
                           type="text"
                           value={editForm.ownerName}
                           onChange={(e) => setEditForm({ ...editForm, ownerName: e.target.value })}
-                          className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                          className="text-xs bg-white"
                           required
                         />
                       </div>
-                      <div>
-                        <label className="block text-xs font-medium text-slate-700 mb-1">Account Email</label>
-                        <input
+                      <div className="space-y-1">
+                        <label className="text-xs font-bold text-slate-700">Account Email</label>
+                        <Input
                           type="email"
                           value={editForm.email}
                           onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
                           placeholder="vendor@example.com"
-                          className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                          className="text-xs bg-white"
                         />
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex justify-end gap-3 pt-2">
-                    <button
+                  <div className="flex justify-end gap-2 pt-2">
+                    <Button
                       type="button"
+                      variant="outline"
                       onClick={() => setIsEditing(false)}
-                      className="border border-slate-300 px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 cursor-pointer"
+                      className="text-xs font-bold h-9"
                     >
                       Cancel
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="submit"
                       disabled={savingShop}
-                      className="bg-slate-900 text-white font-bold px-6 py-2.5 rounded-xl text-xs hover:bg-emerald-600 transition cursor-pointer disabled:bg-slate-400 shadow-xs"
+                      className="bg-slate-900 text-white font-bold px-5 h-9 rounded-xl text-xs hover:bg-emerald-600 shadow-xs"
                     >
                       {savingShop ? "Saving Changes..." : "Save Profile Changes"}
-                    </button>
+                    </Button>
                   </div>
 
                   {/* Danger Zone: Delete Account */}
-                  <div className="pt-6 border-t border-red-200 space-y-3">
-                    <p className="text-xs font-bold uppercase tracking-wider text-red-600">Danger Zone</p>
-                    <div className="p-4 bg-red-50/60 border border-red-200 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="pt-6 border-t border-rose-200 space-y-3">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-rose-600">Danger Zone</p>
+                    <div className="p-4 bg-rose-50/60 border border-rose-200 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                       <div>
-                        <p className="text-xs font-bold text-red-950">Delete Entire Vendor Account</p>
-                        <p className="text-[10px] text-red-700 mt-0.5">
+                        <p className="text-xs font-bold text-rose-950">Delete Entire Vendor Account</p>
+                        <p className="text-[10px] text-rose-700 mt-0.5">
                           Permanently purge your vendor credentials and records.
                         </p>
                       </div>
-                      <button
+                      <Button
                         type="button"
+                        variant="destructive"
+                        size="sm"
                         onClick={handleDeleteAccount}
                         disabled={savingShop}
-                        className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap shadow-xs"
+                        className="h-8 text-xs font-bold px-3 rounded-xl gap-1.5"
                       >
-                        <FiTrash2 size={13} /> Delete Entire Account
-                      </button>
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Delete Entire Account</span>
+                      </Button>
                     </div>
                   </div>
                 </form>
-              </div>
+              </Card>
             )}
           </div>
         ) : (
-          <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-sm">
+          <Card className="rounded-3xl border-slate-200/90 p-6 sm:p-8 shadow-sm bg-white">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 pb-6 border-b border-slate-100">
               <div>
                 <div className="flex items-center gap-3 flex-wrap">
@@ -521,59 +559,62 @@ function VendorDashboard() {
                       title="Copy Shop ID"
                       className="text-blue-600 hover:text-blue-800 ml-1 cursor-pointer"
                     >
-                      {copied ? <FiCheck size={14} className="text-emerald-600" /> : <FiCopy size={14} />}
+                      {copied ? <Check className="w-3.5 h-3.5 text-emerald-600 inline" /> : <Copy className="w-3.5 h-3.5 inline" />}
                     </button>
                   </span>
-                  {copied && <span className="text-xs text-emerald-600 font-semibold">Copied!</span>}
+                  {copied && <span className="text-xs text-emerald-600 font-bold">Copied!</span>}
                 </div>
 
-                <h1 className="text-3xl font-black text-slate-900 mt-2 tracking-tight">
+                <h1 className="text-2xl sm:text-3xl font-black text-slate-900 mt-2 tracking-tight">
                   {shop.shopName}
                 </h1>
-                <p className="text-sm text-slate-500 mt-1 flex items-center gap-1.5">
-                  <FiMapPin size={14} className="text-slate-400" /> {shop.address}
+                <p className="text-xs sm:text-sm text-slate-500 mt-1 flex items-center gap-1.5">
+                  <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                  <span>{shop.address}</span>
                 </p>
               </div>
 
               <div className="flex items-center gap-3">
-                <button
+                <Button
+                  variant="outline"
                   onClick={() => setIsEditing(!isEditing)}
-                  className="flex items-center gap-1.5 bg-slate-50 border border-slate-300 hover:bg-slate-100 text-slate-700 font-medium px-4 py-2 rounded-xl text-sm transition cursor-pointer"
+                  className="gap-1.5 h-9 text-xs font-bold text-slate-700 hover:bg-slate-100 border-slate-200 rounded-xl"
                 >
-                  <FiEdit2 size={14} /> {isEditing ? "Close Editor" : "Edit Shop Details"}
-                </button>
+                  <Edit2 className="w-3.5 h-3.5 text-slate-500" />
+                  <span>{isEditing ? "Close Editor" : "Edit Shop Details"}</span>
+                </Button>
               </div>
             </div>
 
             {/* Quick Details Bar */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-6">
-              <div className="flex items-center gap-3 text-sm text-slate-700 bg-slate-50 p-3.5 rounded-xl">
-                <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
-                  <FiPhone size={16} />
+              <div className="flex items-center gap-3 text-sm text-slate-700 bg-slate-50 p-3.5 rounded-2xl border border-slate-100">
+                <div className="w-9 h-9 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+                  <Phone className="w-4 h-4" />
                 </div>
                 <div>
-                  <p className="text-xs text-slate-400 font-medium">Contact</p>
-                  <p className="font-semibold">{shop.contactNumber}</p>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase">Contact</p>
+                  <p className="font-semibold text-xs text-slate-800 font-mono">{shop.contactNumber}</p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-3 text-sm text-slate-700 bg-slate-50 p-3.5 rounded-xl">
-                <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
-                  <FiCreditCard size={16} />
+              <div className="flex items-center gap-3 text-sm text-slate-700 bg-slate-50 p-3.5 rounded-2xl border border-slate-100">
+                <div className="w-9 h-9 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center shrink-0">
+                  <CreditCard className="w-4 h-4" />
                 </div>
                 <div>
-                  <p className="text-xs text-slate-400 font-medium">Direct Vendor UPI Destination</p>
-                  <p className="font-semibold font-mono text-xs">{shop.upiId || "Not Configured"}</p>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase">Direct UPI Destination</p>
+                  <p className="font-bold font-mono text-xs text-purple-900">{shop.upiId || "Not Configured"}</p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-3 text-sm text-slate-700 bg-slate-50 p-3.5 rounded-xl">
-                <div className="w-8 h-8 rounded-lg bg-purple-100 text-purple-600 flex items-center justify-center shrink-0">
-                  <FiMapPin size={16} />
+              <div className="flex items-center gap-3 text-sm text-slate-700 bg-slate-50 p-3.5 rounded-2xl border border-slate-100">
+                <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                  <MapPin className="w-4 h-4" />
                 </div>
                 <div>
-                  <p className="text-xs text-slate-400 font-medium">GPS Coordinates</p>
-                  <p className="font-semibold text-xs">
+                  <p className="text-[10px] text-slate-400 font-bold uppercase">GPS Coordinates</p>
+                  <p className="font-semibold text-xs text-slate-800 font-mono">
                     {shop.latitude && shop.longitude
                       ? `${parseFloat(shop.latitude).toFixed(4)}, ${parseFloat(shop.longitude).toFixed(4)}`
                       : "Not set"}
@@ -586,94 +627,94 @@ function VendorDashboard() {
             {isEditing && (
               <form onSubmit={handleSaveShop} className="mt-6 pt-6 border-t border-slate-200 space-y-6">
                 <div>
-                  <h3 className="text-base font-bold text-slate-800">Edit Vendor Profile & Shop Information</h3>
+                  <h3 className="text-base font-black text-slate-900">Edit Vendor Profile & Shop Information</h3>
                   <p className="text-xs text-slate-500 mt-0.5">Manage your personal credentials and public store settings.</p>
                 </div>
 
                 {editError && (
-                  <div className="p-3 bg-red-50 text-red-700 text-xs rounded-xl font-medium">{editError}</div>
+                  <div className="p-3 bg-rose-50 text-rose-700 text-xs rounded-xl font-medium border border-rose-200">{editError}</div>
                 )}
 
                 {/* Section A: Vendor Personal Info */}
-                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
-                  <p className="text-xs font-bold uppercase tracking-wider text-slate-500">1. Vendor Profile</p>
+                <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200 space-y-3">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">1. Vendor Profile</p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-medium text-slate-700 mb-1">Owner Full Name</label>
-                      <input
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-slate-700">Owner Full Name</label>
+                      <Input
                         type="text"
                         value={editForm.ownerName}
                         onChange={(e) => setEditForm({ ...editForm, ownerName: e.target.value })}
-                        className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                        className="text-xs bg-white"
                         required
                       />
                     </div>
-                    <div>
-                      <label className="block text-xs font-medium text-slate-700 mb-1">Account Email</label>
-                      <input
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-slate-700">Account Email</label>
+                      <Input
                         type="email"
                         value={editForm.email}
                         onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
                         placeholder="vendor@example.com"
-                        className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                        className="text-xs bg-white"
                       />
                     </div>
                   </div>
                 </div>
 
                 {/* Section B: Shop Details */}
-                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
-                  <p className="text-xs font-bold uppercase tracking-wider text-slate-500">2. Registered Shop Profile</p>
+                <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200 space-y-3">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">2. Registered Shop Profile</p>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div className="sm:col-span-2">
-                      <label className="block text-xs font-medium text-slate-700 mb-1">Store / Shop Name</label>
-                      <input
+                    <div className="sm:col-span-2 space-y-1">
+                      <label className="text-xs font-bold text-slate-700">Store / Shop Name</label>
+                      <Input
                         type="text"
                         value={editForm.shopName}
                         onChange={(e) => setEditForm({ ...editForm, shopName: e.target.value })}
-                        className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                        className="text-xs bg-white"
                         required
                       />
                     </div>
-                    <div>
-                      <label className="block text-xs font-medium text-slate-700 mb-1">Shop Reg / Number (Optional)</label>
-                      <input
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-slate-700">Shop Reg / Number (Optional)</label>
+                      <Input
                         type="text"
                         value={editForm.shopNumber}
                         onChange={(e) => setEditForm({ ...editForm, shopNumber: e.target.value })}
                         placeholder="e.g. SHOP-123"
-                        className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                        className="text-xs bg-white"
                       />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-medium text-slate-700 mb-1">Public Contact Number</label>
-                      <input
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-slate-700">Public Contact Number</label>
+                      <Input
                         type="text"
                         value={editForm.contactNumber}
                         onChange={(e) => setEditForm({ ...editForm, contactNumber: e.target.value })}
-                        className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                        className="text-xs bg-white"
                         required
                       />
                     </div>
-                    <div>
-                      <label className="block text-xs font-medium text-slate-700 mb-1">Direct Merchant UPI ID</label>
-                      <input
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-slate-700">Direct Merchant UPI ID</label>
+                      <Input
                         type="text"
                         value={editForm.upiId}
                         onChange={(e) => setEditForm({ ...editForm, upiId: e.target.value })}
                         placeholder="merchant@okhdfcbank"
-                        className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                        className="text-xs font-mono bg-white"
                         required
                       />
-                      <p className="text-[10px] text-slate-400 mt-0.5">Where customer UPI payments are directly transferred.</p>
+                      <p className="text-[10px] text-slate-400">Where customer UPI payments are directly transferred.</p>
                     </div>
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">Store Address & Neighborhood</label>
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700">Store Address & Neighborhood</label>
                     <textarea
                       rows={2}
                       value={editForm.address}
@@ -684,368 +725,401 @@ function VendorDashboard() {
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-medium text-slate-700 mb-1">GPS Latitude</label>
-                      <input
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-slate-700">GPS Latitude</label>
+                      <Input
                         type="number"
                         step="any"
                         value={editForm.latitude}
                         onChange={(e) => setEditForm({ ...editForm, latitude: e.target.value })}
-                        className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs"
+                        className="text-xs bg-white"
                       />
                     </div>
-                    <div>
-                      <label className="block text-xs font-medium text-slate-700 mb-1">GPS Longitude</label>
-                      <input
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-slate-700">GPS Longitude</label>
+                      <Input
                         type="number"
                         step="any"
                         value={editForm.longitude}
                         onChange={(e) => setEditForm({ ...editForm, longitude: e.target.value })}
-                        className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs"
+                        className="text-xs bg-white"
                       />
                     </div>
                   </div>
                 </div>
 
-                <div className="flex justify-end gap-3 pt-2">
-                  <button
+                <div className="flex justify-end gap-2 pt-2">
+                  <Button
                     type="button"
+                    variant="outline"
                     onClick={() => setIsEditing(false)}
-                    className="border border-slate-300 px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 cursor-pointer"
+                    className="text-xs font-bold h-9"
                   >
                     Cancel
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="submit"
                     disabled={savingShop}
-                    className="bg-slate-900 text-white font-bold px-6 py-2.5 rounded-xl text-xs hover:bg-emerald-600 transition cursor-pointer disabled:bg-slate-400 shadow-xs"
+                    className="bg-slate-900 text-white font-bold px-5 h-9 rounded-xl text-xs hover:bg-emerald-600 shadow-xs"
                   >
                     {savingShop ? "Saving Changes..." : "Save Profile & Shop Changes"}
-                  </button>
+                  </Button>
                 </div>
 
                 {/* Section C: Danger Zone */}
-                <div className="pt-6 border-t border-red-200 space-y-3">
-                  <p className="text-xs font-bold uppercase tracking-wider text-red-600">Danger Zone</p>
-                  <div className="p-4 bg-red-50/60 border border-red-200 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="pt-6 border-t border-rose-200 space-y-3">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-rose-600">Danger Zone</p>
+                  <div className="p-4 bg-rose-50/60 border border-rose-200 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                     <div>
-                      <p className="text-xs font-bold text-red-950">Delete Registered Shop</p>
-                      <p className="text-[11px] text-red-700 mt-0.5">
+                      <p className="text-xs font-bold text-rose-950">Delete Registered Shop</p>
+                      <p className="text-[10px] text-rose-700 mt-0.5">
                         Permanently delete this shop and all its catalog products, categories, and past orders.
                       </p>
                     </div>
-                    <button
+                    <Button
                       type="button"
+                      variant="outline"
                       onClick={handleDeleteShop}
                       disabled={savingShop}
-                      className="bg-white border border-red-300 hover:bg-red-50 text-red-700 text-xs font-bold px-4 py-2 rounded-xl transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+                      className="border-rose-300 text-rose-700 hover:bg-rose-100 text-xs font-bold h-8 px-3 rounded-xl gap-1.5"
                     >
-                      <FiTrash2 size={13} /> Delete Registered Shop
-                    </button>
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Delete Shop</span>
+                    </Button>
                   </div>
 
-                  <div className="p-4 bg-red-50/60 border border-red-200 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="p-4 bg-rose-50/60 border border-rose-200 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                     <div>
-                      <p className="text-xs font-bold text-red-950">Delete Entire Vendor Account</p>
-                      <p className="text-[10px] text-red-700 mt-0.5">
+                      <p className="text-xs font-bold text-rose-950">Delete Entire Vendor Account</p>
+                      <p className="text-[10px] text-rose-700 mt-0.5">
                         Permanently purge your vendor credentials, registered shop, and all records.
                       </p>
                     </div>
-                    <button
+                    <Button
                       type="button"
+                      variant="destructive"
                       onClick={handleDeleteAccount}
                       disabled={savingShop}
-                      className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap shadow-xs"
+                      className="text-xs font-bold h-8 px-3 rounded-xl gap-1.5"
                     >
-                      <FiTrash2 size={13} /> Delete Entire Account
-                    </button>
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Delete Entire Account</span>
+                    </Button>
                   </div>
                 </div>
               </form>
             )}
-          </div>
+          </Card>
         )}
 
-        {/* Section 1: Sales & Financial Performance (Milestone 6) */}
+        {/* Section 1: Sales & Financial Performance */}
         {shop && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-lg font-black text-slate-900 tracking-tight flex items-center gap-2">
-                  <FiTrendingUp className="text-emerald-600" /> Sales & Revenue Performance
+                  <TrendingUp className="w-5 h-5 text-emerald-600" />
+                  <span>Sales & Revenue Performance</span>
                 </h3>
                 <p className="text-xs text-slate-400">
                   Calculated strictly from verified bank payments (0% gateway fees)
                 </p>
               </div>
-              <span className="text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full">
+              <Badge variant="success" className="text-xs font-bold py-1 px-3">
                 Live Analytics
-              </span>
+              </Badge>
             </div>
 
             {/* 4 Financial KPI Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs">
-                <div className="flex items-center justify-between text-xs text-slate-400 font-bold uppercase">
-                  <span>Today's Sales</span>
-                  <FiDollarSign className="text-emerald-600" size={16} />
-                </div>
-                <h2 className="text-2xl font-black text-slate-900 mt-2">
-                  ₹{parseFloat(sales.today || 0).toFixed(2)}
-                </h2>
-                <p className="text-[11px] text-slate-500 mt-1">
-                  {sales.todayOrdersCount} verified order{sales.todayOrdersCount === 1 ? "" : "s"} today
-                </p>
-              </div>
+              <Card className="rounded-2xl border-slate-200/90 shadow-2xs bg-white">
+                <CardContent className="p-5">
+                  <div className="flex items-center justify-between text-xs text-slate-400 font-bold uppercase">
+                    <span>Today's Sales</span>
+                    <DollarSign className="w-4 h-4 text-emerald-600" />
+                  </div>
+                  <h2 className="text-2xl font-black text-slate-900 mt-2 tracking-tight">
+                    ₹{parseFloat(sales.today || 0).toFixed(2)}
+                  </h2>
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    {sales.todayOrdersCount} verified order{sales.todayOrdersCount === 1 ? "" : "s"} today
+                  </p>
+                </CardContent>
+              </Card>
 
-              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs">
-                <div className="flex items-center justify-between text-xs text-slate-400 font-bold uppercase">
-                  <span>This Week</span>
-                  <FiCalendar className="text-blue-600" size={16} />
-                </div>
-                <h2 className="text-2xl font-black text-slate-900 mt-2">
-                  ₹{parseFloat(sales.weekly || 0).toFixed(2)}
-                </h2>
-                <p className="text-[11px] text-slate-500 mt-1">Last 7 rolling days</p>
-              </div>
+              <Card className="rounded-2xl border-slate-200/90 shadow-2xs bg-white">
+                <CardContent className="p-5">
+                  <div className="flex items-center justify-between text-xs text-slate-400 font-bold uppercase">
+                    <span>This Week</span>
+                    <Calendar className="w-4 h-4 text-blue-600" />
+                  </div>
+                  <h2 className="text-2xl font-black text-slate-900 mt-2 tracking-tight">
+                    ₹{parseFloat(sales.weekly || 0).toFixed(2)}
+                  </h2>
+                  <p className="text-[11px] text-slate-500 mt-1">Last 7 rolling days</p>
+                </CardContent>
+              </Card>
 
-              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs">
-                <div className="flex items-center justify-between text-xs text-slate-400 font-bold uppercase">
-                  <span>This Month</span>
-                  <FiTrendingUp className="text-indigo-600" size={16} />
-                </div>
-                <h2 className="text-2xl font-black text-slate-900 mt-2">
-                  ₹{parseFloat(sales.monthly || 0).toFixed(2)}
-                </h2>
-                <p className="text-[11px] text-slate-500 mt-1">Last 30 rolling days</p>
-              </div>
+              <Card className="rounded-2xl border-slate-200/90 shadow-2xs bg-white">
+                <CardContent className="p-5">
+                  <div className="flex items-center justify-between text-xs text-slate-400 font-bold uppercase">
+                    <span>This Month</span>
+                    <TrendingUp className="w-4 h-4 text-indigo-600" />
+                  </div>
+                  <h2 className="text-2xl font-black text-slate-900 mt-2 tracking-tight">
+                    ₹{parseFloat(sales.monthly || 0).toFixed(2)}
+                  </h2>
+                  <p className="text-[11px] text-slate-500 mt-1">Last 30 rolling days</p>
+                </CardContent>
+              </Card>
 
-              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs">
-                <div className="flex items-center justify-between text-xs text-slate-400 font-bold uppercase">
-                  <span>Total Sales</span>
-                  <FiCheckCircle className="text-purple-600" size={16} />
-                </div>
-                <h2 className="text-2xl font-black text-slate-900 mt-2">
-                  ₹{parseFloat(sales.total || 0).toFixed(2)}
-                </h2>
-                <p className="text-[11px] text-slate-500 mt-1">
-                  {orderStatus.totalVerifiedOrders} lifetime completed sale{orderStatus.totalVerifiedOrders === 1 ? "" : "s"}
-                </p>
-              </div>
+              <Card className="rounded-2xl border-slate-200/90 shadow-2xs bg-white">
+                <CardContent className="p-5">
+                  <div className="flex items-center justify-between text-xs text-slate-400 font-bold uppercase">
+                    <span>Total Sales</span>
+                    <CheckCircle2 className="w-4 h-4 text-purple-600" />
+                  </div>
+                  <h2 className="text-2xl font-black text-slate-900 mt-2 tracking-tight">
+                    ₹{parseFloat(sales.total || 0).toFixed(2)}
+                  </h2>
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    {orderStatus.totalVerifiedOrders} lifetime completed sale{orderStatus.totalVerifiedOrders === 1 ? "" : "s"}
+                  </p>
+                </CardContent>
+              </Card>
             </div>
 
             {/* Sales Channel Ratio Bar */}
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="text-xs">
-                <span className="font-bold text-slate-800">Sales Channels:</span>
-                <span className="ml-2 text-slate-600">
-                  Online Pre-orders: <strong>₹{parseFloat(channels.onlineAmount || 0).toFixed(2)}</strong> ({channels.onlineCount} orders) • Walk-in Counter: <strong>₹{parseFloat(channels.walkInAmount || 0).toFixed(2)}</strong> ({channels.walkInCount} sales)
-                </span>
-              </div>
-              <div className="flex items-center gap-2 text-xs">
-                {orderStatus.pendingPaymentCount > 0 && (
-                  <Link
-                    to="/vendor/orders"
-                    className="bg-purple-100 hover:bg-purple-200 text-purple-900 font-bold px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 animate-pulse"
-                  >
-                    <span>⚡ {orderStatus.pendingPaymentCount} UPI payments awaiting verification</span>
-                  </Link>
-                )}
-              </div>
-            </div>
+            <Card className="rounded-2xl border-slate-200/90 shadow-2xs bg-white">
+              <CardContent className="p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="text-xs">
+                  <span className="font-bold text-slate-800">Sales Channels:</span>
+                  <span className="ml-2 text-slate-600">
+                    Online Pre-orders: <strong>₹{parseFloat(channels.onlineAmount || 0).toFixed(2)}</strong> ({channels.onlineCount} orders) • Walk-in Counter: <strong>₹{parseFloat(channels.walkInAmount || 0).toFixed(2)}</strong> ({channels.walkInCount} sales)
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-xs">
+                  {orderStatus.pendingPaymentCount > 0 && (
+                    <Link
+                      to="/vendor/orders"
+                      className="bg-purple-100 hover:bg-purple-200 text-purple-900 font-bold px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 animate-pulse"
+                    >
+                      <Zap className="w-3.5 h-3.5" />
+                      <span>{orderStatus.pendingPaymentCount} UPI payments awaiting verification</span>
+                    </Link>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
           </div>
         )}
 
         {/* Section 2: Action Control Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
           {/* Products & Inventory Card */}
           <Link
             to="/vendor/products"
-            className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-300 transition flex flex-col justify-between group"
+            className="group"
           >
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center">
-                  <FiBox size={20} />
+            <Card className="h-full rounded-2xl border-slate-200/90 hover:border-blue-400 hover:shadow-md transition flex flex-col justify-between p-5 bg-white">
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                    <Box className="w-5 h-5" />
+                  </div>
+                  <Badge variant="secondary" className="font-bold text-[11px] bg-blue-50 text-blue-700">
+                    {inventory.totalProducts} items
+                  </Badge>
                 </div>
-                <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full">
-                  {inventory.totalProducts} items
-                </span>
+                <h4 className="font-bold text-slate-900 group-hover:text-blue-600 transition text-sm">
+                  Products & Inventory
+                </h4>
+                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                  Add products, set cost/selling prices, and update stock counts.
+                </p>
               </div>
-              <h4 className="font-bold text-slate-800 group-hover:text-blue-600 transition">
-                Products & Inventory
-              </h4>
-              <p className="text-xs text-slate-500 mt-1">
-                Add products, set cost/selling prices, and update stock counts.
-              </p>
-            </div>
-            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-blue-600">
-              <span>Manage Products</span>
-              <FiArrowRight />
-            </div>
+              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-blue-600">
+                <span>Manage Products</span>
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition" />
+              </div>
+            </Card>
           </Link>
 
           {/* Categories Card */}
           <Link
             to="/vendor/categories"
-            className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-indigo-300 transition flex flex-col justify-between group"
+            className="group"
           >
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center">
-                  <FiList size={20} />
+            <Card className="h-full rounded-2xl border-slate-200/90 hover:border-indigo-400 hover:shadow-md transition flex flex-col justify-between p-5 bg-white">
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                    <List className="w-5 h-5" />
+                  </div>
+                  <Badge variant="secondary" className="font-bold text-[11px] bg-indigo-50 text-indigo-700">
+                    {inventory.totalCategories} categories
+                  </Badge>
                 </div>
-                <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full">
-                  {inventory.totalCategories} categories
-                </span>
+                <h4 className="font-bold text-slate-900 group-hover:text-indigo-600 transition text-sm">
+                  Categories
+                </h4>
+                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                  Organize products into shop-specific categories.
+                </p>
               </div>
-              <h4 className="font-bold text-slate-800 group-hover:text-indigo-600 transition">
-                Categories
-              </h4>
-              <p className="text-xs text-slate-500 mt-1">
-                Organize products into shop-specific categories.
-              </p>
-            </div>
-            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-indigo-600">
-              <span>Manage Categories</span>
-              <FiArrowRight />
-            </div>
+              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-indigo-600">
+                <span>Manage Categories</span>
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition" />
+              </div>
+            </Card>
           </Link>
 
           {/* Incoming Orders Card */}
           <Link
             to="/vendor/orders"
-            className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-emerald-300 transition flex flex-col justify-between group"
+            className="group"
           >
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center">
-                  <FiShoppingBag size={20} />
+            <Card className="h-full rounded-2xl border-slate-200/90 hover:border-emerald-400 hover:shadow-md transition flex flex-col justify-between p-5 bg-white">
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                    <ShoppingBag className="w-5 h-5" />
+                  </div>
+                  <Badge
+                    variant={orderStatus.awaitingPickupCount > 0 ? "warning" : "success"}
+                    className="font-bold text-[11px]"
+                  >
+                    {orderStatus.awaitingPickupCount} ready for pickup
+                  </Badge>
                 </div>
-                <span
-                  className={`text-xs font-bold px-2.5 py-1 rounded-full ${
-                    orderStatus.awaitingPickupCount > 0
-                      ? "bg-amber-100 text-amber-800 animate-pulse"
-                      : "bg-emerald-50 text-emerald-700"
-                  }`}
-                >
-                  {orderStatus.awaitingPickupCount} ready for pickup
-                </span>
+                <h4 className="font-bold text-slate-900 group-hover:text-emerald-600 transition text-sm">
+                  Incoming Orders & Pickups
+                </h4>
+                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                  Verify customer direct UPI payments and match pickup IDs.
+                </p>
               </div>
-              <h4 className="font-bold text-slate-800 group-hover:text-emerald-600 transition">
-                Incoming Orders & Pickups
-              </h4>
-              <p className="text-xs text-slate-500 mt-1">
-                Verify customer direct UPI payments and match pickup IDs.
-              </p>
-            </div>
-            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-emerald-600">
-              <span>View Order Queue</span>
-              <FiArrowRight />
-            </div>
+              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-emerald-600">
+                <span>View Order Queue</span>
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition" />
+              </div>
+            </Card>
           </Link>
 
           {/* Walk-in POS Billing Card */}
           <Link
             to="/vendor/pos"
-            className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-purple-300 transition flex flex-col justify-between group"
+            className="group"
           >
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <div className="w-10 h-10 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center">
-                  <FiDollarSign size={20} />
+            <Card className="h-full rounded-2xl border-slate-200/90 hover:border-purple-400 hover:shadow-md transition flex flex-col justify-between p-5 bg-white">
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center">
+                    <DollarSign className="w-5 h-5" />
+                  </div>
+                  <Badge variant="purple" className="font-bold text-[11px]">
+                    Quick POS
+                  </Badge>
                 </div>
-                <span className="text-xs font-bold text-purple-700 bg-purple-50 px-2.5 py-1 rounded-full">
-                  Quick POS
-                </span>
+                <h4 className="font-bold text-slate-900 group-hover:text-purple-600 transition text-sm">
+                  Walk-in POS Billing
+                </h4>
+                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                  Point of sale counter terminal with instant receipt printing.
+                </p>
               </div>
-              <h4 className="font-bold text-slate-800 group-hover:text-purple-600 transition">
-                Walk-in POS Billing
-              </h4>
-              <p className="text-xs text-slate-500 mt-1">
-                Point of sale counter terminal with instant receipt printing.
-              </p>
-            </div>
-            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-purple-600">
-              <span>Open POS Counter</span>
-              <FiArrowRight />
-            </div>
+              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-purple-600">
+                <span>Open POS Counter</span>
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition" />
+              </div>
+            </Card>
           </Link>
         </div>
 
         {/* Section 3: Recent Verified Sales Activity */}
         {recentSales.length > 0 && (
-          <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-sm space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+          <Card className="rounded-3xl border-slate-200/90 shadow-sm bg-white overflow-hidden">
+            <CardHeader className="border-b border-slate-100 p-5 sm:p-6 flex flex-row items-center justify-between">
               <div>
-                <h3 className="text-lg font-black text-slate-900 tracking-tight flex items-center gap-2">
-                  <FiClock className="text-slate-600" /> Recent Sales Transactions
-                </h3>
-                <p className="text-xs text-slate-400">
+                <CardTitle className="text-lg font-black text-slate-900 tracking-tight flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-slate-600" />
+                  <span>Recent Sales Transactions</span>
+                </CardTitle>
+                <CardDescription className="text-xs text-slate-400 mt-0.5">
                   Latest verified purchases and in-store walk-in orders
-                </p>
+                </CardDescription>
               </div>
-              <Link
-                to="/vendor/orders"
-                className="text-xs font-bold text-blue-600 hover:underline"
+              <Button
+                variant="link"
+                size="sm"
+                onClick={() => navigate("/vendor/orders")}
+                className="text-xs font-bold text-blue-600 hover:text-blue-700"
               >
                 View all orders
-              </Link>
-            </div>
+              </Button>
+            </CardHeader>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="border-b border-slate-100 text-slate-400 uppercase text-[10px] tracking-wider pb-2">
-                    <th className="py-2.5 font-semibold">Order / Pickup ID</th>
-                    <th className="py-2.5 font-semibold">Channel</th>
-                    <th className="py-2.5 font-semibold">Customer</th>
-                    <th className="py-2.5 font-semibold">Items</th>
-                    <th className="py-2.5 text-right font-semibold">Amount</th>
-                    <th className="py-2.5 text-right font-semibold">Bill</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50">
-                  {recentSales.map((s) => (
-                    <tr key={s.id} className="hover:bg-slate-50/50">
-                      <td className="py-3 font-medium">
-                        <span className="font-bold text-slate-900">{s.orderNumber}</span>
-                        {s.pickupId && (
-                          <span className="ml-2 text-[10px] font-mono bg-emerald-50 text-emerald-800 px-1.5 py-0.5 rounded font-bold">
-                            {s.pickupId}
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-b border-slate-100 text-[10px] uppercase tracking-wider text-slate-400">
+                      <TableHead className="py-3 px-6 font-bold">Order / Pickup ID</TableHead>
+                      <TableHead className="py-3 px-4 font-bold">Channel</TableHead>
+                      <TableHead className="py-3 px-4 font-bold">Customer</TableHead>
+                      <TableHead className="py-3 px-4 font-bold">Items</TableHead>
+                      <TableHead className="py-3 px-4 text-right font-bold">Amount</TableHead>
+                      <TableHead className="py-3 px-6 text-right font-bold">Bill</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody className="divide-y divide-slate-100 text-xs">
+                    {recentSales.map((s) => (
+                      <TableRow key={s.id} className="hover:bg-slate-50/70 transition">
+                        <TableCell className="py-3.5 px-6 font-medium">
+                          <span className="font-bold text-slate-900">{s.orderNumber}</span>
+                          {s.pickupId && (
+                            <span className="ml-2 text-[10px] font-mono bg-emerald-50 text-emerald-800 px-1.5 py-0.5 rounded font-bold border border-emerald-200/60 inline-block">
+                              {s.pickupId}
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell className="py-3.5 px-4">
+                          <Badge
+                            variant={s.orderType === "ONLINE" ? "secondary" : "purple"}
+                            className="text-[10px] font-bold uppercase py-0.5 px-2"
+                          >
+                            {s.orderType === "ONLINE" ? "Online" : "Walk-in"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="py-3.5 px-4 text-slate-600 font-mono text-[11px]">
+                          {s.customerMobile}
+                        </TableCell>
+                        <TableCell className="py-3.5 px-4 text-slate-600">
+                          <span className="bg-slate-100 px-2 py-0.5 rounded text-[11px] font-medium">
+                            {s.itemCount} items
                           </span>
-                        )}
-                      </td>
-                      <td className="py-3">
-                        <span
-                          className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
-                            s.orderType === "ONLINE"
-                              ? "bg-blue-100 text-blue-800"
-                              : "bg-purple-100 text-purple-800"
-                          }`}
-                        >
-                          {s.orderType === "ONLINE" ? "Online" : "Walk-in"}
-                        </span>
-                      </td>
-                      <td className="py-3 text-slate-600">{s.customerMobile}</td>
-                      <td className="py-3 text-slate-600">{s.itemCount} items</td>
-                      <td className="py-3 text-right font-black text-slate-900">
-                        ₹{parseFloat(s.totalAmount || 0).toFixed(2)}
-                      </td>
-                      <td className="py-3 text-right">
-                        <Link
-                          to="/vendor/orders"
-                          className="inline-flex items-center gap-1 border border-slate-200 hover:border-slate-300 bg-white px-2.5 py-1 rounded-lg text-slate-700 font-semibold text-xs transition"
-                        >
-                          <FiPrinter size={12} /> Receipt
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+                        </TableCell>
+                        <TableCell className="py-3.5 px-4 text-right font-black text-slate-900">
+                          ₹{parseFloat(s.totalAmount || 0).toFixed(2)}
+                        </TableCell>
+                        <TableCell className="py-3.5 px-6 text-right">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => navigate("/vendor/orders")}
+                            className="h-8 px-2.5 text-xs font-bold text-slate-700 hover:text-slate-900 border-slate-200 rounded-lg gap-1.5"
+                          >
+                            <Printer className="w-3.5 h-3.5 text-slate-500" />
+                            <span>Receipt</span>
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
         )}
       </main>
 

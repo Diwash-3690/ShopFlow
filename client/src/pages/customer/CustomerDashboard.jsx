@@ -1,21 +1,24 @@
-import { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import {
-  FiLogOut,
-  FiShoppingBag,
-  FiClock,
-  FiSearch,
-  FiCopy,
-  FiCheck,
-  FiPrinter,
-  FiMapPin,
-  FiPackage,
-  FiRefreshCw,
-  FiUser,
-  FiTrash2,
-  FiAlertCircle,
-  FiX,
-} from "react-icons/fi";
+  LogOut,
+  ShoppingBag,
+  Clock,
+  Search,
+  Copy,
+  Check,
+  Printer,
+  MapPin,
+  Package,
+  RefreshCw,
+  User,
+  Trash2,
+  AlertCircle,
+  CheckCircle2,
+  AlertTriangle,
+  ArrowRight,
+  ShieldCheck,
+} from "lucide-react";
 import {
   customerGetMe,
   customerUpdateProfile,
@@ -26,6 +29,27 @@ import { getCustomerOrders } from "../../services/orderService";
 import { getCustomerDashboardSummary } from "../../services/dashboardService";
 import BillModal from "../../components/BillModal";
 import ReportIssueModal from "../../components/ReportIssueModal";
+import { Button } from "../../components/ui/button";
+import { Badge } from "../../components/ui/badge";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "../../components/ui/card";
+import { Input } from "../../components/ui/input";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableHead,
+  TableRow,
+  TableCell,
+} from "../../components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "../../components/ui/dialog";
+import { Alert, AlertDescription } from "../../components/ui/alert";
 
 function CustomerDashboard() {
   const [customer, setCustomer] = useState(null);
@@ -49,6 +73,7 @@ function CustomerDashboard() {
   });
 
   const navigate = useNavigate();
+  const location = useLocation();
 
   const fetchDashboardData = useCallback(async () => {
     try {
@@ -74,8 +99,6 @@ function CustomerDashboard() {
       setRefreshing(false);
     }
   }, []);
-
-  const location = useLocation();
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -158,9 +181,9 @@ function CustomerDashboard() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="text-center space-y-2">
-          <div className="w-10 h-10 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-sm font-semibold text-slate-600">Loading customer account...</p>
+        <div className="text-center space-y-3">
+          <div className="w-10 h-10 border-3 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-sm font-semibold text-slate-600">Loading your account...</p>
         </div>
       </div>
     );
@@ -170,38 +193,46 @@ function CustomerDashboard() {
   const pastOrders = orders.filter((o) => o.status === "COMPLETED");
 
   return (
-    <div className="min-h-screen bg-slate-100 flex flex-col">
+    <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
       {/* Top Navbar */}
-      <nav className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-0 z-20">
+      <nav className="bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-4 sm:px-8 py-3 flex items-center justify-between sticky top-0 z-30 shadow-2xs">
         <div className="flex items-center space-x-3">
           <Link
             to="/customer/dashboard"
-            className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2"
+            className="text-slate-900 font-black text-xl tracking-tight flex items-center gap-2 group"
           >
-            <span>🛍️</span> ShopFlow{" "}
-            <span className="text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-bold uppercase">
-              Customer
+            <span className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center text-sm font-black shadow-xs group-hover:scale-105 transition">
+              🛍️
             </span>
+            <span className="hidden sm:inline">ShopFlow</span>
+            <Badge variant="success" className="text-[10px] font-bold uppercase tracking-wider py-0.5 px-2">
+              Customer
+            </Badge>
           </Link>
         </div>
 
-        <div className="flex items-center space-x-4">
-          <button
+        <div className="flex items-center space-x-2 sm:space-x-3">
+          <Button
+            variant="outline"
+            size="icon"
             onClick={handleRefresh}
             disabled={refreshing}
-            className="text-slate-500 hover:text-slate-800 p-2 rounded-xl border border-slate-200 hover:bg-slate-50 transition cursor-pointer"
+            className="h-9 w-9 rounded-xl border-slate-200 text-slate-600 hover:text-slate-900"
             title="Refresh Orders"
           >
-            <FiRefreshCw size={15} className={refreshing ? "animate-spin text-emerald-600" : ""} />
-          </button>
-          <div className="text-right hidden sm:block">
-            <p className="text-sm font-semibold text-slate-800">{customer?.mobile}</p>
-            <span className="text-xs text-emerald-600 font-medium flex items-center justify-end gap-1">
-              ✓ Mobile Verified
+            <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin text-emerald-600" : ""}`} />
+          </Button>
+
+          <div className="text-right hidden md:block px-2">
+            <p className="text-xs font-bold text-slate-800 font-mono">{customer?.mobile}</p>
+            <span className="text-[10px] text-emerald-600 font-semibold flex items-center justify-end gap-1">
+              <ShieldCheck className="w-3 h-3" /> Verified
             </span>
           </div>
 
-          <button
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() =>
               setReportModalData({
                 isOpen: true,
@@ -210,309 +241,257 @@ function CustomerDashboard() {
                 orderNumber: "",
               })
             }
-            className="flex items-center gap-1.5 border border-rose-200 text-rose-700 bg-rose-50 hover:bg-rose-100 px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer"
+            className="h-9 text-rose-700 bg-rose-50/80 hover:bg-rose-100 border-rose-200 text-xs font-bold rounded-xl gap-1.5"
           >
-            <span>⚠️</span> <span>Report Issue</span>
-          </button>
+            <AlertTriangle className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Report Issue</span>
+          </Button>
 
-          <button
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => {
               setProfileForm({ email: customer?.email || "" });
               setProfileMsg({ type: "", text: "" });
               setShowProfileModal(true);
             }}
-            className="flex items-center gap-1.5 border border-slate-200 text-slate-700 hover:bg-slate-50 px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer"
+            className="h-9 text-slate-700 hover:bg-slate-100 border-slate-200 text-xs font-bold rounded-xl gap-1.5"
           >
-            <FiUser size={14} /> <span>Profile</span>
-          </button>
+            <User className="w-3.5 h-3.5 text-slate-500" />
+            <span className="hidden sm:inline">Profile</span>
+          </Button>
 
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={handleLogout}
-            className="flex items-center gap-1.5 border border-slate-200 text-slate-600 hover:text-red-600 hover:border-red-200 px-3 py-1.5 rounded-lg text-sm transition cursor-pointer"
+            className="h-9 text-slate-600 hover:text-rose-600 hover:bg-rose-50 rounded-xl text-xs font-semibold gap-1.5"
           >
-            <FiLogOut size={16} /> <span>Sign Out</span>
-          </button>
+            <LogOut className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Sign Out</span>
+          </Button>
         </div>
       </nav>
 
       {/* Main Container */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 flex-1 w-full space-y-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full space-y-8">
         {/* Banner to Discover Shops */}
-        <div className="bg-gradient-to-r from-emerald-600 to-teal-700 rounded-3xl p-6 sm:p-8 text-white flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-md">
-          <div>
-            <span className="text-xs font-bold uppercase tracking-wider bg-white/20 px-3 py-1 rounded-full">
-              Explore Local Stores
-            </span>
-            <h2 className="text-2xl sm:text-3xl font-extrabold mt-3 tracking-tight">
-              Find shops near your current location
-            </h2>
-            <p className="mt-2 text-white/85 text-xs sm:text-sm max-w-xl leading-relaxed">
-              Browse products from your favorite neighborhood vendor, pay securely through your preferred UPI app, and pick up using your unique Pickup ID.
-            </p>
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-emerald-700 via-teal-700 to-emerald-800 p-6 sm:p-8 text-white shadow-lg">
+          <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+            <div className="space-y-2 max-w-xl">
+              <Badge variant="secondary" className="bg-white/20 text-white hover:bg-white/30 text-xs font-bold border-0">
+                Explore Local Stores
+              </Badge>
+              <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
+                Find shops near your current location
+              </h2>
+              <p className="text-white/85 text-xs sm:text-sm leading-relaxed">
+                Browse products from your favorite neighborhood vendor, pay securely through your preferred UPI app, and pick up using your unique Pickup ID.
+              </p>
+            </div>
+            <Button
+              onClick={() => navigate("/shops")}
+              className="bg-white text-emerald-900 hover:bg-emerald-50 font-black px-6 h-12 rounded-2xl shadow-md text-sm gap-2 shrink-0 cursor-pointer"
+            >
+              <Search className="w-4 h-4 text-emerald-700" />
+              <span>Discover Shops</span>
+              <ArrowRight className="w-4 h-4 ml-1" />
+            </Button>
           </div>
-          <button
-            onClick={() => navigate("/shops")}
-            className="bg-white text-emerald-800 font-bold px-6 py-3 rounded-xl hover:bg-emerald-50 transition shadow-sm flex items-center gap-2 text-sm whitespace-nowrap cursor-pointer"
-          >
-            <FiSearch size={18} /> Discover Shops
-          </button>
+          {/* Subtle background ambient shape */}
+          <div className="absolute -right-12 -bottom-12 w-64 h-64 rounded-full bg-white/5 pointer-events-none blur-2xl" />
         </div>
 
-        {/* Customer Shopping Summary Cards (Milestone 6) */}
+        {/* Customer Shopping Summary Cards */}
         {summary && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
-              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Total Spent</p>
-              <h3 className="text-xl font-black text-slate-900 mt-1">₹{parseFloat(summary.totalSpent || 0).toFixed(2)}</h3>
-              <p className="text-[10px] text-slate-500 mt-0.5">Across local stores</p>
-            </div>
-            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
-              <p className="text-[11px] font-bold uppercase tracking-wider text-amber-600">Active Pickups</p>
-              <h3 className="text-xl font-black text-amber-700 mt-1">{summary.activePickupsCount}</h3>
-              <p className="text-[10px] text-slate-500 mt-0.5">Ready at counters</p>
-            </div>
-            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
-              <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-600">Completed Orders</p>
-              <h3 className="text-xl font-black text-emerald-700 mt-1">{summary.completedCount}</h3>
-              <p className="text-[10px] text-slate-500 mt-0.5">Collected purchases</p>
-            </div>
-            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
-              <p className="text-[11px] font-bold uppercase tracking-wider text-blue-600">Shops Visited</p>
-              <h3 className="text-xl font-black text-blue-700 mt-1">{summary.shopsCount}</h3>
-              <p className="text-[10px] text-slate-500 mt-0.5">Supported vendors</p>
-            </div>
+            <Card className="rounded-2xl border-slate-200/80 shadow-2xs bg-white">
+              <CardContent className="p-4 sm:p-5">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Total Spent</p>
+                <h3 className="text-2xl font-black text-slate-900 mt-1 tracking-tight">
+                  ₹{parseFloat(summary.totalSpent || 0).toFixed(2)}
+                </h3>
+                <p className="text-[11px] text-slate-500 mt-0.5">Across local stores</p>
+              </CardContent>
+            </Card>
+
+            <Card className="rounded-2xl border-amber-200/70 shadow-2xs bg-amber-50/30">
+              <CardContent className="p-4 sm:p-5">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-amber-600">Active Pickups</p>
+                <h3 className="text-2xl font-black text-amber-700 mt-1 tracking-tight">
+                  {summary.activePickupsCount}
+                </h3>
+                <p className="text-[11px] text-amber-700/80 mt-0.5">Ready at counters</p>
+              </CardContent>
+            </Card>
+
+            <Card className="rounded-2xl border-emerald-200/70 shadow-2xs bg-emerald-50/30">
+              <CardContent className="p-4 sm:p-5">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-600">Completed Orders</p>
+                <h3 className="text-2xl font-black text-emerald-700 mt-1 tracking-tight">
+                  {summary.completedCount}
+                </h3>
+                <p className="text-[11px] text-emerald-700/80 mt-0.5">Collected purchases</p>
+              </CardContent>
+            </Card>
+
+            <Card className="rounded-2xl border-blue-200/70 shadow-2xs bg-blue-50/30">
+              <CardContent className="p-4 sm:p-5">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-blue-600">Shops Visited</p>
+                <h3 className="text-2xl font-black text-blue-700 mt-1 tracking-tight">
+                  {summary.shopsCount}
+                </h3>
+                <p className="text-[11px] text-blue-700/80 mt-0.5">Supported vendors</p>
+              </CardContent>
+            </Card>
           </div>
         )}
 
         {/* Section 1: Active Pickup Orders */}
-        <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-sm space-y-6">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-            <div className="flex items-center gap-2">
-              <span className="p-2 rounded-xl bg-emerald-50 text-emerald-700">
-                <FiShoppingBag size={20} />
-              </span>
+        <Card className="rounded-3xl border-slate-200/90 shadow-sm bg-white overflow-hidden">
+          <CardHeader className="border-b border-slate-100 p-5 sm:p-6 flex flex-row items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center">
+                <ShoppingBag className="w-5 h-5" />
+              </div>
               <div>
-                <h3 className="text-lg font-black text-slate-900">Active Pickup Orders</h3>
-                <p className="text-xs text-slate-400">
-                  Orders waiting for store counter pickup
-                </p>
+                <CardTitle className="text-lg font-black text-slate-900">Active Pickup Orders</CardTitle>
+                <CardDescription className="text-xs text-slate-500">
+                  Orders ready for verification or waiting for counter pickup
+                </CardDescription>
               </div>
             </div>
-            <span className="text-xs bg-emerald-100 text-emerald-800 font-bold px-2.5 py-1 rounded-full">
+            <Badge variant="success" className="font-bold text-xs px-2.5 py-1">
               {activeOrders.length} Ready
-            </span>
-          </div>
+            </Badge>
+          </CardHeader>
 
-          {activeOrders.length === 0 ? (
-            <div className="border border-dashed border-slate-200 rounded-2xl p-8 text-center text-slate-500 text-sm">
-              <FiPackage size={36} className="mx-auto text-slate-300 mb-2" />
-              <p className="font-semibold text-slate-700">No active pickup orders</p>
-              <p className="text-xs text-slate-400 mt-1">
-                Browse nearby shops and order your groceries or essentials online!
-              </p>
-              <button
-                onClick={() => navigate("/shops")}
-                className="mt-4 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition cursor-pointer"
-              >
-                Browse Shops Now
-              </button>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {activeOrders.map((o) => (
-                <div
-                  key={o.id}
-                  className="border border-slate-200 rounded-2xl p-5 bg-gradient-to-br from-white to-slate-50 flex flex-col justify-between shadow-2xs space-y-4"
+          <CardContent className="p-5 sm:p-6">
+            {activeOrders.length === 0 ? (
+              <div className="border border-dashed border-slate-200 rounded-2xl p-10 text-center space-y-3">
+                <Package className="w-10 h-10 text-slate-300 mx-auto" />
+                <div>
+                  <p className="font-bold text-slate-700 text-sm">No active pickup orders</p>
+                  <p className="text-xs text-slate-400 mt-1">
+                    Browse nearby shops and order groceries or essentials online!
+                  </p>
+                </div>
+                <Button
+                  onClick={() => navigate("/shops")}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold h-9 px-4 gap-1.5"
                 >
-                  <div>
-                    {/* Header: Shop & Order Meta */}
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <h4 className="font-black text-slate-900 text-base">
-                          {o.shop?.shopName}
-                        </h4>
-                        <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
-                          <FiMapPin size={12} className="text-emerald-600 shrink-0" />
-                          <span className="line-clamp-1">{o.shop?.address}</span>
-                        </p>
-                      </div>
-                      <span className="text-[10px] font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-bold">
-                        {o.orderNumber}
-                      </span>
-                    </div>
-
-                    {/* Pickup ID or Verification Status */}
-                    {o.pickupId ? (
-                      <div className="mt-4 p-4 rounded-xl bg-slate-900 text-white flex items-center justify-between">
-                        <div>
-                          <p className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">
-                            Counter Pickup ID
-                          </p>
-                          <p className="text-2xl font-mono font-black text-emerald-400 tracking-wider mt-0.5">
-                            {o.pickupId}
-                          </p>
-                        </div>
-                        <button
-                          onClick={() => copyPickupId(o.pickupId)}
-                          className="bg-white/10 hover:bg-white/20 text-white p-2 rounded-lg text-xs flex items-center gap-1 transition cursor-pointer"
-                          title="Copy Pickup ID"
-                        >
-                          {copiedId === o.pickupId ? (
-                            <FiCheck className="text-emerald-400" size={16} />
-                          ) : (
-                            <FiCopy size={16} />
-                          )}
-                          <span className="text-[11px] font-semibold">
-                            {copiedId === o.pickupId ? "Copied" : "Copy"}
-                          </span>
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="mt-4 p-3.5 rounded-xl bg-purple-50 border border-purple-200 text-purple-900 text-xs">
-                        <p className="font-bold flex items-center gap-1.5">
-                          ⏳ Direct UPI Payment Awaiting Merchant Verification
-                        </p>
-                        <p className="text-[11px] text-purple-700 mt-1 leading-relaxed">
-                          The shopkeeper is matching your payment in their UPI/bank account. Your unique Pickup ID will appear here as soon as verified.
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Item list */}
-                    <div className="mt-3 divide-y divide-slate-100 text-xs">
-                      {o.items?.map((item) => (
-                        <div key={item.id} className="py-1.5 flex justify-between text-slate-600">
-                          <span>
-                            {item.productName} × {item.quantity} {item.unit}
-                          </span>
-                          <span className="font-bold text-slate-800">
-                            ₹{parseFloat(item.lineTotal || 0).toFixed(2)}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Footer: Total & Actions */}
-                  <div className="pt-3 border-t border-slate-200 flex items-center justify-between">
+                  <Search className="w-3.5 h-3.5" />
+                  <span>Browse Shops Now</span>
+                </Button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                {activeOrders.map((o) => (
+                  <div
+                    key={o.id}
+                    className="border border-slate-200/90 rounded-2xl p-5 bg-gradient-to-b from-white to-slate-50/60 flex flex-col justify-between shadow-2xs space-y-4 hover:border-slate-300 transition"
+                  >
                     <div>
-                      <p className="text-[10px] text-slate-400 uppercase font-semibold">Total Paid</p>
-                      <p className="text-lg font-black text-emerald-700">
-                        ₹{parseFloat(o.totalAmount || 0).toFixed(2)}
-                      </p>
+                      {/* Shop Header & Order Number */}
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <h4 className="font-black text-slate-900 text-base leading-snug">
+                            {o.shop?.shopName}
+                          </h4>
+                          <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
+                            <MapPin className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                            <span className="line-clamp-1">{o.shop?.address}</span>
+                          </p>
+                        </div>
+                        <span className="text-[10px] font-mono bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md font-bold border border-slate-200">
+                          {o.orderNumber}
+                        </span>
+                      </div>
+
+                      {/* Pickup ID or Verification Notice */}
+                      {o.pickupId ? (
+                        <div className="mt-4 p-4 rounded-2xl bg-slate-900 text-white flex items-center justify-between shadow-xs">
+                          <div>
+                            <p className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">
+                              Counter Pickup ID
+                            </p>
+                            <p className="text-2xl font-mono font-black text-emerald-400 tracking-wider mt-0.5">
+                              {o.pickupId}
+                            </p>
+                          </div>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => copyPickupId(o.pickupId)}
+                            className="bg-white/10 hover:bg-white/20 text-white text-xs h-8 px-3 rounded-lg border-0 gap-1.5"
+                          >
+                            {copiedId === o.pickupId ? (
+                              <Check className="w-3.5 h-3.5 text-emerald-400" />
+                            ) : (
+                              <Copy className="w-3.5 h-3.5" />
+                            )}
+                            <span className="font-semibold text-[11px]">
+                              {copiedId === o.pickupId ? "Copied" : "Copy"}
+                            </span>
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="mt-4 p-3.5 rounded-2xl bg-purple-50/80 border border-purple-200/80 text-purple-900 text-xs space-y-1">
+                          <p className="font-bold flex items-center gap-1.5 text-purple-950">
+                            ⏳ Direct UPI Payment Awaiting Merchant Verification
+                          </p>
+                          <p className="text-[11px] text-purple-700 leading-relaxed">
+                            The shopkeeper is matching your transaction reference in their UPI/bank account. Your unique Pickup ID will appear here once verified.
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Item list */}
+                      <div className="mt-4 divide-y divide-slate-100 text-xs bg-white rounded-xl p-3 border border-slate-100">
+                        {o.items?.map((item) => (
+                          <div key={item.id} className="py-1.5 flex justify-between text-slate-600 first:pt-0 last:pb-0">
+                            <span>
+                              {item.productName} <span className="text-slate-400 font-mono">× {item.quantity} {item.unit}</span>
+                            </span>
+                            <span className="font-bold text-slate-800">
+                              ₹{parseFloat(item.lineTotal || 0).toFixed(2)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() =>
-                          setReportModalData({
-                            isOpen: true,
-                            shopId: o.shop?.id,
-                            shopName: o.shop?.name,
-                            orderNumber: o.orderNumber,
-                          })
-                        }
-                        className="text-[11px] text-slate-400 hover:text-rose-600 font-semibold px-2 py-1 rounded-lg hover:bg-rose-50 transition cursor-pointer"
-                        title="Report an issue with this order"
-                      >
-                        ⚠️ Report
-                      </button>
+                    {/* Card Footer: Total Paid & Quick Action Buttons */}
+                    <div className="pt-3 border-t border-slate-200 flex items-center justify-between">
+                      <div>
+                        <p className="text-[10px] text-slate-400 uppercase font-semibold">Total Paid</p>
+                        <p className="text-lg font-black text-emerald-700">
+                          ₹{parseFloat(o.totalAmount || 0).toFixed(2)}
+                        </p>
+                      </div>
 
-                      {o.bill && (
-                        <button
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           onClick={() =>
-                            setActiveBill({
-                              ...o.bill,
+                            setReportModalData({
+                              isOpen: true,
+                              shopId: o.shop?.id,
+                              shopName: o.shop?.name || o.shop?.shopName,
                               orderNumber: o.orderNumber,
-                              pickupId: o.pickupId,
-                              shop: o.shop,
-                              items: o.items,
-                              totalAmount: o.totalAmount,
-                              status: o.status,
-                              payment: o.payment,
                             })
                           }
-                          className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-xl text-xs font-bold transition cursor-pointer"
+                          className="h-8 text-[11px] text-slate-500 hover:text-rose-600 hover:bg-rose-50 font-bold px-2 rounded-lg"
                         >
-                          <FiPrinter size={14} /> Receipt
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+                          <AlertTriangle className="w-3 h-3 text-rose-500 mr-1" />
+                          <span>Report</span>
+                        </Button>
 
-        {/* Section 2: Order History & Completed Receipts */}
-        <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-sm space-y-6">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-            <div className="flex items-center gap-2">
-              <span className="p-2 rounded-xl bg-slate-100 text-slate-700">
-                <FiClock size={20} />
-              </span>
-              <div>
-                <h3 className="text-lg font-black text-slate-900">Order History & Receipts</h3>
-                <p className="text-xs text-slate-400">
-                  Completed orders and printable purchase receipts
-                </p>
-              </div>
-            </div>
-            <span className="text-xs text-slate-500 font-semibold">
-              {pastOrders.length} Past Order{pastOrders.length === 1 ? "" : "s"}
-            </span>
-          </div>
-
-          {pastOrders.length === 0 ? (
-            <div className="border border-dashed border-slate-200 rounded-2xl p-8 text-center text-slate-500 text-sm">
-              <FiClock size={36} className="mx-auto text-slate-300 mb-2" />
-              <p className="font-medium text-slate-700">No past orders found</p>
-              <p className="text-xs text-slate-400 mt-1">
-                Completed purchases and downloadable bills will show up here.
-              </p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="border-b border-slate-200 text-slate-400 uppercase text-[10px] tracking-wider">
-                    <th className="py-3 font-semibold">Order / Pickup ID</th>
-                    <th className="py-3 font-semibold">Shop</th>
-                    <th className="py-3 font-semibold">Date Completed</th>
-                    <th className="py-3 font-semibold">Items</th>
-                    <th className="py-3 text-right font-semibold">Amount</th>
-                    <th className="py-3 text-right font-semibold">Receipt</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {pastOrders.map((o) => (
-                    <tr key={o.id} className="hover:bg-slate-50/50">
-                      <td className="py-3.5 font-medium text-slate-900">
-                        <p className="font-bold">{o.orderNumber}</p>
-                        {o.pickupId && (
-                          <span className="text-[10px] font-mono text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded font-bold">
-                            {o.pickupId}
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-3.5 text-slate-700 font-medium">
-                        {o.shop?.shopName}
-                      </td>
-                      <td className="py-3.5 text-slate-500">
-                        {o.completedAt
-                          ? new Date(o.completedAt).toLocaleDateString()
-                          : new Date(o.createdAt).toLocaleDateString()}
-                      </td>
-                      <td className="py-3.5 text-slate-600">
-                        {o.items?.length || 0} item{o.items?.length === 1 ? "" : "s"}
-                      </td>
-                      <td className="py-3.5 text-right font-bold text-slate-900">
-                        ₹{parseFloat(o.totalAmount || 0).toFixed(2)}
-                      </td>
-                      <td className="py-3.5 text-right">
-                        {o.bill ? (
-                          <button
+                        {o.bill && (
+                          <Button
+                            variant="secondary"
+                            size="sm"
                             onClick={() =>
                               setActiveBill({
                                 ...o.bill,
@@ -525,129 +504,235 @@ function CustomerDashboard() {
                                 payment: o.payment,
                               })
                             }
-                            className="inline-flex items-center gap-1 border border-slate-200 hover:border-slate-300 bg-white px-2.5 py-1 rounded-lg text-slate-700 font-semibold text-xs transition cursor-pointer"
+                            className="h-8 bg-slate-100 hover:bg-slate-200 text-slate-800 px-3 rounded-lg text-xs font-bold gap-1.5"
                           >
-                            <FiPrinter size={12} /> Bill
-                          </button>
-                        ) : (
-                          <span className="text-slate-400 text-[11px]">—</span>
+                            <Printer className="w-3.5 h-3.5 text-slate-600" />
+                            <span>Receipt</span>
+                          </Button>
                         )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Section 2: Order History & Completed Receipts */}
+        <Card className="rounded-3xl border-slate-200/90 shadow-sm bg-white overflow-hidden">
+          <CardHeader className="border-b border-slate-100 p-5 sm:p-6 flex flex-row items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-slate-100 text-slate-700 flex items-center justify-center">
+                <Clock className="w-5 h-5" />
+              </div>
+              <div>
+                <CardTitle className="text-lg font-black text-slate-900">Order History & Receipts</CardTitle>
+                <CardDescription className="text-xs text-slate-500">
+                  Completed orders and printable purchase receipts
+                </CardDescription>
+              </div>
             </div>
-          )}
-        </div>
+            <Badge variant="outline" className="text-slate-600 font-semibold text-xs">
+              {pastOrders.length} Past Order{pastOrders.length === 1 ? "" : "s"}
+            </Badge>
+          </CardHeader>
+
+          <CardContent className="p-0">
+            {pastOrders.length === 0 ? (
+              <div className="p-10 text-center space-y-2">
+                <Clock className="w-10 h-10 text-slate-300 mx-auto" />
+                <p className="font-semibold text-slate-700 text-sm">No past orders found</p>
+                <p className="text-xs text-slate-400">
+                  Completed purchases and downloadable bills will show up here.
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-b border-slate-100 text-[10px] uppercase tracking-wider text-slate-400">
+                      <TableHead className="py-3 px-6 font-bold">Order / Pickup ID</TableHead>
+                      <TableHead className="py-3 px-4 font-bold">Shop</TableHead>
+                      <TableHead className="py-3 px-4 font-bold">Date Completed</TableHead>
+                      <TableHead className="py-3 px-4 font-bold">Items</TableHead>
+                      <TableHead className="py-3 px-4 text-right font-bold">Amount</TableHead>
+                      <TableHead className="py-3 px-6 text-right font-bold">Receipt</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody className="divide-y divide-slate-100 text-xs">
+                    {pastOrders.map((o) => (
+                      <TableRow key={o.id} className="hover:bg-slate-50/70 transition">
+                        <TableCell className="py-3.5 px-6 font-medium text-slate-900">
+                          <p className="font-bold text-slate-900">{o.orderNumber}</p>
+                          {o.pickupId && (
+                            <span className="text-[10px] font-mono text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded font-bold border border-emerald-200/60 inline-block mt-0.5">
+                              {o.pickupId}
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell className="py-3.5 px-4 font-semibold text-slate-800">
+                          {o.shop?.shopName}
+                        </TableCell>
+                        <TableCell className="py-3.5 px-4 text-slate-500">
+                          {o.completedAt
+                            ? new Date(o.completedAt).toLocaleDateString()
+                            : new Date(o.createdAt).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell className="py-3.5 px-4 text-slate-600">
+                          <span className="bg-slate-100 px-2 py-0.5 rounded text-[11px] font-medium">
+                            {o.items?.length || 0} item{o.items?.length === 1 ? "" : "s"}
+                          </span>
+                        </TableCell>
+                        <TableCell className="py-3.5 px-4 text-right font-black text-slate-900">
+                          ₹{parseFloat(o.totalAmount || 0).toFixed(2)}
+                        </TableCell>
+                        <TableCell className="py-3.5 px-6 text-right">
+                          {o.bill ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                setActiveBill({
+                                  ...o.bill,
+                                  orderNumber: o.orderNumber,
+                                  pickupId: o.pickupId,
+                                  shop: o.shop,
+                                  items: o.items,
+                                  totalAmount: o.totalAmount,
+                                  status: o.status,
+                                  payment: o.payment,
+                                })
+                              }
+                              className="h-8 px-2.5 text-xs font-bold text-slate-700 hover:text-slate-900 border-slate-200 rounded-lg gap-1.5"
+                            >
+                              <Printer className="w-3.5 h-3.5 text-slate-500" />
+                              <span>Bill</span>
+                            </Button>
+                          ) : (
+                            <span className="text-slate-300 text-xs">—</span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </main>
 
-      {/* Printable Bill Modal */}
+      {/* Printable Compact Bill Modal */}
       {activeBill && (
         <BillModal bill={activeBill} onClose={() => setActiveBill(null)} />
       )}
 
       {/* Customer Profile & Settings Modal */}
-      {showProfileModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-slate-200 space-y-5 animate-fadeIn">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-2">
-                <span className="text-xl">👤</span>
-                <h3 className="font-bold text-slate-900 text-lg">My Customer Profile</h3>
+      <Dialog open={showProfileModal} onOpenChange={setShowProfileModal}>
+        <DialogContent className="max-w-md p-6 sm:p-7 rounded-3xl">
+          <DialogHeader className="space-y-1">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-sm">
+                👤
               </div>
-              <button
-                onClick={() => setShowProfileModal(false)}
-                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg cursor-pointer transition"
-              >
-                <FiX size={18} />
-              </button>
+              <DialogTitle className="text-lg font-black text-slate-900">Customer Profile</DialogTitle>
+            </div>
+            <DialogDescription className="text-xs text-slate-500">
+              Manage your verified customer details and communication preferences.
+            </DialogDescription>
+          </DialogHeader>
+
+          {profileMsg.text && (
+            <Alert
+              variant={profileMsg.type === "success" ? "success" : "destructive"}
+              className="py-2.5 text-xs font-medium"
+            >
+              <AlertDescription className="flex items-center gap-1.5">
+                {profileMsg.type === "success" ? (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                ) : (
+                  <AlertCircle className="w-4 h-4 text-rose-600" />
+                )}
+                <span>{profileMsg.text}</span>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          <form onSubmit={handleSaveProfile} className="space-y-4 pt-1">
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-700">
+                Verified Mobile Number
+              </label>
+              <Input
+                type="text"
+                disabled
+                value={customer?.mobile || ""}
+                className="bg-slate-100 border-slate-200 font-mono text-xs cursor-not-allowed text-slate-500"
+              />
+              <p className="text-[10px] text-slate-400">Primary phone number used for login and counter pickup verification.</p>
             </div>
 
-            {profileMsg.text && (
-              <div
-                className={`p-3 rounded-xl text-xs font-medium flex items-center gap-2 ${
-                  profileMsg.type === "success"
-                    ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
-                    : "bg-red-50 text-red-700 border border-red-200"
-                }`}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-700">
+                Email Address
+              </label>
+              <Input
+                type="email"
+                value={profileForm.email}
+                onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
+                placeholder="e.g. customer@example.com"
+                className="text-xs border-slate-300"
+              />
+              <p className="text-[10px] text-slate-400">Used for purchase receipts and instant order updates.</p>
+            </div>
+
+            <DialogFooter className="pt-3 gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowProfileModal(false)}
+                className="text-xs font-bold h-9"
               >
-                <FiAlertCircle size={15} />
-                <span>{profileMsg.text}</span>
-              </div>
-            )}
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={savingProfile}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold h-9 px-4"
+              >
+                {savingProfile ? "Saving..." : "Save Profile"}
+              </Button>
+            </DialogFooter>
+          </form>
 
-            <form onSubmit={handleSaveProfile} className="space-y-4">
+          {/* Danger Zone: Delete Profile */}
+          <div className="pt-4 mt-2 border-t border-rose-100 space-y-2">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-rose-600">
+              Danger Zone
+            </p>
+            <div className="p-3.5 bg-rose-50/60 border border-rose-200/80 rounded-2xl flex items-center justify-between gap-3">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Verified Mobile Number
-                </label>
-                <input
-                  type="text"
-                  disabled
-                  value={customer?.mobile || ""}
-                  className="w-full bg-slate-100 border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-500 font-mono cursor-not-allowed"
-                />
-                <p className="text-[10px] text-slate-400 mt-0.5">Primary login and OTP identifier.</p>
+                <p className="text-xs font-bold text-rose-950">Delete Customer Account</p>
+                <p className="text-[10px] text-rose-700 mt-0.5">
+                  Permanently delete your profile and personal data.
+                </p>
               </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Email Address
-                </label>
-                <input
-                  type="email"
-                  value={profileForm.email}
-                  onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
-                  placeholder="e.g. customer@example.com"
-                  className="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                />
-                <p className="text-[10px] text-slate-400 mt-0.5">Used for order receipts and updates.</p>
-              </div>
-
-              <div className="pt-2 flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowProfileModal(false)}
-                  className="px-4 py-2 border border-slate-200 text-slate-600 text-xs font-bold rounded-xl hover:bg-slate-50 cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={savingProfile}
-                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition shadow-xs cursor-pointer disabled:bg-emerald-400"
-                >
-                  {savingProfile ? "Saving..." : "Save Profile"}
-                </button>
-              </div>
-            </form>
-
-            {/* Danger Zone: Delete Profile */}
-            <div className="pt-4 border-t border-red-100 space-y-2">
-              <p className="text-[11px] font-bold uppercase tracking-wider text-red-600">
-                Danger Zone
-              </p>
-              <div className="p-3 bg-red-50/70 border border-red-200 rounded-2xl flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs font-bold text-red-950">Delete Customer Account</p>
-                  <p className="text-[10px] text-red-700 mt-0.5">
-                    Permanently delete your profile and personal data.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleDeleteAccount}
-                  disabled={savingProfile}
-                  className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-3 py-2 rounded-xl transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap shadow-xs"
-                >
-                  <FiTrash2 size={13} /> Delete Account
-                </button>
-              </div>
+              <Button
+                type="button"
+                variant="destructive"
+                size="sm"
+                onClick={handleDeleteAccount}
+                disabled={savingProfile}
+                className="h-8 text-xs font-bold px-3 rounded-xl gap-1.5 shrink-0"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Delete</span>
+              </Button>
             </div>
           </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
 
       {/* Incident / Misbehaviour Report Modal */}
       <ReportIssueModal

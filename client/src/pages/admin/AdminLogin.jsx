@@ -80,7 +80,7 @@ export default function AdminLogin() {
                   required
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
-                  placeholder="admin or admin@shopflow.com"
+                  placeholder="Enter administrator identifier"
                   className="w-full px-4 py-3 bg-slate-900/80 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-sm"
                 />
               </div>
@@ -117,18 +117,6 @@ export default function AdminLogin() {
               </button>
             </div>
           </form>
-
-          <div className="mt-6 border-t border-slate-700/60 pt-4 text-center">
-            <div className="p-3 bg-slate-900/50 rounded-xl border border-slate-700/40 text-xs text-slate-400 text-left">
-              <span className="font-bold text-slate-300 block mb-1">
-                🔐 Administrator Access
-              </span>
-              Default initial master credentials:
-              <br />
-              <code className="text-indigo-400 font-mono">admin</code> /{" "}
-              <code className="text-indigo-400 font-mono">Admin@123456</code>
-            </div>
-          </div>
         </div>
 
         <div className="mt-6 text-center">

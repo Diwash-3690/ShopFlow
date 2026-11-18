@@ -9,6 +9,7 @@ import {
   updateReportStatus,
   getAdminShops,
   toggleShopStatus,
+  updateAdminPassword,
 } from "../../services/adminService";
 
 export default function AdminDashboard() {
@@ -34,6 +35,14 @@ export default function AdminDashboard() {
   const [selectedReport, setSelectedReport] = useState(null);
   const [adminNoteInput, setAdminNoteInput] = useState("");
   const [statusInput, setStatusInput] = useState("PENDING");
+
+  // Security / Password modal state
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [passwordMsg, setPasswordMsg] = useState({ text: "", type: "" });
 
   const showToast = (text, type = "success") => {
     setMessage({ text, type });
@@ -182,6 +191,46 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    setPasswordMsg({ text: "", type: "" });
+
+    if (!currentPassword || !newPassword) {
+      setPasswordMsg({ text: "Please enter all required fields", type: "error" });
+      return;
+    }
+    if (newPassword.length < 6) {
+      setPasswordMsg({ text: "New password must be at least 6 characters", type: "error" });
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordMsg({ text: "New passwords do not match", type: "error" });
+      return;
+    }
+
+    setPasswordLoading(true);
+    try {
+      const res = await updateAdminPassword(currentPassword, newPassword);
+      if (res.success) {
+        setPasswordMsg({ text: "Admin security password changed successfully!", type: "success" });
+        setTimeout(() => {
+          setShowPasswordModal(false);
+          setCurrentPassword("");
+          setNewPassword("");
+          setConfirmPassword("");
+          setPasswordMsg({ text: "", type: "" });
+        }, 1500);
+      }
+    } catch (err) {
+      setPasswordMsg({
+        text: err.response?.data?.message || "Failed to update password",
+        type: "error",
+      });
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
+
   const handleLogout = () => {
     adminLogout();
     navigate("/admin/login");
@@ -204,7 +253,7 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-3 sm:space-x-4">
             <button
               onClick={loadAllData}
               title="Refresh Live Data"
@@ -212,6 +261,17 @@ export default function AdminDashboard() {
             >
               <span>🔄</span>
               <span className="hidden sm:inline">Refresh</span>
+            </button>
+            <button
+              onClick={() => {
+                setPasswordMsg({ text: "", type: "" });
+                setShowPasswordModal(true);
+              }}
+              title="Change Security Password"
+              className="text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 px-3 py-1.5 rounded-lg border border-slate-600 transition-colors flex items-center space-x-1"
+            >
+              <span>🔑</span>
+              <span className="hidden sm:inline">Change Password</span>
             </button>
             <div className="text-right hidden sm:block">
               <div className="text-xs font-bold text-white">
@@ -921,6 +981,102 @@ export default function AdminDashboard() {
                 {actionLoading ? "Saving..." : "Save Status & Notes"}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Admin Change Password Modal */}
+      {showPasswordModal && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-800 rounded-3xl shadow-2xl max-w-md w-full border border-slate-700 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="bg-slate-750 px-6 py-5 border-b border-slate-700 flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <span className="text-xl">🔑</span>
+                <h3 className="font-bold text-white text-base">
+                  Change Master Password
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowPasswordModal(false)}
+                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-700 transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleChangePassword} className="p-6 space-y-4">
+              {passwordMsg.text && (
+                <div
+                  className={`p-3 rounded-xl text-xs font-semibold border ${
+                    passwordMsg.type === "error"
+                      ? "bg-rose-500/10 border-rose-500/30 text-rose-300"
+                      : "bg-emerald-500/10 border-emerald-500/30 text-emerald-300"
+                  }`}
+                >
+                  {passwordMsg.text}
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+                  Current Password
+                </label>
+                <input
+                  type="password"
+                  required
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder="••••••••••••"
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+                  New Password (min 6 chars)
+                </label>
+                <input
+                  type="password"
+                  required
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="••••••••••••"
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+                  Confirm New Password
+                </label>
+                <input
+                  type="password"
+                  required
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="••••••••••••"
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              <div className="pt-2 flex items-center justify-end space-x-3">
+                <button
+                  type="button"
+                  onClick={() => setShowPasswordModal(false)}
+                  disabled={passwordLoading}
+                  className="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-white transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={passwordLoading}
+                  className="px-5 py-2.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-600/30 transition-all disabled:opacity-50"
+                >
+                  {passwordLoading ? "Updating..." : "Update Password"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

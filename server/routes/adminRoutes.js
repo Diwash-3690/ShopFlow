@@ -12,5 +12,6 @@ router.get("/reports", protectAdmin, adminController.getAdminReports);
 router.patch("/reports/:id", protectAdmin, adminController.updateReportStatus);
 router.get("/shops", protectAdmin, adminController.getAdminShops);
 router.patch("/shops/:shopId/toggle-status", protectAdmin, adminController.toggleShopStatus);
+router.put("/password", protectAdmin, adminController.updateAdminPassword);
 
 module.exports = router;

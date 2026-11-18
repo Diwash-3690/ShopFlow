@@ -64,6 +64,11 @@ export const toggleShopStatus = async (shopId) => {
   return response.data;
 };
 
+export const updateAdminPassword = async (currentPassword, newPassword) => {
+  const response = await adminApi.put("/password", { currentPassword, newPassword });
+  return response.data;
+};
+
 export default {
   adminLogin,
   adminLogout,
@@ -74,4 +79,5 @@ export default {
   updateReportStatus,
   getAdminShops,
   toggleShopStatus,
+  updateAdminPassword,
 };

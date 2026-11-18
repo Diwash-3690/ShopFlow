@@ -95,7 +95,7 @@ function ShopDiscovery() {
         </div>
 
         <Link
-          to="/"
+          to="/customer/dashboard"
           className="text-slate-900 font-black text-xl tracking-tight flex items-center gap-2"
         >
           <span>🛍️</span> ShopFlow

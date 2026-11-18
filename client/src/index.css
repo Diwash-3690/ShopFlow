@@ -28,3 +28,36 @@ body {
   color: var(--foreground);
   background-color: #f8fafc;
 }
+
+@media print {
+  /* Hide all app chrome, backgrounds, overlays */
+  body * {
+    visibility: hidden !important;
+  }
+  
+  /* Show only the dedicated printable receipt */
+  #printable-bill, #printable-bill * {
+    visibility: visible !important;
+  }
+  
+  #printable-bill {
+    position: fixed !important;
+    left: 50% !important;
+    top: 0 !important;
+    transform: translateX(-50%) !important;
+    width: 380px !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 10px !important;
+    border: 1px dashed #cbd5e1 !important;
+    box-shadow: none !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    z-index: 99999 !important;
+  }
+
+  @page {
+    size: auto;
+    margin: 8mm;
+  }
+}

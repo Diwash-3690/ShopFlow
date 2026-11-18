@@ -1,11 +1,19 @@
-import { FiPrinter, FiX, FiCheckCircle, FiMapPin, FiPhone, FiCreditCard } from "react-icons/fi";
+import React, { useRef } from "react";
+import {
+  Printer,
+  Download,
+  X,
+  CheckCircle2,
+  MapPin,
+  Phone,
+  CreditCard,
+  Receipt,
+} from "lucide-react";
+import { Button } from "./ui/button";
 
 function BillModal({ bill, onClose }) {
+  const receiptRef = useRef(null);
   if (!bill) return null;
-
-  const handlePrint = () => {
-    window.print();
-  };
 
   const isOnline = bill.orderType === "ONLINE";
   const formattedDate = bill.issuedAt
@@ -24,158 +32,241 @@ function BillModal({ bill, onClose }) {
         minute: "2-digit",
       });
 
+  const generateReceiptHtml = () => {
+    const el = document.getElementById("printable-bill");
+    if (!el) return "";
+    return `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <title>Receipt - ${bill.billNumber || bill.orderNumber || "Invoice"}</title>
+          <style>
+            @page { size: auto; margin: 8mm; }
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+              margin: 0 auto;
+              padding: 12px;
+              color: #0f172a;
+              font-size: 11px;
+              max-width: 400px;
+              line-height: 1.4;
+            }
+            * { box-sizing: border-box; }
+            .header { text-align: center; border-bottom: 2px dashed #cbd5e1; padding-bottom: 10px; margin-bottom: 10px; }
+            .store-name { font-size: 16px; font-weight: 900; margin: 0 0 2px 0; color: #0f172a; }
+            .meta { color: #64748b; font-size: 10px; margin: 2px 0; }
+            .badge { display: inline-block; padding: 2px 6px; background: #f1f5f9; border-radius: 4px; font-size: 9px; font-family: monospace; font-weight: bold; }
+            .pickup-box { border: 2px dashed #10b981; background: #f0fdf4; padding: 8px; border-radius: 8px; text-align: center; margin: 8px 0; }
+            .pickup-code { font-size: 18px; font-weight: 900; letter-spacing: 2px; color: #065f46; font-family: monospace; }
+            table { width: 100%; border-collapse: collapse; margin: 8px 0; }
+            th { border-bottom: 1px solid #0f172a; text-align: left; padding: 4px 2px; font-size: 9px; text-transform: uppercase; color: #64748b; }
+            td { padding: 4px 2px; border-bottom: 1px dashed #e2e8f0; font-size: 11px; }
+            .text-right { text-align: right; }
+            .text-center { text-align: center; }
+            .font-mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+            .font-bold { font-weight: bold; }
+            .totals { margin-top: 8px; border-top: 1px solid #0f172a; padding-top: 6px; }
+            .totals-row { display: flex; justify-content: space-between; margin-bottom: 3px; font-size: 11px; }
+            .grand-total { font-size: 14px; font-weight: 900; border-top: 2px solid #0f172a; padding-top: 4px; margin-top: 4px; }
+            .utr-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 6px; margin-top: 8px; font-size: 10px; }
+            .footer { text-align: center; margin-top: 12px; font-size: 9px; color: #94a3b8; border-top: 1px dashed #e2e8f0; padding-top: 8px; }
+          </style>
+        </head>
+        <body>
+          ${el.innerHTML}
+        </body>
+      </html>
+    `;
+  };
+
+  const handlePrint = () => {
+    try {
+      const htmlContent = generateReceiptHtml();
+      const iframe = document.createElement("iframe");
+      iframe.style.position = "fixed";
+      iframe.style.right = "0";
+      iframe.style.bottom = "0";
+      iframe.style.width = "0px";
+      iframe.style.height = "0px";
+      iframe.style.border = "none";
+      document.body.appendChild(iframe);
+
+      const frameDoc = iframe.contentWindow || iframe.contentDocument;
+      const doc = frameDoc.document || frameDoc;
+      doc.open();
+      doc.write(htmlContent);
+      doc.close();
+
+      setTimeout(() => {
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+        setTimeout(() => {
+          if (document.body.contains(iframe)) {
+            document.body.removeChild(iframe);
+          }
+        }, 1500);
+      }, 300);
+    } catch {
+      window.print();
+    }
+  };
+
+  const handleDownload = () => {
+    try {
+      const htmlContent = generateReceiptHtml();
+      const blob = new Blob([htmlContent], { type: "text/html" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Receipt_${bill.billNumber || bill.orderNumber || "Order"}.html`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      window.print();
+    }
+  };
+
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-      <div className="bg-white rounded-3xl max-w-2xl w-full shadow-2xl border border-slate-200 overflow-hidden my-6 animate-fadeIn">
-        {/* Modal Top Bar (hidden during printing) */}
-        <div className="flex items-center justify-between px-6 py-3.5 border-b border-slate-100 bg-slate-50 print:hidden">
+    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-150">
+      <div className="bg-white rounded-2xl max-w-sm sm:max-w-md w-full shadow-2xl border border-slate-200 overflow-hidden my-4">
+        {/* Modal Top Control Bar (Hidden on Print) */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50 print:hidden">
           <div className="flex items-center gap-2">
-            <span className="text-xl">🧾</span>
-            <div>
-              <h3 className="font-bold text-slate-800 text-sm">Retail Invoice / Official Receipt</h3>
-              <p className="text-[10px] text-slate-400">Zero-commission local commerce proof</p>
-            </div>
+            <Receipt className="w-4 h-4 text-slate-700" />
+            <span className="font-bold text-xs text-slate-800">
+              Receipt / Tax Invoice
+            </span>
           </div>
-          <div className="flex items-center gap-2">
-            <button
+
+          <div className="flex items-center gap-1.5">
+            <Button
+              size="sm"
               onClick={handlePrint}
-              className="flex items-center gap-1.5 bg-slate-900 hover:bg-emerald-600 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition cursor-pointer shadow-xs"
+              className="h-8 px-2.5 text-xs font-bold bg-slate-900 hover:bg-emerald-600 text-white gap-1"
+              title="Print Receipt"
             >
-              <FiPrinter size={14} /> Print Receipt
-            </button>
+              <Printer className="w-3.5 h-3.5" />
+              <span>Print</span>
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDownload}
+              className="h-8 px-2 text-xs text-slate-600 hover:text-slate-900"
+              title="Download Receipt HTML"
+            >
+              <Download className="w-3.5 h-3.5" />
+            </Button>
+
             <button
               onClick={onClose}
-              className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg cursor-pointer transition hover:bg-slate-200/50"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition cursor-pointer"
             >
-              <FiX size={18} />
+              <X className="w-4 h-4" />
             </button>
           </div>
         </div>
 
-        {/* Printable Invoice Container */}
-        <div id="printable-bill" className="p-6 sm:p-8 space-y-6 text-slate-800 bg-white">
-          {/* Shop Header Banner */}
-          <div className="border-b-2 border-slate-900 pb-5">
-            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-              <div>
-                <div className="flex items-center gap-2">
-                  <h1 className="text-2xl sm:text-3xl font-black text-slate-950 tracking-tight">
-                    {bill.shop?.shopName || "Merchant Store"}
-                  </h1>
-                </div>
+        {/* Compact Printable Receipt */}
+        <div
+          id="printable-bill"
+          ref={receiptRef}
+          className="p-4 sm:p-5 text-slate-900 bg-white space-y-3.5 text-xs font-sans"
+        >
+          {/* Header */}
+          <div className="header text-center border-b border-dashed border-slate-300 pb-3">
+            <h2 className="store-name text-base font-black tracking-tight text-slate-950">
+              {bill.shop?.shopName || "Merchant Store"}
+            </h2>
 
-                <div className="mt-1 flex flex-wrap items-center gap-2">
-                  <span className="text-[11px] font-mono font-bold bg-slate-100 text-slate-800 px-2 py-0.5 rounded">
-                    Shop ID: {bill.shop?.shopId || "LOCAL-STORE"}
-                  </span>
-                  {bill.shop?.shopNumber && (
-                    <span className="text-[11px] text-slate-500 font-medium">
-                      Reg/Shop No: {bill.shop.shopNumber}
-                    </span>
-                  )}
-                </div>
-
-                {/* Shop Location & Contact Details */}
-                <div className="mt-2 text-xs text-slate-600 space-y-0.5">
-                  <p className="flex items-start gap-1.5 max-w-sm">
-                    <FiMapPin className="text-emerald-700 shrink-0 mt-0.5" size={13} />
-                    <span>{bill.shop?.address || "Neighborhood Store, Registered on ShopFlow"}</span>
-                  </p>
-                  <p className="flex items-center gap-1.5">
-                    <FiPhone className="text-emerald-700 shrink-0" size={13} />
-                    <span>Contact: {bill.shop?.contactNumber || "N/A"}</span>
-                  </p>
-                  {bill.shop?.upiId && (
-                    <p className="flex items-center gap-1.5 text-purple-900 font-medium font-mono text-[11px]">
-                      <FiCreditCard className="text-purple-700 shrink-0" size={13} />
-                      <span>Merchant UPI: {bill.shop.upiId}</span>
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {/* Invoice Meta Column */}
-              <div className="text-left sm:text-right space-y-1 bg-slate-50 sm:bg-transparent p-3 sm:p-0 rounded-2xl border sm:border-0 border-slate-100">
-                <div className="inline-block px-3 py-1 bg-slate-900 text-white font-mono text-xs font-black uppercase tracking-wider rounded-lg">
-                  {bill.billNumber || "RETAIL INVOICE"}
-                </div>
-                <p className="text-xs text-slate-500 pt-1">
-                  <strong>Date:</strong> {formattedDate}
-                </p>
-                <p className="text-xs font-semibold text-slate-700">
-                  <strong>Order:</strong> #{bill.orderNumber}
-                </p>
-                <p className="text-xs text-slate-500">
-                  <strong>Channel:</strong> {isOnline ? "Online Pickup" : "Counter Walk-in"}
-                </p>
-              </div>
+            <div className="flex items-center justify-center gap-1.5 mt-1 text-[10px] text-slate-500 flex-wrap">
+              <span className="badge font-mono bg-slate-100 px-1.5 py-0.5 rounded text-slate-700">
+                Shop ID: {bill.shop?.shopId || "LOCAL"}
+              </span>
+              {bill.shop?.shopNumber && (
+                <span className="text-slate-500 font-medium">
+                  Reg: {bill.shop.shopNumber}
+                </span>
+              )}
             </div>
-          </div>
 
-          {/* Customer & Order Metadata Strip */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs bg-slate-50 p-4 rounded-2xl border border-slate-200">
-            <div>
-              <p className="text-slate-400 uppercase font-bold text-[10px] tracking-wider">Customer Details</p>
-              <p className="font-bold text-slate-800 text-sm mt-0.5">
-                {bill.customer?.mobile || "Counter Walk-in Guest"}
+            <div className="mt-1.5 text-[11px] text-slate-600 space-y-0.5">
+              <p className="flex items-center justify-center gap-1 text-center">
+                <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
+                <span>{bill.shop?.address || "Neighborhood Retail Merchant"}</span>
               </p>
-              <p className="text-[11px] text-slate-500">Customer Registered Account</p>
-            </div>
-            <div>
-              <p className="text-slate-400 uppercase font-bold text-[10px] tracking-wider">Fulfillment & Order State</p>
-              <div className="mt-0.5 flex items-center gap-2">
-                <span className="font-bold text-slate-800">
-                  {isOnline ? "Store Counter Pickup" : "Direct Walk-in Sale"}
-                </span>
-                <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 font-bold text-[10px] rounded-full uppercase">
-                  {bill.status || "CONFIRMED"}
-                </span>
-              </div>
+              <p className="flex items-center justify-center gap-1">
+                <Phone className="w-3 h-3 text-slate-400 shrink-0" />
+                <span>Ph: {bill.shop?.contactNumber || "N/A"}</span>
+              </p>
+              {bill.shop?.upiId && (
+                <p className="flex items-center justify-center gap-1 font-mono text-[10px] text-purple-700">
+                  <CreditCard className="w-3 h-3 text-purple-500 shrink-0" />
+                  <span>UPI: {bill.shop.upiId}</span>
+                </p>
+              )}
             </div>
           </div>
 
-          {/* Online Order Unique Pickup ID Banner */}
+          {/* Invoice Metadata Strip */}
+          <div className="flex items-center justify-between text-[11px] bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+            <div>
+              <p className="font-mono font-bold text-slate-900 text-xs">
+                {bill.billNumber || `INV-${bill.orderNumber?.slice(-6) || "RECEIPT"}`}
+              </p>
+              <p className="text-[10px] text-slate-500">{formattedDate}</p>
+            </div>
+            <div className="text-right">
+              <p className="font-semibold text-slate-700">#{bill.orderNumber}</p>
+              <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.5 rounded uppercase">
+                {isOnline ? "Store Pickup" : "Walk-in"}
+              </span>
+            </div>
+          </div>
+
+          {/* Pickup Verification Box (If online pickup) */}
           {bill.pickupId && (
-            <div className="p-4 bg-emerald-50 border-2 border-dashed border-emerald-300 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
-              <div>
-                <p className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider">
-                  Official Verification Code
-                </p>
-                <p className="text-xs text-emerald-700 mt-0.5">
-                  Present this code to the merchant upon counter collection
-                </p>
-              </div>
-              <div className="bg-emerald-800 text-white font-mono text-xl font-black px-4 py-2 rounded-xl tracking-widest shadow-xs">
+            <div className="pickup-box border border-dashed border-emerald-400 bg-emerald-50/80 p-2.5 rounded-xl text-center">
+              <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider block">
+                Counter Pickup Verification Code
+              </span>
+              <span className="pickup-code text-lg font-black text-emerald-800 font-mono tracking-widest block mt-0.5">
                 {bill.pickupId}
-              </div>
+              </span>
             </div>
           )}
 
           {/* Itemized Table */}
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
+          <div className="pt-1">
+            <table className="w-full text-left text-[11px] border-collapse">
               <thead>
-                <tr className="border-b-2 border-slate-200 text-slate-400 uppercase text-[10px] tracking-wider bg-slate-50/50">
-                  <th className="py-2.5 px-2 font-bold w-10">#</th>
-                  <th className="py-2.5 px-2 font-bold">Item Description</th>
-                  <th className="py-2.5 px-2 text-center font-bold">Qty</th>
-                  <th className="py-2.5 px-2 text-right font-bold">Unit Price</th>
-                  <th className="py-2.5 px-2 text-right font-bold">Total</th>
+                <tr className="border-b border-slate-900 text-[10px] uppercase text-slate-500 font-bold">
+                  <th className="py-1 px-1">Item</th>
+                  <th className="py-1 px-1 text-center w-8">Qty</th>
+                  <th className="py-1 px-1 text-right w-16">Price</th>
+                  <th className="py-1 px-1 text-right w-16">Total</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-dashed divide-slate-200">
                 {bill.items?.map((item, idx) => (
-                  <tr key={item.id || idx} className="hover:bg-slate-50/50">
-                    <td className="py-3 px-2 text-slate-400 font-mono text-[11px]">{idx + 1}</td>
-                    <td className="py-3 px-2 font-semibold text-slate-900">
+                  <tr key={item.id || idx}>
+                    <td className="py-1.5 px-1 font-medium text-slate-900">
                       {item.productName}
-                      <span className="text-[10px] text-slate-400 font-normal ml-1">({item.unit})</span>
+                      <span className="text-[9px] text-slate-400 block font-normal">
+                        ({item.unit})
+                      </span>
                     </td>
-                    <td className="py-3 px-2 text-center font-bold text-slate-700">{item.quantity}</td>
-                    <td className="py-3 px-2 text-right text-slate-600 font-mono">
+                    <td className="py-1.5 px-1 text-center font-bold text-slate-700">
+                      {item.quantity}
+                    </td>
+                    <td className="py-1.5 px-1 text-right font-mono text-slate-600">
                       ₹{parseFloat(item.unitPrice || 0).toFixed(2)}
                     </td>
-                    <td className="py-3 px-2 text-right font-bold text-slate-950 font-mono">
+                    <td className="py-1.5 px-1 text-right font-bold text-slate-900 font-mono">
                       ₹{parseFloat(item.lineTotal || 0).toFixed(2)}
                     </td>
                   </tr>
@@ -184,87 +275,74 @@ function BillModal({ bill, onClose }) {
             </table>
           </div>
 
-          {/* Totals & Fee Breakdown */}
-          <div className="border-t border-slate-200 pt-4 flex flex-col sm:flex-row sm:justify-between items-start sm:items-center gap-4">
-            <div className="text-xs text-slate-500 space-y-1">
-              <p className="flex items-center gap-1.5 font-medium text-emerald-800">
-                <FiCheckCircle size={13} className="text-emerald-600" />
-                Zero Platform Commission • 100% Direct to Store
-              </p>
-              <p className="text-[11px] text-slate-400">All prices include applicable local taxes.</p>
+          {/* Totals Section */}
+          <div className="totals border-t border-slate-900 pt-2 space-y-1 text-[11px]">
+            <div className="totals-row flex justify-between text-slate-600">
+              <span>Subtotal:</span>
+              <span className="font-mono">
+                ₹{parseFloat(bill.subtotal || bill.totalAmount || 0).toFixed(2)}
+              </span>
             </div>
-
-            <div className="w-full sm:w-64 space-y-1.5 text-xs">
-              <div className="flex justify-between text-slate-600">
-                <span>Items Subtotal</span>
-                <span className="font-mono">₹{parseFloat(bill.subtotal || bill.totalAmount || 0).toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between text-slate-500">
-                <span>Platform Convenience Fee</span>
-                <span className="text-emerald-700 font-semibold font-mono">FREE (₹0.00)</span>
-              </div>
-              <div className="flex justify-between text-base font-black text-slate-950 pt-2 border-t-2 border-slate-900">
-                <span>Grand Total</span>
-                <span className="text-emerald-700 font-mono">₹{parseFloat(bill.totalAmount || 0).toFixed(2)}</span>
-              </div>
+            <div className="totals-row flex justify-between text-slate-500 text-[10px]">
+              <span>Platform Convenience Fee:</span>
+              <span className="font-bold text-emerald-700 font-mono">FREE (₹0.00)</span>
+            </div>
+            <div className="grand-total flex justify-between text-sm font-black text-slate-950 border-t-2 border-slate-900 pt-1.5">
+              <span>Grand Total:</span>
+              <span className="font-mono text-emerald-700">
+                ₹{parseFloat(bill.totalAmount || 0).toFixed(2)}
+              </span>
             </div>
           </div>
 
-          {/* Payment Verification & UTR Audit Box */}
-          <div className="border border-slate-200 bg-slate-50/70 p-4 rounded-2xl text-xs space-y-2">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-100 text-emerald-700">
-                  <FiCheckCircle size={13} />
-                </span>
-                <span className="font-bold text-slate-900">
-                  Payment Status: {bill.payment?.status || "VERIFIED"}
-                </span>
-                <span className="text-[11px] text-slate-500">
-                  via {bill.payment?.method || "UPI"}
-                </span>
-              </div>
-
+          {/* Payment & UTR Strip */}
+          <div className="utr-box bg-slate-50 border border-slate-200 p-2 rounded-xl text-[10px] space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-slate-700 flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                Status: {bill.payment?.status || "VERIFIED"} ({bill.payment?.method || "UPI"})
+              </span>
               {bill.payment?.paidAt && (
-                <span className="text-[11px] text-slate-400">
-                  Verified on: {new Date(bill.payment.paidAt).toLocaleTimeString()}
+                <span className="text-slate-400">
+                  {new Date(bill.payment.paidAt).toLocaleTimeString()}
                 </span>
               )}
             </div>
 
-            {/* Prominent UTR Display */}
             {bill.payment?.providerTransactionId && (
-              <div className="pt-2 border-t border-slate-200/80 flex flex-wrap items-center justify-between gap-1 text-[11px]">
-                <span className="text-slate-500 font-medium">Bank Transaction Ref / UTR:</span>
-                <code className="bg-white px-2.5 py-1 rounded-md border border-slate-300 font-mono font-bold text-slate-900 text-xs">
+              <div className="flex items-center justify-between border-t border-slate-200/80 pt-1">
+                <span className="text-slate-500 font-semibold">Bank Ref / UTR:</span>
+                <code className="bg-white px-1.5 py-0.5 rounded border border-slate-200 font-mono font-bold text-slate-900">
                   {bill.payment.providerTransactionId}
                 </code>
               </div>
             )}
           </div>
 
-          {/* Professional Footer */}
-          <div className="border-t border-dashed border-slate-200 pt-4 text-center text-slate-400 text-[11px] space-y-1">
-            <p className="font-medium text-slate-600">
-              Thank you for supporting your local neighborhood store!
+          {/* Footer note */}
+          <div className="footer text-center text-[10px] text-slate-400 border-t border-dashed border-slate-200 pt-2 leading-tight">
+            <p className="font-semibold text-slate-600">
+              Thank you for shopping local!
             </p>
-            <p>
-              This is a digitally generated store invoice issued by <strong>{bill.shop?.shopName || "the Merchant"}</strong> on ShopFlow.
+            <p className="text-[9px] text-slate-400 mt-0.5">
+              Issued by {bill.shop?.shopName || "Merchant"} on ShopFlow
             </p>
           </div>
         </div>
 
-        {/* Modal Bottom Close Bar (hidden during print) */}
-        <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between print:hidden">
-          <p className="text-xs text-slate-500 font-medium">
-            Press Print to download PDF or print receipt
-          </p>
-          <button
+        {/* Bottom bar (hidden on print) */}
+        <div className="px-4 py-2.5 bg-slate-50 border-t border-slate-100 flex items-center justify-between print:hidden">
+          <span className="text-[10px] text-slate-400">
+            Compact Retail Slip
+          </span>
+          <Button
+            variant="secondary"
+            size="sm"
             onClick={onClose}
-            className="px-5 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold rounded-xl transition cursor-pointer"
+            className="h-8 text-xs font-semibold"
           >
             Close Receipt
-          </button>
+          </Button>
         </div>
       </div>
     </div>

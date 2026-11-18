@@ -273,7 +273,7 @@ function VendorDashboard() {
       {/* Top Navbar */}
       <nav className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-0 z-20">
         <div className="flex items-center space-x-3">
-          <Link to="/" className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+          <Link to="/vendor/dashboard" className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
             <span>🛒</span> ShopFlow <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-bold uppercase">Vendor</span>
           </Link>
         </div>

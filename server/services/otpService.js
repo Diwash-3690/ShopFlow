@@ -136,9 +136,95 @@ const consumeVerification = async ({ mobile, purpose }) => {
     });
 };
 
+/**
+ * Generate, hash, and persist OTP for email verification.
+ */
+const generateAndSendEmailOtp = async ({ email, mobile, purpose = "EMAIL_VERIFICATION" }) => {
+    const cleanEmail = email.trim().toLowerCase();
+    const code = generateCode();
+    const codeHash = hashOtp(code);
+    const expiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
+
+    // Invalidate existing unused email OTPs
+    await prisma.otpVerification.deleteMany({
+        where: {
+            email: cleanEmail,
+            purpose,
+            verifiedAt: null,
+        },
+    });
+
+    // Save the new OTP
+    await prisma.otpVerification.create({
+        data: {
+            mobile: mobile ? mobile.trim() : "EMAIL_USER",
+            email: cleanEmail,
+            purpose,
+            codeHash,
+            expiresAt,
+        },
+    });
+
+    console.log("========================================");
+    console.log(`[ShopFlow Email OTP Service]`);
+    console.log(`Email:   ${cleanEmail}`);
+    console.log(`Purpose: ${purpose}`);
+    console.log(`Code:    ${code}`);
+    console.log(`Expires: in ${OTP_EXPIRY_MINUTES} minutes`);
+    console.log("========================================");
+
+    return {
+        success: true,
+        message: `Verification code sent to ${cleanEmail}`,
+        devCode: code, // convenient dev fallback so user can verify immediately
+    };
+};
+
+/**
+ * Verify an entered email OTP against active records.
+ */
+const verifyEmailOtp = async ({ email, code, purpose = "EMAIL_VERIFICATION" }) => {
+    if (!code || typeof code !== "string") {
+        return { success: false, message: "Verification code is required" };
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    const codeHash = hashOtp(code);
+    const now = new Date();
+
+    const record = await prisma.otpVerification.findFirst({
+        where: {
+            email: cleanEmail,
+            purpose,
+            codeHash,
+            verifiedAt: null,
+            expiresAt: {
+                gt: now,
+            },
+        },
+        orderBy: {
+            createdAt: "desc",
+        },
+    });
+
+    if (!record) {
+        return { success: false, message: "Invalid or expired verification code" };
+    }
+
+    // Mark as verified
+    await prisma.otpVerification.update({
+        where: { id: record.id },
+        data: { verifiedAt: now },
+    });
+
+    return { success: true, message: "Email verified successfully" };
+};
+
 module.exports = {
     generateAndSendOtp,
     verifyOtp,
     hasValidVerification,
     consumeVerification,
+    generateAndSendEmailOtp,
+    verifyEmailOtp,
 };

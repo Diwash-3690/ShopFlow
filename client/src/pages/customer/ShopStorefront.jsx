@@ -18,6 +18,8 @@ import {
   AlertTriangle,
   QrCode,
   ShieldCheck,
+  Flame,
+  TrendingUp,
 } from "lucide-react";
 import { getPublicShopById } from "../../services/shopService";
 import { getPublicShopProducts } from "../../services/productService";
@@ -425,6 +427,30 @@ function ShopStorefront() {
           </div>
         </div>
 
+        {/* Most Selling Item Spotlight Banner */}
+        {products.some((p) => p.isMostSelling) && selectedCategory === "ALL" && !searchQuery.trim() && (
+          <div className="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/5 border border-amber-300/80 rounded-3xl p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-2xs">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-500 text-white flex items-center justify-center shrink-0 shadow-sm">
+                <Flame className="w-6 h-6 text-white fill-white" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <Badge className="bg-amber-500 text-white font-bold text-[10px] tracking-wide uppercase px-2 py-0.5">
+                    Top Priority
+                  </Badge>
+                  <span className="text-xs font-semibold text-amber-900">
+                    Customer Favorite
+                  </span>
+                </div>
+                <h4 className="font-bold text-slate-900 text-sm mt-0.5">
+                  Featured: Most selling item is prioritized and pinned at the top!
+                </h4>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Product Grid */}
         {filteredProducts.length === 0 ? (
           <Card className="rounded-3xl border-slate-200 p-12 text-center text-slate-500 space-y-3 bg-white">
@@ -444,7 +470,11 @@ function ShopStorefront() {
               return (
                 <Card
                   key={p.id}
-                  className="rounded-2xl border-slate-200/90 overflow-hidden flex flex-col shadow-2xs hover:shadow-md hover:border-slate-300 transition-all duration-200 bg-white"
+                  className={`rounded-2xl overflow-hidden flex flex-col transition-all duration-200 bg-white ${
+                    p.isMostSelling
+                      ? "border-amber-300 shadow-md ring-2 ring-amber-400/20 hover:border-amber-400"
+                      : "border-slate-200/90 shadow-2xs hover:shadow-md hover:border-slate-300"
+                  }`}
                 >
                   {/* Product Image / Placeholder */}
                   <div className="h-36 sm:h-44 bg-slate-100 flex items-center justify-center overflow-hidden relative">
@@ -459,8 +489,18 @@ function ShopStorefront() {
                         <Package className="w-10 h-10 text-slate-300" />
                       </div>
                     )}
+                    {/* Most Selling Badge */}
+                    {p.isMostSelling && (
+                      <span className="absolute top-2.5 left-2.5 z-10">
+                        <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white font-black text-[10px] uppercase tracking-wider py-0.5 px-2 shadow-xs border-0 flex items-center gap-1">
+                          <Flame className="w-3 h-3 text-white fill-white" />
+                          <span>Most Selling Item</span>
+                        </Badge>
+                      </span>
+                    )}
+
                     {/* Availability Tag */}
-                    <span className="absolute top-2.5 right-2.5">
+                    <span className="absolute top-2.5 right-2.5 z-10">
                       <Badge
                         variant={p.isAvailable ? "success" : "destructive"}
                         className="text-[10px] font-bold uppercase tracking-wider py-0.5 px-2 shadow-xs"

@@ -212,30 +212,53 @@ const register = async (req, res) => {
     }
 };
 
-// @desc    Customer Login
+// @desc    Customer Login (Accepts 10-digit Mobile Number OR Verified Email)
 // @route   POST /api/auth/customer/login
 const login = async (req, res) => {
     try {
-        const { mobile, password } = req.body;
+        const { mobile, identifier, password } = req.body;
+        const input = (identifier || mobile || "").trim();
 
-        if (!mobile || !password) {
+        if (!input || !password) {
             return res.status(400).json({
                 success: false,
-                message: "Mobile and password are required",
+                message: "Mobile/Email and password are required",
             });
         }
 
-        const cleanMobile = mobile.trim();
+        let customer = null;
 
-        const customer = await prisma.customer.findUnique({
-            where: { mobile: cleanMobile },
-        });
-
-        if (!customer) {
-            return res.status(401).json({
-                success: false,
-                message: "Invalid mobile number or password",
+        if (input.includes("@")) {
+            const cleanEmail = input.toLowerCase();
+            customer = await prisma.customer.findFirst({
+                where: { email: cleanEmail },
             });
+
+            if (!customer) {
+                return res.status(401).json({
+                    success: false,
+                    message: "No customer account registered with this email address.",
+                });
+            }
+
+            if (!customer.emailVerified) {
+                return res.status(403).json({
+                    success: false,
+                    message: "This email address is not verified yet. Please login using your registered mobile number and verify your email in your profile.",
+                });
+            }
+        } else {
+            const cleanMobile = input;
+            customer = await prisma.customer.findUnique({
+                where: { mobile: cleanMobile },
+            });
+
+            if (!customer) {
+                return res.status(401).json({
+                    success: false,
+                    message: "Invalid mobile number or password",
+                });
+            }
         }
 
         const isMatch = await bcrypt.compare(password, customer.passwordHash);
@@ -243,7 +266,7 @@ const login = async (req, res) => {
         if (!isMatch) {
             return res.status(401).json({
                 success: false,
-                message: "Invalid mobile number or password",
+                message: "Invalid credentials. Please check your password.",
             });
         }
 
@@ -350,7 +373,7 @@ const updateProfile = async (req, res) => {
 
         const updateData = {};
         if (email !== undefined) {
-            const cleanEmail = email && email.trim() ? email.trim() : null;
+            const cleanEmail = email && email.trim() ? email.trim().toLowerCase() : null;
             if (cleanEmail) {
                 const existing = await prisma.customer.findFirst({
                     where: { email: cleanEmail, NOT: { id: customerId } },
@@ -363,6 +386,9 @@ const updateProfile = async (req, res) => {
                 }
             }
             updateData.email = cleanEmail;
+            if (cleanEmail !== req.customer.email) {
+                updateData.emailVerified = false;
+            }
         }
 
         const updatedCustomer = await prisma.customer.update({
@@ -382,6 +408,115 @@ const updateProfile = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: error.message || "Failed to update profile",
+        });
+    }
+};
+
+// @desc    Send Email Verification OTP
+// @route   POST /api/auth/customer/send-email-otp
+const sendEmailVerificationOtp = async (req, res) => {
+    try {
+        const customer = req.customer;
+        const { email } = req.body;
+
+        const targetEmail = (email || customer.email || "").trim().toLowerCase();
+        if (!targetEmail || !targetEmail.includes("@")) {
+            return res.status(400).json({
+                success: false,
+                message: "Please provide a valid email address",
+            });
+        }
+
+        const existing = await prisma.customer.findFirst({
+            where: {
+                email: targetEmail,
+                NOT: { id: customer.id },
+            },
+        });
+
+        if (existing) {
+            return res.status(400).json({
+                success: false,
+                message: "This email address is already registered to another account.",
+            });
+        }
+
+        // Update target email on customer record if different
+        if (customer.email !== targetEmail) {
+            await prisma.customer.update({
+                where: { id: customer.id },
+                data: { email: targetEmail, emailVerified: false },
+            });
+        }
+
+        const result = await otpService.generateAndSendEmailOtp({
+            email: targetEmail,
+            mobile: customer.mobile,
+            purpose: "EMAIL_VERIFICATION",
+        });
+
+        return res.status(200).json(result);
+    } catch (error) {
+        console.error("customer sendEmailVerificationOtp error:", error);
+        return res.status(500).json({
+            success: false,
+            message: error.message || "Failed to send email verification code",
+        });
+    }
+};
+
+// @desc    Verify Email OTP
+// @route   POST /api/auth/customer/verify-email-otp
+const verifyEmailOtp = async (req, res) => {
+    try {
+        const customer = req.customer;
+        const { email, code } = req.body;
+
+        const targetEmail = (email || customer.email || "").trim().toLowerCase();
+        if (!targetEmail) {
+            return res.status(400).json({
+                success: false,
+                message: "Email address is required",
+            });
+        }
+
+        if (!code) {
+            return res.status(400).json({
+                success: false,
+                message: "Verification code is required",
+            });
+        }
+
+        const verifyResult = await otpService.verifyEmailOtp({
+            email: targetEmail,
+            code,
+            purpose: "EMAIL_VERIFICATION",
+        });
+
+        if (!verifyResult.success) {
+            return res.status(400).json(verifyResult);
+        }
+
+        const updatedCustomer = await prisma.customer.update({
+            where: { id: customer.id },
+            data: {
+                email: targetEmail,
+                emailVerified: true,
+            },
+        });
+
+        const { passwordHash: _, ...safeCustomer } = updatedCustomer;
+
+        return res.status(200).json({
+            success: true,
+            message: "Email verified successfully! You can now log in using either your mobile number or this verified email.",
+            customer: safeCustomer,
+        });
+    } catch (error) {
+        console.error("customer verifyEmailOtp error:", error);
+        return res.status(500).json({
+            success: false,
+            message: error.message || "Failed to verify email",
         });
     }
 };
@@ -427,4 +562,6 @@ module.exports = {
     getMe,
     updateProfile,
     deleteAccount,
+    sendEmailVerificationOtp,
+    verifyEmailOtp,
 };

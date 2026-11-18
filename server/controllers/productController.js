@@ -144,6 +144,7 @@ const getProducts = async (req, res) => {
 
         const where = {
             shopId: req.shop.id,
+            isDeleted: false,
         };
 
         if (search && search.trim()) {
@@ -198,6 +199,7 @@ const getProductById = async (req, res) => {
             where: {
                 id: req.params.id,
                 shopId: req.shop.id,
+                isDeleted: false,
             },
             include: {
                 category: {
@@ -328,6 +330,7 @@ const updateProductStock = async (req, res) => {
             where: {
                 id: req.params.id,
                 shopId: req.shop.id,
+                isDeleted: false,
             },
         });
 
@@ -385,6 +388,7 @@ const deleteProduct = async (req, res) => {
             where: {
                 id: req.params.id,
                 shopId: req.shop.id,
+                isDeleted: false,
             },
         });
 
@@ -400,9 +404,26 @@ const deleteProduct = async (req, res) => {
             where: { productId: req.params.id },
         });
 
-        await prisma.product.delete({
-            where: { id: req.params.id },
+        // Check if there are order items referencing this product
+        const orderItemCount = await prisma.orderItem.count({
+            where: { productId: req.params.id },
         });
+
+        if (orderItemCount > 0) {
+            // Soft delete: mark as deleted, 0 stock so it's not purchasable and hidden from catalog
+            await prisma.product.update({
+                where: { id: req.params.id },
+                data: {
+                    isDeleted: true,
+                    stockQuantity: 0,
+                },
+            });
+        } else {
+            // Hard delete if never ordered
+            await prisma.product.delete({
+                where: { id: req.params.id },
+            });
+        }
 
         return res.status(200).json({
             success: true,
@@ -442,6 +463,7 @@ const getPublicShopProducts = async (req, res) => {
 
         const where = {
             shopId: shop.id,
+            isDeleted: false,
         };
 
         if (categoryId && categoryId !== "ALL") {
@@ -465,21 +487,47 @@ const getPublicShopProducts = async (req, res) => {
                 category: {
                     select: { id: true, name: true },
                 },
+                orderItems: {
+                    select: { quantity: true },
+                },
             },
             orderBy: {
                 name: "asc",
             },
         });
 
+        // Compute total units sold for each product
+        let maxSold = 0;
+        const productsWithSales = products.map((p) => {
+            const totalSold = (p.orderItems || []).reduce((acc, curr) => acc + (curr.quantity || 0), 0);
+            if (totalSold > maxSold) {
+                maxSold = totalSold;
+            }
+            return {
+                ...p,
+                totalSold,
+            };
+        });
+
         // Safe transformation: remove costPrice completely, omit exact stock quantity, parse sellingPrice as number
-        const safeProducts = products.map((p) => {
-            const { stockQuantity, ...rest } = p;
+        const safeProducts = productsWithSales.map((p) => {
+            const { stockQuantity, orderItems, totalSold, ...rest } = p;
+            const isMostSelling = totalSold > 0 && totalSold === maxSold;
             return {
                 ...rest,
                 sellingPrice: parseFloat(p.sellingPrice) || 0,
                 availability: stockQuantity > 0 ? "AVAILABLE" : "OUT_OF_STOCK",
                 isAvailable: stockQuantity > 0,
+                totalSold,
+                isMostSelling,
             };
+        });
+
+        // Sort so that most selling item appears at top priority
+        safeProducts.sort((a, b) => {
+            if (a.isMostSelling && !b.isMostSelling) return -1;
+            if (!a.isMostSelling && b.isMostSelling) return 1;
+            return (b.totalSold || 0) - (a.totalSold || 0);
         });
 
         return res.status(200).json({

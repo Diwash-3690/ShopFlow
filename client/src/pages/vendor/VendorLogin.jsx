@@ -25,8 +25,8 @@ function VendorLogin() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.mobile || !formData.password) {
-      setErrorMsg("Please fill in both mobile number and password.");
+    if (!formData.mobile?.trim() || !formData.password) {
+      setErrorMsg("Please enter your mobile number or verified email, and password.");
       return;
     }
 
@@ -34,7 +34,11 @@ function VendorLogin() {
       setLoading(true);
       setErrorMsg("");
 
-      const response = await vendorLogin(formData);
+      const response = await vendorLogin({
+        mobile: formData.mobile.trim(),
+        identifier: formData.mobile.trim(),
+        password: formData.password,
+      });
 
       localStorage.setItem("token", response.token);
       localStorage.setItem("role", "VENDOR");
@@ -70,10 +74,10 @@ function VendorLogin() {
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <InputField
-          label="Mobile Number"
+          label="Mobile Number or Verified Email"
           name="mobile"
-          type="tel"
-          placeholder="10-digit mobile number"
+          type="text"
+          placeholder="10-digit mobile or verified email"
           value={formData.mobile}
           onChange={handleChange}
         />

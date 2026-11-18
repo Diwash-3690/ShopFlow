@@ -101,6 +101,16 @@ function AuthLayout({ title, subtitle, children, accent = "blue", brandBadge = "
 
             {children}
           </div>
+
+          {/* Bottom Admin Link */}
+          <div className="mt-6 text-center">
+            <Link
+              to="/admin/login"
+              className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-700 transition font-medium py-1 px-2.5 rounded-lg hover:bg-slate-200/50"
+            >
+              <span>🛡️ Admin Portal</span>
+            </Link>
+          </div>
         </div>
       </div>
     </div>

@@ -23,6 +23,8 @@ import {
   customerGetMe,
   customerUpdateProfile,
   customerDeleteAccount,
+  customerSendEmailOtp,
+  customerVerifyEmailOtp,
   logout,
 } from "../../services/authService";
 import { getCustomerOrders } from "../../services/orderService";
@@ -65,6 +67,11 @@ function CustomerDashboard() {
   const [profileForm, setProfileForm] = useState({ email: "" });
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileMsg, setProfileMsg] = useState({ type: "", text: "" });
+  const [emailOtpSent, setEmailOtpSent] = useState(false);
+  const [emailOtpCode, setEmailOtpCode] = useState("");
+  const [emailOtpDevCode, setEmailOtpDevCode] = useState("");
+  const [sendingEmailOtp, setSendingEmailOtp] = useState(false);
+  const [verifyingEmailOtp, setVerifyingEmailOtp] = useState(false);
   const [reportModalData, setReportModalData] = useState({
     isOpen: false,
     shopId: null,
@@ -150,6 +157,64 @@ function CustomerDashboard() {
     }
   };
 
+  const handleSendEmailOtp = async () => {
+    const targetEmail = (profileForm.email || customer?.email || "").trim();
+    if (!targetEmail || !targetEmail.includes("@")) {
+      setProfileMsg({ type: "error", text: "Please enter a valid email address first." });
+      return;
+    }
+    try {
+      setSendingEmailOtp(true);
+      setProfileMsg({ type: "", text: "" });
+      const res = await customerSendEmailOtp({ email: targetEmail });
+      setEmailOtpSent(true);
+      setEmailOtpDevCode(res.devCode || "");
+      setProfileMsg({
+        type: "success",
+        text: res.message || `Verification code sent to ${targetEmail}`,
+      });
+    } catch (err) {
+      setProfileMsg({
+        type: "error",
+        text: err.response?.data?.message || err.message || "Failed to send verification code.",
+      });
+    } finally {
+      setSendingEmailOtp(false);
+    }
+  };
+
+  const handleVerifyEmailOtp = async () => {
+    const targetEmail = (profileForm.email || customer?.email || "").trim();
+    if (!emailOtpCode.trim()) {
+      setProfileMsg({ type: "error", text: "Please enter the 6-digit verification code." });
+      return;
+    }
+    try {
+      setVerifyingEmailOtp(true);
+      setProfileMsg({ type: "", text: "" });
+      const res = await customerVerifyEmailOtp({
+        email: targetEmail,
+        code: emailOtpCode.trim(),
+      });
+      setCustomer(res.customer);
+      localStorage.setItem("user", JSON.stringify(res.customer));
+      setEmailOtpSent(false);
+      setEmailOtpCode("");
+      setEmailOtpDevCode("");
+      setProfileMsg({
+        type: "success",
+        text: "Email verified successfully! You can now log in using either your mobile number or this verified email.",
+      });
+    } catch (err) {
+      setProfileMsg({
+        type: "error",
+        text: err.response?.data?.message || err.message || "Failed to verify email code.",
+      });
+    } finally {
+      setVerifyingEmailOtp(false);
+    }
+  };
+
   const handleDeleteAccount = async () => {
     const confirmation = window.prompt(
       'Type "DELETE" to permanently delete your customer account and clear your data:'
@@ -226,7 +291,7 @@ function CustomerDashboard() {
           <div className="text-right hidden md:block px-2">
             <p className="text-xs font-bold text-slate-800 font-mono">{customer?.mobile}</p>
             <span className="text-[10px] text-emerald-600 font-semibold flex items-center justify-end gap-1">
-              <ShieldCheck className="w-3 h-3" /> Verified
+              <ShieldCheck className="w-3 h-3" /> {customer?.emailVerified ? "Mobile & Email Verified" : "Mobile Verified"}
             </span>
           </div>
 
@@ -674,17 +739,80 @@ function CustomerDashboard() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-700">
-                Email Address
-              </label>
-              <Input
-                type="email"
-                value={profileForm.email}
-                onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
-                placeholder="e.g. customer@example.com"
-                className="text-xs border-slate-300"
-              />
-              <p className="text-[10px] text-slate-400">Used for purchase receipts and instant order updates.</p>
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-slate-700">
+                  Email Address
+                </label>
+                {customer?.email && customer?.emailVerified && customer?.email.toLowerCase() === profileForm.email.toLowerCase() ? (
+                  <Badge variant="success" className="text-[10px] font-bold gap-1 py-0 px-2">
+                    <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Verified
+                  </Badge>
+                ) : (
+                  <Badge variant="secondary" className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200">
+                    Unverified
+                  </Badge>
+                )}
+              </div>
+
+              <div className="flex gap-2">
+                <Input
+                  type="email"
+                  value={profileForm.email}
+                  onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
+                  placeholder="e.g. customer@example.com"
+                  className="text-xs border-slate-300 flex-1"
+                />
+                {(!customer?.emailVerified || customer?.email !== profileForm.email) && profileForm.email && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleSendEmailOtp}
+                    disabled={sendingEmailOtp}
+                    className="text-xs font-bold h-9 px-3 rounded-xl border-emerald-200 text-emerald-700 hover:bg-emerald-50 shrink-0"
+                  >
+                    {sendingEmailOtp ? "Sending..." : "Verify (Optional)"}
+                  </Button>
+                )}
+              </div>
+
+              <p className="text-[10px] text-slate-400">
+                {customer?.emailVerified && customer?.email.toLowerCase() === profileForm.email.toLowerCase()
+                  ? "✓ Verified email can be used alongside your mobile number to sign in."
+                  : "Optional: Verify your email to enable dual sign-in with email and password."}
+              </p>
+
+              {/* OTP Verification Box */}
+              {emailOtpSent && (
+                <div className="p-3.5 bg-emerald-50/70 border border-emerald-200 rounded-2xl space-y-2 mt-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-emerald-950">Enter 6-Digit Email Code</span>
+                    {emailOtpDevCode && (
+                      <span className="text-[10px] font-mono font-bold bg-emerald-200 text-emerald-900 px-1.5 py-0.5 rounded">
+                        Dev OTP: {emailOtpDevCode}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <Input
+                      type="text"
+                      maxLength={6}
+                      placeholder="e.g. 123456"
+                      value={emailOtpCode}
+                      onChange={(e) => setEmailOtpCode(e.target.value)}
+                      className="text-xs bg-white border-emerald-200 h-8 font-mono tracking-widest text-center"
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={handleVerifyEmailOtp}
+                      disabled={verifyingEmailOtp || !emailOtpCode.trim()}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs h-8 px-3 rounded-xl shrink-0"
+                    >
+                      {verifyingEmailOtp ? "Verifying..." : "Confirm OTP"}
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
 
             <DialogFooter className="pt-3 gap-2">

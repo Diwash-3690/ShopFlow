@@ -109,7 +109,9 @@ const getMyShop = async (req, res) => {
             include: {
                 _count: {
                     select: {
-                        products: true,
+                        products: {
+                            where: { isDeleted: false },
+                        },
                         categories: true,
                         orders: true,
                     },
@@ -228,7 +230,9 @@ const getPublicShopById = async (req, res) => {
                 createdAt: true,
                 _count: {
                     select: {
-                        products: true,
+                        products: {
+                            where: { isDeleted: false },
+                        },
                         categories: true,
                     },
                 },
@@ -286,7 +290,9 @@ const searchNearbyShops = async (req, res) => {
                 upiId: true,
                 _count: {
                     select: {
-                        products: true,
+                        products: {
+                            where: { isDeleted: false },
+                        },
                     },
                 },
             },
@@ -296,7 +302,7 @@ const searchNearbyShops = async (req, res) => {
         // If coordinates provided, compute Haversine distance and sort
         const userLat = lat ? parseFloat(lat) : null;
         const userLon = lng ? parseFloat(lng) : null;
-        const maxRadiusKm = parseFloat(radius) || 25;
+        const maxRadiusKm = parseFloat(radius) || 2;
 
         if (userLat !== null && userLon !== null && !isNaN(userLat) && !isNaN(userLon)) {
             const shopsWithDistance = shops
@@ -315,17 +321,14 @@ const searchNearbyShops = async (req, res) => {
                         distanceKm,
                     };
                 })
-                .filter((shop) => shop.distanceKm === null || shop.distanceKm <= maxRadiusKm)
-                .sort((a, b) => {
-                    if (a.distanceKm === null) return 1;
-                    if (b.distanceKm === null) return -1;
-                    return a.distanceKm - b.distanceKm;
-                });
+                .filter((shop) => shop.distanceKm !== null && shop.distanceKm <= maxRadiusKm)
+                .sort((a, b) => a.distanceKm - b.distanceKm);
 
             return res.status(200).json({
                 success: true,
                 count: shopsWithDistance.length,
                 shops: shopsWithDistance,
+                radiusKm: maxRadiusKm,
             });
         }
 

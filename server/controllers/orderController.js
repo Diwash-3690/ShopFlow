@@ -74,10 +74,10 @@ const calculateCheckout = async (req, res) => {
     for (const item of items) {
       const product = productMap.get(item.productId);
 
-      if (!product) {
+      if (!product || product.isDeleted) {
         return res.status(404).json({
           success: false,
-          message: `Product not found: ${item.productId}`,
+          message: product ? `Product "${product.name}" is no longer available.` : `Product not found: ${item.productId}`,
         });
       }
 
@@ -197,8 +197,8 @@ const createOnlineOrder = async (req, res) => {
 
       for (const item of items) {
         const product = productMap.get(item.productId);
-        if (!product) {
-          throw new Error(`Product not found: ${item.productId}`);
+        if (!product || product.isDeleted) {
+          throw new Error(product ? `Product "${product.name}" is no longer available.` : `Product not found: ${item.productId}`);
         }
 
         if (product.shopId !== shop.id) {
@@ -638,8 +638,8 @@ const createWalkInOrder = async (req, res) => {
 
       for (const item of items) {
         const product = productMap.get(item.productId);
-        if (!product) {
-          throw new Error(`Product not found: ${item.productId}`);
+        if (!product || product.isDeleted) {
+          throw new Error(product ? `Product "${product.name}" is no longer available.` : `Product not found: ${item.productId}`);
         }
 
         if (product.shopId !== shopId) {

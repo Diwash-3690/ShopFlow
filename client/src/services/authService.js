@@ -43,6 +43,16 @@ export const vendorDeleteAccount = async () => {
   return response.data;
 };
 
+export const vendorSendEmailOtp = async ({ email }) => {
+  const response = await api.post("/auth/vendor/send-email-otp", { email });
+  return response.data;
+};
+
+export const vendorVerifyEmailOtp = async ({ email, code }) => {
+  const response = await api.post("/auth/vendor/verify-email-otp", { email, code });
+  return response.data;
+};
+
 // ============================================
 // Customer Authentication Services
 // ============================================
@@ -83,6 +93,16 @@ export const customerUpdateProfile = async (profileData) => {
 
 export const customerDeleteAccount = async () => {
   const response = await api.delete("/auth/customer/profile");
+  return response.data;
+};
+
+export const customerSendEmailOtp = async ({ email }) => {
+  const response = await api.post("/auth/customer/send-email-otp", { email });
+  return response.data;
+};
+
+export const customerVerifyEmailOtp = async ({ email, code }) => {
+  const response = await api.post("/auth/customer/verify-email-otp", { email, code });
   return response.data;
 };
 

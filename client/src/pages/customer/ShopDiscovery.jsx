@@ -15,7 +15,7 @@ import {
 import { searchNearbyShops } from "../../services/shopService";
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
-import { Card } from "../../components/ui/card";
+import { Card, CardContent } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 
 function ShopDiscovery() {
@@ -35,7 +35,7 @@ function ShopDiscovery() {
       if (userCoords) {
         params.lat = userCoords.lat;
         params.lng = userCoords.lng;
-        params.radius = 30; // 30 km radius
+        params.radius = 2; // Strict 2 km radius requested by user
       }
 
       const res = await searchNearbyShops(params);
@@ -197,15 +197,56 @@ function ShopDiscovery() {
             ))}
           </div>
         ) : shops.length === 0 ? (
-          <Card className="py-16 text-center text-slate-500 rounded-3xl border-slate-200/90 shadow-xs">
-            <CardContent className="space-y-3">
-              <div className="w-14 h-14 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto text-2xl">
-                <Store className="w-7 h-7" />
+          <Card className="py-16 text-center text-slate-500 rounded-3xl border-slate-200/90 shadow-xs bg-white">
+            <CardContent className="space-y-4 px-6">
+              <div className="w-16 h-16 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto text-2xl">
+                <Store className="w-8 h-8 text-slate-400" />
               </div>
-              <h3 className="text-base font-bold text-slate-900">No Stores Found</h3>
-              <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                No shops match your query. Try searching with a different keyword or resetting your location filter.
-              </p>
+              {userCoords ? (
+                <>
+                  <Badge variant="warning" className="text-xs px-3 py-1 font-bold">
+                    Nearby Filter (2 km)
+                  </Badge>
+                  <h3 className="text-lg sm:text-xl font-bold text-slate-900">
+                    No nearby shop found in range of 2 km.
+                  </h3>
+                  <p className="text-xs sm:text-sm text-slate-500 max-w-md mx-auto leading-relaxed">
+                    We could not find any active verified store within 2 km of your current coordinates. You can reset your location to browse all stores or search by name.
+                  </p>
+                  <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
+                    <Button
+                      variant="outline"
+                      onClick={() => setUserCoords(null)}
+                      className="rounded-xl text-xs font-bold h-9"
+                    >
+                      View All Shops
+                    </Button>
+                    <Button
+                      variant="success"
+                      onClick={handleDetectLocation}
+                      className="rounded-xl text-xs font-bold h-9"
+                    >
+                      Retry GPS
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <h3 className="text-lg font-bold text-slate-900">No Stores Found</h3>
+                  <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                    No shops match your query. Try searching with a different keyword or check back later.
+                  </p>
+                  {searchQuery && (
+                    <Button
+                      variant="outline"
+                      onClick={() => setSearchQuery("")}
+                      className="rounded-xl text-xs font-bold h-9 mt-2"
+                    >
+                      Clear Search
+                    </Button>
+                  )}
+                </>
+              )}
             </CardContent>
           </Card>
         ) : (

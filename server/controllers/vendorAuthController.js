@@ -221,31 +221,55 @@ const register = async (req, res) => {
     }
 };
 
-// @desc    Vendor Login
+// @desc    Vendor Login (Accepts 10-digit Mobile Number OR Verified Email)
 // @route   POST /api/auth/vendor/login
 const login = async (req, res) => {
     try {
-        const { mobile, password } = req.body;
+        const { mobile, identifier, password } = req.body;
+        const input = (identifier || mobile || "").trim();
 
-        if (!mobile || !password) {
+        if (!input || !password) {
             return res.status(400).json({
                 success: false,
-                message: "Mobile and password are required",
+                message: "Mobile/Email and password are required",
             });
         }
 
-        const cleanMobile = mobile.trim();
+        let vendor = null;
 
-        const vendor = await prisma.vendor.findUnique({
-            where: { mobile: cleanMobile },
-            include: { shop: true },
-        });
-
-        if (!vendor) {
-            return res.status(401).json({
-                success: false,
-                message: "Invalid mobile number or password",
+        if (input.includes("@")) {
+            const cleanEmail = input.toLowerCase();
+            vendor = await prisma.vendor.findFirst({
+                where: { email: cleanEmail },
+                include: { shop: true },
             });
+
+            if (!vendor) {
+                return res.status(401).json({
+                    success: false,
+                    message: "No vendor account registered with this email address.",
+                });
+            }
+
+            if (!vendor.emailVerified) {
+                return res.status(403).json({
+                    success: false,
+                    message: "This email address is not verified yet. Please login using your registered mobile number and verify your email in your profile.",
+                });
+            }
+        } else {
+            const cleanMobile = input;
+            vendor = await prisma.vendor.findUnique({
+                where: { mobile: cleanMobile },
+                include: { shop: true },
+            });
+
+            if (!vendor) {
+                return res.status(401).json({
+                    success: false,
+                    message: "Invalid mobile number or password",
+                });
+            }
         }
 
         if (!vendor.isActive) {
@@ -260,7 +284,7 @@ const login = async (req, res) => {
         if (!isMatch) {
             return res.status(401).json({
                 success: false,
-                message: "Invalid mobile number or password",
+                message: "Invalid credentials. Please check your password.",
             });
         }
 
@@ -372,18 +396,22 @@ const updateProfile = async (req, res) => {
 
         const vendorUpdate = {};
         if (ownerName && ownerName.trim()) vendorUpdate.ownerName = ownerName.trim();
-        if (email !== undefined) vendorUpdate.email = email && email.trim() ? email.trim() : null;
-
-        // Check if email already used by another vendor
-        if (vendorUpdate.email) {
-            const existingEmail = await prisma.vendor.findFirst({
-                where: { email: vendorUpdate.email, NOT: { id: vendorId } },
-            });
-            if (existingEmail) {
-                return res.status(400).json({
-                    success: false,
-                    message: "This email address is already in use by another vendor.",
+        if (email !== undefined) {
+            const cleanEmail = email && email.trim() ? email.trim().toLowerCase() : null;
+            if (cleanEmail) {
+                const existingEmail = await prisma.vendor.findFirst({
+                    where: { email: cleanEmail, NOT: { id: vendorId } },
                 });
+                if (existingEmail) {
+                    return res.status(400).json({
+                        success: false,
+                        message: "This email address is already in use by another vendor.",
+                    });
+                }
+            }
+            vendorUpdate.email = cleanEmail;
+            if (cleanEmail !== req.vendor.email) {
+                vendorUpdate.emailVerified = false;
             }
         }
 
@@ -483,6 +511,117 @@ const deleteAccount = async (req, res) => {
     }
 };
 
+// @desc    Send Email Verification OTP for Vendor
+// @route   POST /api/auth/vendor/send-email-otp
+const sendEmailVerificationOtp = async (req, res) => {
+    try {
+        const vendor = req.vendor;
+        const { email } = req.body;
+
+        const targetEmail = (email || vendor.email || "").trim().toLowerCase();
+        if (!targetEmail || !targetEmail.includes("@")) {
+            return res.status(400).json({
+                success: false,
+                message: "Please provide a valid email address",
+            });
+        }
+
+        const existing = await prisma.vendor.findFirst({
+            where: {
+                email: targetEmail,
+                NOT: { id: vendor.id },
+            },
+        });
+
+        if (existing) {
+            return res.status(400).json({
+                success: false,
+                message: "This email address is already registered to another vendor account.",
+            });
+        }
+
+        if (vendor.email !== targetEmail) {
+            await prisma.vendor.update({
+                where: { id: vendor.id },
+                data: { email: targetEmail, emailVerified: false },
+            });
+        }
+
+        const result = await otpService.generateAndSendEmailOtp({
+            email: targetEmail,
+            mobile: vendor.mobile,
+            purpose: "EMAIL_VERIFICATION",
+        });
+
+        return res.status(200).json(result);
+    } catch (error) {
+        console.error("vendor sendEmailVerificationOtp error:", error);
+        return res.status(500).json({
+            success: false,
+            message: error.message || "Failed to send email verification code",
+        });
+    }
+};
+
+// @desc    Verify Email OTP for Vendor
+// @route   POST /api/auth/vendor/verify-email-otp
+const verifyEmailOtp = async (req, res) => {
+    try {
+        const vendor = req.vendor;
+        const { email, code } = req.body;
+
+        const targetEmail = (email || vendor.email || "").trim().toLowerCase();
+        if (!targetEmail) {
+            return res.status(400).json({
+                success: false,
+                message: "Email address is required",
+            });
+        }
+
+        if (!code) {
+            return res.status(400).json({
+                success: false,
+                message: "Verification code is required",
+            });
+        }
+
+        const verifyResult = await otpService.verifyEmailOtp({
+            email: targetEmail,
+            code,
+            purpose: "EMAIL_VERIFICATION",
+        });
+
+        if (!verifyResult.success) {
+            return res.status(400).json(verifyResult);
+        }
+
+        const updatedVendor = await prisma.vendor.update({
+            where: { id: vendor.id },
+            data: {
+                email: targetEmail,
+                emailVerified: true,
+            },
+            include: { shop: true },
+        });
+
+        const { passwordHash: _, ...safeVendor } = updatedVendor;
+
+        return res.status(200).json({
+            success: true,
+            message: "Email verified successfully! You can now log in using either your mobile number or this verified email.",
+            vendor: safeVendor,
+            shop: safeVendor.shop,
+            hasShop: !!safeVendor.shop,
+        });
+    } catch (error) {
+        console.error("vendor verifyEmailOtp error:", error);
+        return res.status(500).json({
+            success: false,
+            message: error.message || "Failed to verify email",
+        });
+    }
+};
+
 module.exports = {
     sendOtp,
     verifyOtp,
@@ -492,4 +631,6 @@ module.exports = {
     getMe,
     updateProfile,
     deleteAccount,
+    sendEmailVerificationOtp,
+    verifyEmailOtp,
 };

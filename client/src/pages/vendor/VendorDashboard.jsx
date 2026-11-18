@@ -30,6 +30,8 @@ import {
   vendorGetMe,
   vendorUpdateProfile,
   vendorDeleteAccount,
+  vendorSendEmailOtp,
+  vendorVerifyEmailOtp,
   logout,
 } from "../../services/authService";
 import { deleteMyShop } from "../../services/shopService";
@@ -83,6 +85,12 @@ function VendorDashboard() {
     longitude: "",
   });
   const [editError, setEditError] = useState("");
+  const [emailOtpSent, setEmailOtpSent] = useState(false);
+  const [emailOtpCode, setEmailOtpCode] = useState("");
+  const [emailOtpDevCode, setEmailOtpDevCode] = useState("");
+  const [sendingEmailOtp, setSendingEmailOtp] = useState(false);
+  const [verifyingEmailOtp, setVerifyingEmailOtp] = useState(false);
+  const [emailVerificationMsg, setEmailVerificationMsg] = useState({ type: "", text: "" });
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -192,6 +200,59 @@ function VendorDashboard() {
       setEditError(err.response?.data?.message || err.message || "Failed to update profile & shop.");
     } finally {
       setSavingShop(false);
+    }
+  };
+
+  const handleSendVendorEmailOtp = async () => {
+    const targetEmail = (editForm.email || vendorData?.email || "").trim();
+    if (!targetEmail || !targetEmail.includes("@")) {
+      setEditError("Please enter a valid email address first.");
+      return;
+    }
+    try {
+      setSendingEmailOtp(true);
+      setEditError("");
+      setEmailVerificationMsg({ type: "", text: "" });
+      const res = await vendorSendEmailOtp({ email: targetEmail });
+      setEmailOtpSent(true);
+      setEmailOtpDevCode(res.devCode || "");
+      setEmailVerificationMsg({
+        type: "success",
+        text: res.message || `Verification code sent to ${targetEmail}`,
+      });
+    } catch (err) {
+      setEditError(err.response?.data?.message || err.message || "Failed to send verification code.");
+    } finally {
+      setSendingEmailOtp(false);
+    }
+  };
+
+  const handleVerifyVendorEmailOtp = async () => {
+    const targetEmail = (editForm.email || vendorData?.email || "").trim();
+    if (!emailOtpCode.trim()) {
+      setEditError("Please enter the 6-digit verification code.");
+      return;
+    }
+    try {
+      setVerifyingEmailOtp(true);
+      setEditError("");
+      const res = await vendorVerifyEmailOtp({
+        email: targetEmail,
+        code: emailOtpCode.trim(),
+      });
+      setVendorData(res.vendor);
+      localStorage.setItem("user", JSON.stringify(res.vendor));
+      setEmailOtpSent(false);
+      setEmailOtpCode("");
+      setEmailOtpDevCode("");
+      setEmailVerificationMsg({
+        type: "success",
+        text: "Email verified successfully! You can now log in using either your mobile number or this verified email.",
+      });
+    } catch (err) {
+      setEditError(err.response?.data?.message || err.message || "Failed to verify email code.");
+    } finally {
+      setVerifyingEmailOtp(false);
     }
   };
 
@@ -490,14 +551,76 @@ function VendorDashboard() {
                         />
                       </div>
                       <div className="space-y-1">
-                        <label className="text-xs font-bold text-slate-700">Account Email</label>
-                        <Input
-                          type="email"
-                          value={editForm.email}
-                          onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
-                          placeholder="vendor@example.com"
-                          className="text-xs bg-white"
-                        />
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-bold text-slate-700">Account Email</label>
+                          {vendorData?.email && vendorData?.emailVerified && vendorData?.email.toLowerCase() === editForm.email.toLowerCase() ? (
+                            <Badge variant="success" className="text-[10px] font-bold gap-1 py-0 px-2">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Verified
+                            </Badge>
+                          ) : (
+                            <Badge variant="secondary" className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200">
+                              Unverified
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="flex gap-2">
+                          <Input
+                            type="email"
+                            value={editForm.email}
+                            onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                            placeholder="vendor@example.com"
+                            className="text-xs bg-white flex-1"
+                          />
+                          {(!vendorData?.emailVerified || vendorData?.email !== editForm.email) && editForm.email && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={handleSendVendorEmailOtp}
+                              disabled={sendingEmailOtp}
+                              className="text-xs font-bold h-9 px-3 rounded-xl border-blue-200 text-blue-700 hover:bg-blue-50 shrink-0"
+                            >
+                              {sendingEmailOtp ? "Sending..." : "Verify (Optional)"}
+                            </Button>
+                          )}
+                        </div>
+                        <p className="text-[10px] text-slate-400">
+                          {vendorData?.emailVerified && vendorData?.email.toLowerCase() === editForm.email.toLowerCase()
+                            ? "✓ Verified email can be used alongside your mobile number to sign in."
+                            : "Optional: Verify your email to enable dual sign-in with email and password."}
+                        </p>
+
+                        {/* Email OTP Input if sent */}
+                        {emailOtpSent && (
+                          <div className="p-3 bg-blue-50/80 border border-blue-200 rounded-2xl space-y-2 mt-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[11px] font-bold text-blue-950">Enter 6-Digit Email Code</span>
+                              {emailOtpDevCode && (
+                                <span className="text-[10px] font-mono font-bold bg-blue-200 text-blue-900 px-1.5 py-0.5 rounded">
+                                  Dev OTP: {emailOtpDevCode}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex gap-2">
+                              <Input
+                                type="text"
+                                maxLength={6}
+                                placeholder="e.g. 123456"
+                                value={emailOtpCode}
+                                onChange={(e) => setEmailOtpCode(e.target.value)}
+                                className="text-xs bg-white border-blue-200 h-8 font-mono tracking-widest text-center"
+                              />
+                              <Button
+                                type="button"
+                                size="sm"
+                                onClick={handleVerifyVendorEmailOtp}
+                                disabled={verifyingEmailOtp || !emailOtpCode.trim()}
+                                className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs h-8 px-3 rounded-xl shrink-0"
+                              >
+                                {verifyingEmailOtp ? "Verifying..." : "Confirm OTP"}
+                              </Button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -650,14 +773,76 @@ function VendorDashboard() {
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-xs font-bold text-slate-700">Account Email</label>
-                      <Input
-                        type="email"
-                        value={editForm.email}
-                        onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
-                        placeholder="vendor@example.com"
-                        className="text-xs bg-white"
-                      />
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold text-slate-700">Account Email</label>
+                        {vendorData?.email && vendorData?.emailVerified && vendorData?.email.toLowerCase() === editForm.email.toLowerCase() ? (
+                          <Badge variant="success" className="text-[10px] font-bold gap-1 py-0 px-2">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Verified
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary" className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200">
+                            Unverified
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="flex gap-2">
+                        <Input
+                          type="email"
+                          value={editForm.email}
+                          onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                          placeholder="vendor@example.com"
+                          className="text-xs bg-white flex-1"
+                        />
+                        {(!vendorData?.emailVerified || vendorData?.email !== editForm.email) && editForm.email && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={handleSendVendorEmailOtp}
+                            disabled={sendingEmailOtp}
+                            className="text-xs font-bold h-9 px-3 rounded-xl border-blue-200 text-blue-700 hover:bg-blue-50 shrink-0"
+                          >
+                            {sendingEmailOtp ? "Sending..." : "Verify (Optional)"}
+                          </Button>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-slate-400">
+                        {vendorData?.emailVerified && vendorData?.email.toLowerCase() === editForm.email.toLowerCase()
+                          ? "✓ Verified email can be used alongside your mobile number to sign in."
+                          : "Optional: Verify your email to enable dual sign-in with email and password."}
+                      </p>
+
+                      {/* Email OTP Input if sent */}
+                      {emailOtpSent && (
+                        <div className="p-3 bg-blue-50/80 border border-blue-200 rounded-2xl space-y-2 mt-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] font-bold text-blue-950">Enter 6-Digit Email Code</span>
+                            {emailOtpDevCode && (
+                              <span className="text-[10px] font-mono font-bold bg-blue-200 text-blue-900 px-1.5 py-0.5 rounded">
+                                Dev OTP: {emailOtpDevCode}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex gap-2">
+                            <Input
+                              type="text"
+                              maxLength={6}
+                              placeholder="e.g. 123456"
+                              value={emailOtpCode}
+                              onChange={(e) => setEmailOtpCode(e.target.value)}
+                              className="text-xs bg-white border-blue-200 h-8 font-mono tracking-widest text-center"
+                            />
+                            <Button
+                              type="button"
+                              size="sm"
+                              onClick={handleVerifyVendorEmailOtp}
+                              disabled={verifyingEmailOtp || !emailOtpCode.trim()}
+                              className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs h-8 px-3 rounded-xl shrink-0"
+                            >
+                              {verifyingEmailOtp ? "Verifying..." : "Confirm OTP"}
+                            </Button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

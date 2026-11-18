@@ -167,8 +167,16 @@ function Home() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-slate-200/80 py-6 text-center text-xs text-slate-500 bg-white">
-        © {new Date().getFullYear()} ShopFlow. Built for modern local commerce and neighborhood merchants.
+      <footer className="border-t border-slate-200/80 py-6 px-6 bg-white">
+        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
+          <span>© {new Date().getFullYear()} ShopFlow. Built for modern local commerce and neighborhood merchants.</span>
+          <Link
+            to="/admin/login"
+            className="inline-flex items-center gap-1.5 text-slate-600 hover:text-slate-900 font-bold transition px-3.5 py-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 shadow-2xs"
+          >
+            <span>🛡️ Admin Portal</span>
+          </Link>
+        </div>
       </footer>
     </div>
   );

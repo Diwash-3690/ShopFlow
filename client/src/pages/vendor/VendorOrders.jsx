@@ -385,7 +385,7 @@ function VendorOrders() {
                           Direct UPI payment submitted by customer
                         </p>
                         <p className="text-purple-700 mt-0.5">
-                          Amount to verify: <strong>₹{o.totalAmount.toFixed(2)}</strong> •
+                          Amount to verify: <strong>₹{parseFloat(o.totalAmount || 0).toFixed(2)}</strong> •
                           Submitted Ref/UTR:{" "}
                           <code className="bg-white px-1.5 py-0.5 rounded border border-purple-200 font-bold">
                             {o.payment?.providerTransactionId || "Not provided by customer"}
@@ -436,10 +436,10 @@ function VendorOrders() {
                               {item.quantity}
                             </td>
                             <td className="py-2 text-right text-slate-600">
-                              ₹{item.unitPrice.toFixed(2)}
+                              ₹{parseFloat(item.unitPrice || 0).toFixed(2)}
                             </td>
                             <td className="py-2 text-right font-bold text-slate-900">
-                              ₹{item.lineTotal.toFixed(2)}
+                              ₹{parseFloat(item.lineTotal || 0).toFixed(2)}
                             </td>
                           </tr>
                         ))}
@@ -455,7 +455,7 @@ function VendorOrders() {
                           Total Amount:{" "}
                         </span>
                         <span className="text-lg font-black text-slate-900 ml-1">
-                          ₹{o.totalAmount.toFixed(2)}
+                          ₹{parseFloat(o.totalAmount || 0).toFixed(2)}
                         </span>
                       </div>
                       <span className="text-[11px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-medium">

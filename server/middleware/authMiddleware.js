@@ -165,10 +165,8 @@ const protectAny = async (req, res, next) => {
     }
 };
 
-module.exports = {
-    protectVendor,
-    protectCustomer,
-    protectAny,
-    // Default export preserves backwards compatibility
-    protect: protectVendor,
-};
+module.exports = protectVendor;
+module.exports.protect = protectVendor;
+module.exports.protectVendor = protectVendor;
+module.exports.protectCustomer = protectCustomer;
+module.exports.protectAny = protectAny;

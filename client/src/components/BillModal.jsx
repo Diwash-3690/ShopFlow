@@ -104,9 +104,9 @@ function BillModal({ bill, onClose }) {
                       <span className="text-[10px] text-slate-400 ml-1">({item.unit})</span>
                     </td>
                     <td className="py-2.5 text-center text-slate-600">{item.quantity}</td>
-                    <td className="py-2.5 text-right text-slate-600">₹{item.unitPrice.toFixed(2)}</td>
+                    <td className="py-2.5 text-right text-slate-600">₹{parseFloat(item.unitPrice || 0).toFixed(2)}</td>
                     <td className="py-2.5 text-right font-semibold text-slate-900">
-                      ₹{item.lineTotal.toFixed(2)}
+                      ₹{parseFloat(item.lineTotal || 0).toFixed(2)}
                     </td>
                   </tr>
                 ))}
@@ -118,11 +118,11 @@ function BillModal({ bill, onClose }) {
           <div className="border-t border-slate-200 pt-4 space-y-2">
             <div className="flex justify-between text-xs text-slate-500">
               <span>Subtotal</span>
-              <span>₹{(bill.subtotal || bill.totalAmount).toFixed(2)}</span>
+              <span>₹{parseFloat(bill.subtotal || bill.totalAmount || 0).toFixed(2)}</span>
             </div>
             <div className="flex justify-between text-base font-black text-slate-900 pt-1 border-t border-slate-100">
               <span>Grand Total</span>
-              <span className="text-emerald-700">₹{bill.totalAmount.toFixed(2)}</span>
+              <span className="text-emerald-700">₹{parseFloat(bill.totalAmount || 0).toFixed(2)}</span>
             </div>
           </div>
 

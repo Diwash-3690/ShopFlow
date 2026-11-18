@@ -471,11 +471,12 @@ const getPublicShopProducts = async (req, res) => {
             },
         });
 
-        // Safe transformation: remove costPrice completely, omit exact stock quantity
+        // Safe transformation: remove costPrice completely, omit exact stock quantity, parse sellingPrice as number
         const safeProducts = products.map((p) => {
             const { stockQuantity, ...rest } = p;
             return {
                 ...rest,
+                sellingPrice: parseFloat(p.sellingPrice) || 0,
                 availability: stockQuantity > 0 ? "AVAILABLE" : "OUT_OF_STOCK",
                 isAvailable: stockQuantity > 0,
             };

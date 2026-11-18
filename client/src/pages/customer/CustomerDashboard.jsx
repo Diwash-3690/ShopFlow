@@ -162,7 +162,7 @@ function CustomerDashboard() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
               <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Total Spent</p>
-              <h3 className="text-xl font-black text-slate-900 mt-1">₹{summary.totalSpent.toFixed(2)}</h3>
+              <h3 className="text-xl font-black text-slate-900 mt-1">₹{parseFloat(summary.totalSpent || 0).toFixed(2)}</h3>
               <p className="text-[10px] text-slate-500 mt-0.5">Across local stores</p>
             </div>
             <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
@@ -285,7 +285,7 @@ function CustomerDashboard() {
                             {item.productName} × {item.quantity} {item.unit}
                           </span>
                           <span className="font-bold text-slate-800">
-                            ₹{item.lineTotal.toFixed(2)}
+                            ₹{parseFloat(item.lineTotal || 0).toFixed(2)}
                           </span>
                         </div>
                       ))}
@@ -297,7 +297,7 @@ function CustomerDashboard() {
                     <div>
                       <p className="text-[10px] text-slate-400 uppercase font-semibold">Total Paid</p>
                       <p className="text-lg font-black text-emerald-700">
-                        ₹{o.totalAmount.toFixed(2)}
+                        ₹{parseFloat(o.totalAmount || 0).toFixed(2)}
                       </p>
                     </div>
 
@@ -390,7 +390,7 @@ function CustomerDashboard() {
                         {o.items?.length || 0} item{o.items?.length === 1 ? "" : "s"}
                       </td>
                       <td className="py-3.5 text-right font-bold text-slate-900">
-                        ₹{o.totalAmount.toFixed(2)}
+                        ₹{parseFloat(o.totalAmount || 0).toFixed(2)}
                       </td>
                       <td className="py-3.5 text-right">
                         {o.bill ? (

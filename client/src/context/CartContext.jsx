@@ -135,7 +135,7 @@ export const CartProvider = ({ children }) => {
   const totalCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
   const subtotal = parseFloat(
-    cartItems.reduce((sum, item) => sum + item.sellingPrice * item.quantity, 0).toFixed(2)
+    cartItems.reduce((sum, item) => sum + (parseFloat(item.sellingPrice) || 0) * item.quantity, 0).toFixed(2)
   );
 
   return (

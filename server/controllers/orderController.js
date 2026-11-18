@@ -296,8 +296,14 @@ const createOnlineOrder = async (req, res) => {
       )}&am=${totalAmount.toFixed(2)}&tr=${order.orderNumber}&cu=INR`;
 
       return {
-        order,
-        payment,
+        order: {
+          ...order,
+          totalAmount: parseFloat(order.totalAmount) || 0,
+        },
+        payment: {
+          ...payment,
+          amount: parseFloat(payment.amount) || 0,
+        },
         upiUrl,
         items: orderItemsData,
         shop: {

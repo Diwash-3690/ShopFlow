@@ -395,7 +395,7 @@ function VendorDashboard() {
                   <p className="text-xs text-slate-400 font-medium">GPS Coordinates</p>
                   <p className="font-semibold text-xs">
                     {shop.latitude && shop.longitude
-                      ? `${shop.latitude.toFixed(4)}, ${shop.longitude.toFixed(4)}`
+                      ? `${parseFloat(shop.latitude).toFixed(4)}, ${parseFloat(shop.longitude).toFixed(4)}`
                       : "Not set"}
                   </p>
                 </div>
@@ -519,7 +519,7 @@ function VendorDashboard() {
                   <FiDollarSign className="text-emerald-600" size={16} />
                 </div>
                 <h2 className="text-2xl font-black text-slate-900 mt-2">
-                  ₹{sales.today.toFixed(2)}
+                  ₹{parseFloat(sales.today || 0).toFixed(2)}
                 </h2>
                 <p className="text-[11px] text-slate-500 mt-1">
                   {sales.todayOrdersCount} verified order{sales.todayOrdersCount === 1 ? "" : "s"} today
@@ -532,7 +532,7 @@ function VendorDashboard() {
                   <FiCalendar className="text-blue-600" size={16} />
                 </div>
                 <h2 className="text-2xl font-black text-slate-900 mt-2">
-                  ₹{sales.weekly.toFixed(2)}
+                  ₹{parseFloat(sales.weekly || 0).toFixed(2)}
                 </h2>
                 <p className="text-[11px] text-slate-500 mt-1">Last 7 rolling days</p>
               </div>
@@ -543,7 +543,7 @@ function VendorDashboard() {
                   <FiTrendingUp className="text-indigo-600" size={16} />
                 </div>
                 <h2 className="text-2xl font-black text-slate-900 mt-2">
-                  ₹{sales.monthly.toFixed(2)}
+                  ₹{parseFloat(sales.monthly || 0).toFixed(2)}
                 </h2>
                 <p className="text-[11px] text-slate-500 mt-1">Last 30 rolling days</p>
               </div>
@@ -554,7 +554,7 @@ function VendorDashboard() {
                   <FiCheckCircle className="text-purple-600" size={16} />
                 </div>
                 <h2 className="text-2xl font-black text-slate-900 mt-2">
-                  ₹{sales.total.toFixed(2)}
+                  ₹{parseFloat(sales.total || 0).toFixed(2)}
                 </h2>
                 <p className="text-[11px] text-slate-500 mt-1">
                   {orderStatus.totalVerifiedOrders} lifetime completed sale{orderStatus.totalVerifiedOrders === 1 ? "" : "s"}
@@ -567,7 +567,7 @@ function VendorDashboard() {
               <div className="text-xs">
                 <span className="font-bold text-slate-800">Sales Channels:</span>
                 <span className="ml-2 text-slate-600">
-                  Online Pre-orders: <strong>₹{channels.onlineAmount.toFixed(2)}</strong> ({channels.onlineCount} orders) • Walk-in Counter: <strong>₹{channels.walkInAmount.toFixed(2)}</strong> ({channels.walkInCount} sales)
+                  Online Pre-orders: <strong>₹{parseFloat(channels.onlineAmount || 0).toFixed(2)}</strong> ({channels.onlineCount} orders) • Walk-in Counter: <strong>₹{parseFloat(channels.walkInAmount || 0).toFixed(2)}</strong> ({channels.walkInCount} sales)
                 </span>
               </div>
               <div className="flex items-center gap-2 text-xs">
@@ -758,7 +758,7 @@ function VendorDashboard() {
                       <td className="py-3 text-slate-600">{s.customerMobile}</td>
                       <td className="py-3 text-slate-600">{s.itemCount} items</td>
                       <td className="py-3 text-right font-black text-slate-900">
-                        ₹{s.totalAmount.toFixed(2)}
+                        ₹{parseFloat(s.totalAmount || 0).toFixed(2)}
                       </td>
                       <td className="py-3 text-right">
                         <Link

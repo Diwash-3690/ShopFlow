@@ -426,7 +426,7 @@ function ShopStorefront() {
                     <div className="flex items-baseline justify-between pt-1">
                       <div>
                         <span className="text-base font-black text-slate-900">
-                          ₹{p.sellingPrice.toFixed(2)}
+                          ₹{parseFloat(p.sellingPrice || 0).toFixed(2)}
                         </span>
                         <span className="text-[11px] text-slate-400 ml-1">/ {p.unit}</span>
                       </div>
@@ -509,7 +509,7 @@ function ShopStorefront() {
                     <div>
                       <p className="font-bold text-slate-800 text-sm">{item.productName}</p>
                       <p className="text-xs text-slate-500">
-                        ₹{item.sellingPrice.toFixed(2)} / {item.unit}
+                        ₹{parseFloat(item.sellingPrice || 0).toFixed(2)} / {item.unit}
                       </p>
                     </div>
 
@@ -554,7 +554,7 @@ function ShopStorefront() {
 
                 <div className="flex items-center justify-between text-base font-black text-slate-900">
                   <span>Subtotal</span>
-                  <span>₹{subtotal.toFixed(2)}</span>
+                  <span>₹{parseFloat(subtotal || 0).toFixed(2)}</span>
                 </div>
                 <p className="text-[11px] text-slate-400">
                   One order belongs to one shop only. Validated directly against live inventory.
@@ -619,14 +619,14 @@ function ShopStorefront() {
                     <span>
                       {i.productName} × {i.quantity} {i.unit}
                     </span>
-                    <span className="font-bold">₹{i.lineTotal.toFixed(2)}</span>
+                    <span className="font-bold">₹{parseFloat(i.lineTotal || 0).toFixed(2)}</span>
                   </div>
                 ))}
               </div>
 
               <div className="border-t border-slate-200 pt-3 flex justify-between font-black text-lg text-slate-900">
                 <span>Total Calculated Amount</span>
-                <span className="text-emerald-700">₹{verifiedCheckout.totalAmount.toFixed(2)}</span>
+                <span className="text-emerald-700">₹{parseFloat(verifiedCheckout.totalAmount || 0).toFixed(2)}</span>
               </div>
             </div>
 
@@ -785,7 +785,7 @@ function ShopStorefront() {
                 </div>
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-purple-700 font-semibold">Total Amount</span>
-                  <span className="font-bold text-purple-950">₹{confirmedOrder.totalAmount.toFixed(2)}</span>
+                  <span className="font-bold text-purple-950">₹{parseFloat(confirmedOrder.totalAmount || 0).toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-purple-700 font-semibold">Submitted Ref / UTR</span>
@@ -803,7 +803,7 @@ function ShopStorefront() {
                 <strong>Address:</strong> {confirmedOrder.shop?.address}
               </p>
               <p>
-                <strong>Amount:</strong> ₹{confirmedOrder.totalAmount.toFixed(2)}
+                <strong>Amount:</strong> ₹{parseFloat(confirmedOrder.totalAmount || 0).toFixed(2)}
               </p>
             </div>
 

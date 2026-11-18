@@ -342,7 +342,7 @@ function WalkInPos() {
                       <div className="flex-1 pr-2">
                         <p className="font-bold text-slate-900">{item.productName}</p>
                         <p className="text-[11px] text-slate-500">
-                          ₹{item.unitPrice.toFixed(2)} / {item.unit}
+                          ₹{parseFloat(item.unitPrice || 0).toFixed(2)} / {item.unit}
                         </p>
                       </div>
 
@@ -365,7 +365,7 @@ function WalkInPos() {
                         </div>
 
                         <span className="font-bold text-slate-900 w-16 text-right">
-                          ₹{(item.unitPrice * item.quantity).toFixed(2)}
+                          ₹{(parseFloat(item.unitPrice || 0) * item.quantity).toFixed(2)}
                         </span>
 
                         <button
@@ -415,7 +415,7 @@ function WalkInPos() {
               {/* Total Calculation */}
               <div className="flex items-center justify-between text-base font-black text-slate-900 pt-2 border-t border-slate-100">
                 <span>Total Amount Due</span>
-                <span className="text-2xl text-purple-700">₹{totalAmount.toFixed(2)}</span>
+                <span className="text-2xl text-purple-700">₹{parseFloat(totalAmount || 0).toFixed(2)}</span>
               </div>
 
               {/* Submit Button */}

@@ -356,11 +356,26 @@ const submitCustomerPayment = async (req, res) => {
       });
     }
 
+    if (!providerTransactionId || !providerTransactionId.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "UPI Reference / UTR number is mandatory to verify payment.",
+      });
+    }
+
+    const cleanUtr = providerTransactionId.trim();
+    if (cleanUtr.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: "Please enter a valid UPI Reference / UTR number (at least 6 characters).",
+      });
+    }
+
     // Record customer transaction reference
     const updatedPayment = await prisma.payment.update({
       where: { orderId: order.id },
       data: {
-        providerTransactionId: providerTransactionId ? providerTransactionId.trim() : null,
+        providerTransactionId: cleanUtr,
       },
     });
 
@@ -371,7 +386,7 @@ const submitCustomerPayment = async (req, res) => {
         orderId: order.id,
         type: "NEW_ORDER",
         title: "New UPI Payment Verification Request",
-        message: `Order #${order.orderNumber}: Customer submitted UPI Ref ${providerTransactionId || "N/A"} for ₹${parseFloat(order.totalAmount).toFixed(2)}. Please verify in your bank app and confirm.`,
+        message: `Order #${order.orderNumber}: Customer submitted UPI Ref ${cleanUtr} for ₹${parseFloat(order.totalAmount).toFixed(2)}. Please verify in your bank app and confirm.`,
       },
     });
 
@@ -442,6 +457,15 @@ const verifyAndConfirmPayment = async (req, res) => {
       });
     }
 
+    // Strict Zero-Cost Rule: Cannot confirm payment without a valid UPI UTR / Transaction Reference number
+    const verifiedUtr = (providerTransactionId || existingOrder.payment?.providerTransactionId || "").trim();
+    if (!verifiedUtr) {
+      return res.status(400).json({
+        success: false,
+        message: "Cannot confirm payment without a valid UPI UTR / Transaction Reference number. Please verify bank credit first.",
+      });
+    }
+
     // Confirm payment in transaction
     const confirmed = await prisma.$transaction(async (tx) => {
       // 1. Generate unique 8-character pickup ID
@@ -453,10 +477,7 @@ const verifyAndConfirmPayment = async (req, res) => {
         data: {
           status: "VERIFIED",
           paidAt: new Date(),
-          providerTransactionId:
-            providerTransactionId ||
-            existingOrder.payment?.providerTransactionId ||
-            `UPI-VERIFIED-${Date.now()}`,
+          providerTransactionId: verifiedUtr,
         },
       });
 
@@ -591,7 +612,7 @@ const createWalkInOrder = async (req, res) => {
       return res.status(403).json({ success: false, message: "Vendor shop context required" });
     }
 
-    const { items, paymentMethod = "CASH" } = req.body;
+    const { items, paymentMethod = "CASH", providerTransactionId } = req.body;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ success: false, message: "Items are required for walk-in order" });
@@ -707,7 +728,12 @@ const createWalkInOrder = async (req, res) => {
           status: "VERIFIED",
           paidAt: new Date(),
           vendorUpiId: chosenMethod === "UPI" ? req.shop.upiId : null,
-          providerTransactionId: `WALKIN-${Date.now()}`,
+          providerTransactionId:
+            providerTransactionId && providerTransactionId.trim()
+              ? providerTransactionId.trim()
+              : chosenMethod === "UPI"
+              ? `UPI-POS-${Date.now()}`
+              : `CASH-${Date.now()}`,
         },
       });
 
@@ -727,6 +753,15 @@ const createWalkInOrder = async (req, res) => {
         items: orderItemsData,
         payment,
         bill,
+        shop: {
+          id: req.shop.id,
+          shopId: req.shop.shopId,
+          shopName: req.shop.shopName,
+          shopNumber: req.shop.shopNumber,
+          address: req.shop.address,
+          contactNumber: req.shop.contactNumber,
+          upiId: req.shop.upiId,
+        },
       };
     });
 
@@ -840,6 +875,17 @@ const getVendorOrders = async (req, res) => {
     const orders = await prisma.order.findMany({
       where,
       include: {
+        shop: {
+          select: {
+            id: true,
+            shopId: true,
+            shopName: true,
+            shopNumber: true,
+            address: true,
+            contactNumber: true,
+            upiId: true,
+          },
+        },
         items: true,
         payment: true,
         bill: true,
@@ -861,6 +907,7 @@ const getVendorOrders = async (req, res) => {
       createdAt: o.createdAt,
       completedAt: o.completedAt,
       customerMobile: o.customer?.mobile || "Walk-in Guest",
+      shop: o.shop || req.shop,
       payment: o.payment
         ? {
             method: o.payment.method,

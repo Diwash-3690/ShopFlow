@@ -22,9 +22,16 @@ import {
   FiPrinter,
   FiCheckCircle,
   FiClock,
+  FiTrash2,
+  FiUser,
 } from "react-icons/fi";
-import { vendorGetMe, logout } from "../../services/authService";
-import { updateMyShop } from "../../services/shopService";
+import {
+  vendorGetMe,
+  vendorUpdateProfile,
+  vendorDeleteAccount,
+  logout,
+} from "../../services/authService";
+import { deleteMyShop } from "../../services/shopService";
 import { getNotifications, markAsRead, markAllAsRead } from "../../services/notificationService";
 import { getVendorDashboardSummary } from "../../services/dashboardService";
 import BillModal from "../../components/BillModal";
@@ -46,11 +53,14 @@ function VendorDashboard() {
   // Active Bill Modal state
   const [activeBill, setActiveBill] = useState(null);
 
-  // Shop Edit state
+  // Profile & Shop Edit state
   const [isEditing, setIsEditing] = useState(false);
   const [savingShop, setSavingShop] = useState(false);
   const [editForm, setEditForm] = useState({
+    ownerName: "",
+    email: "",
     shopName: "",
+    shopNumber: "",
     address: "",
     contactNumber: "",
     upiId: "",
@@ -75,22 +85,23 @@ function VendorDashboard() {
       setUnreadCount(notifRes.unreadCount || 0);
       setDashboardSummary(summaryRes?.summary || null);
 
-      if (profRes.shop) {
-        setEditForm({
-          shopName: profRes.shop.shopName || "",
-          address: profRes.shop.address || "",
-          contactNumber: profRes.shop.contactNumber || "",
-          upiId: profRes.shop.upiId || "",
-          latitude:
-            profRes.shop.latitude !== null && profRes.shop.latitude !== undefined
-              ? profRes.shop.latitude.toString()
-              : "",
-          longitude:
-            profRes.shop.longitude !== null && profRes.shop.longitude !== undefined
-              ? profRes.shop.longitude.toString()
-              : "",
-        });
-      }
+      setEditForm({
+        ownerName: profRes.vendor?.ownerName || "",
+        email: profRes.vendor?.email || "",
+        shopName: profRes.shop?.shopName || "",
+        shopNumber: profRes.shop?.shopNumber || "",
+        address: profRes.shop?.address || "",
+        contactNumber: profRes.shop?.contactNumber || "",
+        upiId: profRes.shop?.upiId || "",
+        latitude:
+          profRes.shop?.latitude !== null && profRes.shop?.latitude !== undefined
+            ? profRes.shop.latitude.toString()
+            : "",
+        longitude:
+          profRes.shop?.longitude !== null && profRes.shop?.longitude !== undefined
+            ? profRes.shop.longitude.toString()
+            : "",
+      });
     } catch {
       const cachedUser = localStorage.getItem("user");
       const cachedShop = localStorage.getItem("shop");
@@ -133,7 +144,10 @@ function VendorDashboard() {
       setEditError("");
 
       const payload = {
+        ownerName: editForm.ownerName,
+        email: editForm.email || undefined,
         shopName: editForm.shopName,
+        shopNumber: editForm.shopNumber || undefined,
         address: editForm.address,
         contactNumber: editForm.contactNumber,
         upiId: editForm.upiId || null,
@@ -141,12 +155,63 @@ function VendorDashboard() {
         longitude: editForm.longitude ? parseFloat(editForm.longitude) : null,
       };
 
-      const res = await updateMyShop(payload);
+      const res = await vendorUpdateProfile(payload);
+      setVendorData(res.vendor);
       setShop(res.shop);
-      localStorage.setItem("shop", JSON.stringify(res.shop));
+      localStorage.setItem("user", JSON.stringify(res.vendor));
+      if (res.shop) {
+        localStorage.setItem("shop", JSON.stringify(res.shop));
+      }
       setIsEditing(false);
+      alert("Profile and shop information updated successfully!");
     } catch (err) {
-      setEditError(err.response?.data?.message || err.message || "Failed to update shop details.");
+      setEditError(err.response?.data?.message || err.message || "Failed to update profile & shop.");
+    } finally {
+      setSavingShop(false);
+    }
+  };
+
+  const handleDeleteShop = async () => {
+    const confirmation = window.prompt(
+      'Type "DELETE SHOP" to permanently delete your registered shop and all its products/orders:'
+    );
+    if (confirmation !== "DELETE SHOP") {
+      if (confirmation !== null) alert("Confirmation mismatch. Shop was not deleted.");
+      return;
+    }
+
+    try {
+      setSavingShop(true);
+      await deleteMyShop();
+      localStorage.removeItem("shop");
+      setShop(null);
+      setIsEditing(false);
+      alert("Your registered shop has been deleted. You can register a new shop anytime.");
+      fetchAllData();
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to delete shop.");
+    } finally {
+      setSavingShop(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    const confirmation = window.prompt(
+      'Type "DELETE ACCOUNT" to permanently delete your Vendor Account, registered shop, and all records. This cannot be undone:'
+    );
+    if (confirmation !== "DELETE ACCOUNT") {
+      if (confirmation !== null) alert("Confirmation mismatch. Account was not deleted.");
+      return;
+    }
+
+    try {
+      setSavingShop(true);
+      await vendorDeleteAccount();
+      logout();
+      alert("Your vendor account has been permanently deleted.");
+      navigate("/vendor/register");
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to delete vendor account.");
     } finally {
       setSavingShop(false);
     }
@@ -278,6 +343,13 @@ function VendorDashboard() {
           </div>
 
           <button
+            onClick={() => setIsEditing(!isEditing)}
+            className="flex items-center gap-1.5 border border-slate-200 text-slate-700 hover:bg-slate-50 px-3 py-1.5 rounded-lg text-sm transition cursor-pointer"
+          >
+            <FiUser size={14} /> <span>{isEditing ? "Close Editor" : "Profile & Shop"}</span>
+          </button>
+
+          <button
             onClick={handleLogout}
             className="flex items-center gap-1.5 border border-slate-200 text-slate-600 hover:text-red-600 hover:border-red-200 px-3 py-1.5 rounded-lg text-sm transition cursor-pointer"
           >
@@ -310,24 +382,113 @@ function VendorDashboard() {
 
         {/* Shop Status Banner or Active Shop Card */}
         {!shop ? (
-          <div className="bg-amber-50 border border-amber-200 rounded-3xl p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-sm">
-            <div>
-              <span className="text-xs font-bold uppercase tracking-wider text-amber-800 bg-amber-100 px-3 py-1 rounded-full">
-                Action Required
-              </span>
-              <h2 className="text-2xl font-black text-amber-950 mt-2 flex items-center gap-2">
-                <FiBriefcase /> Register Your Shop Profile
-              </h2>
-              <p className="text-sm text-amber-800/90 mt-1 max-w-xl">
-                You have authenticated your vendor account. Register your physical shop name, address, GPS location, and UPI ID to unlock product management, inventory, and incoming orders.
-              </p>
+          <div className="space-y-6">
+            <div className="bg-amber-50 border border-amber-200 rounded-3xl p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-sm">
+              <div>
+                <span className="text-xs font-bold uppercase tracking-wider text-amber-800 bg-amber-100 px-3 py-1 rounded-full">
+                  Action Required
+                </span>
+                <h2 className="text-2xl font-black text-amber-950 mt-2 flex items-center gap-2">
+                  <FiBriefcase /> Register Your Shop Profile
+                </h2>
+                <p className="text-sm text-amber-800/90 mt-1 max-w-xl">
+                  You have authenticated your vendor account. Register your physical shop name, address, GPS location, and UPI ID to unlock product management, inventory, and incoming orders.
+                </p>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  onClick={() => setIsEditing(!isEditing)}
+                  className="bg-white border border-amber-300 hover:bg-amber-100 text-amber-900 font-bold px-4 py-3 rounded-xl transition text-sm cursor-pointer shadow-xs"
+                >
+                  {isEditing ? "Close Profile Editor" : "Manage Profile"}
+                </button>
+                <Link
+                  to="/vendor/register-shop"
+                  className="bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white font-bold px-6 py-3 rounded-xl transition flex items-center gap-2 text-sm whitespace-nowrap shadow-sm cursor-pointer"
+                >
+                  <FiPlus size={18} /> Register Shop Now
+                </Link>
+              </div>
             </div>
-            <Link
-              to="/vendor/register-shop"
-              className="bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white font-bold px-6 py-3 rounded-xl transition flex items-center gap-2 text-sm whitespace-nowrap shadow-sm cursor-pointer"
-            >
-              <FiPlus size={18} /> Register Shop Now
-            </Link>
+
+            {/* Profile editor when no shop is registered */}
+            {isEditing && (
+              <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-sm">
+                <form onSubmit={handleSaveShop} className="space-y-6">
+                  <div>
+                    <h3 className="text-base font-bold text-slate-800">Edit Vendor Profile</h3>
+                    <p className="text-xs text-slate-500 mt-0.5">Manage your personal credentials.</p>
+                  </div>
+
+                  {editError && (
+                    <div className="p-3 bg-red-50 text-red-700 text-xs rounded-xl font-medium">{editError}</div>
+                  )}
+
+                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-medium text-slate-700 mb-1">Owner Full Name</label>
+                        <input
+                          type="text"
+                          value={editForm.ownerName}
+                          onChange={(e) => setEditForm({ ...editForm, ownerName: e.target.value })}
+                          className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-700 mb-1">Account Email</label>
+                        <input
+                          type="email"
+                          value={editForm.email}
+                          onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                          placeholder="vendor@example.com"
+                          className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsEditing(false)}
+                      className="border border-slate-300 px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={savingShop}
+                      className="bg-slate-900 text-white font-bold px-6 py-2.5 rounded-xl text-xs hover:bg-emerald-600 transition cursor-pointer disabled:bg-slate-400 shadow-xs"
+                    >
+                      {savingShop ? "Saving Changes..." : "Save Profile Changes"}
+                    </button>
+                  </div>
+
+                  {/* Danger Zone: Delete Account */}
+                  <div className="pt-6 border-t border-red-200 space-y-3">
+                    <p className="text-xs font-bold uppercase tracking-wider text-red-600">Danger Zone</p>
+                    <div className="p-4 bg-red-50/60 border border-red-200 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                      <div>
+                        <p className="text-xs font-bold text-red-950">Delete Entire Vendor Account</p>
+                        <p className="text-[10px] text-red-700 mt-0.5">
+                          Permanently purge your vendor credentials and records.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleDeleteAccount}
+                        disabled={savingShop}
+                        className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap shadow-xs"
+                      >
+                        <FiTrash2 size={13} /> Delete Entire Account
+                      </button>
+                    </div>
+                  </div>
+                </form>
+              </div>
+            )}
           </div>
         ) : (
           <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-sm">
@@ -402,74 +563,128 @@ function VendorDashboard() {
               </div>
             </div>
 
-            {/* Inline Shop Editor */}
+            {/* Inline Profile & Shop Editor */}
             {isEditing && (
-              <form onSubmit={handleSaveShop} className="mt-6 pt-6 border-t border-slate-200 space-y-4">
-                <h3 className="text-base font-bold text-slate-800">Update Shop Information</h3>
-                {editError && (
-                  <div className="p-3 bg-red-50 text-red-700 text-xs rounded-lg">{editError}</div>
-                )}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">Shop Name</label>
-                    <input
-                      type="text"
-                      value={editForm.shopName}
-                      onChange={(e) => setEditForm({ ...editForm, shopName: e.target.value })}
-                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">Contact Number</label>
-                    <input
-                      type="text"
-                      value={editForm.contactNumber}
-                      onChange={(e) => setEditForm({ ...editForm, contactNumber: e.target.value })}
-                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm"
-                    />
-                  </div>
-                </div>
-
+              <form onSubmit={handleSaveShop} className="mt-6 pt-6 border-t border-slate-200 space-y-6">
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">Address</label>
-                  <textarea
-                    rows={2}
-                    value={editForm.address}
-                    onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
-                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm"
-                  />
+                  <h3 className="text-base font-bold text-slate-800">Edit Vendor Profile & Shop Information</h3>
+                  <p className="text-xs text-slate-500 mt-0.5">Manage your personal credentials and public store settings.</p>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {editError && (
+                  <div className="p-3 bg-red-50 text-red-700 text-xs rounded-xl font-medium">{editError}</div>
+                )}
+
+                {/* Section A: Vendor Personal Info */}
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
+                  <p className="text-xs font-bold uppercase tracking-wider text-slate-500">1. Vendor Profile</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Owner Full Name</label>
+                      <input
+                        type="text"
+                        value={editForm.ownerName}
+                        onChange={(e) => setEditForm({ ...editForm, ownerName: e.target.value })}
+                        className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Account Email</label>
+                      <input
+                        type="email"
+                        value={editForm.email}
+                        onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                        placeholder="vendor@example.com"
+                        className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Section B: Shop Details */}
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
+                  <p className="text-xs font-bold uppercase tracking-wider text-slate-500">2. Registered Shop Profile</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="sm:col-span-2">
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Store / Shop Name</label>
+                      <input
+                        type="text"
+                        value={editForm.shopName}
+                        onChange={(e) => setEditForm({ ...editForm, shopName: e.target.value })}
+                        className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Shop Reg / Number (Optional)</label>
+                      <input
+                        type="text"
+                        value={editForm.shopNumber}
+                        onChange={(e) => setEditForm({ ...editForm, shopNumber: e.target.value })}
+                        placeholder="e.g. SHOP-123"
+                        className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Public Contact Number</label>
+                      <input
+                        type="text"
+                        value={editForm.contactNumber}
+                        onChange={(e) => setEditForm({ ...editForm, contactNumber: e.target.value })}
+                        className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Direct Merchant UPI ID</label>
+                      <input
+                        type="text"
+                        value={editForm.upiId}
+                        onChange={(e) => setEditForm({ ...editForm, upiId: e.target.value })}
+                        placeholder="merchant@okhdfcbank"
+                        className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                        required
+                      />
+                      <p className="text-[10px] text-slate-400 mt-0.5">Where customer UPI payments are directly transferred.</p>
+                    </div>
+                  </div>
+
                   <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">Direct Vendor UPI Destination</label>
-                    <input
-                      type="text"
-                      value={editForm.upiId}
-                      onChange={(e) => setEditForm({ ...editForm, upiId: e.target.value })}
-                      placeholder="merchant@okaxis"
-                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm"
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Store Address & Neighborhood</label>
+                    <textarea
+                      rows={2}
+                      value={editForm.address}
+                      onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
+                      className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      required
                     />
                   </div>
-                  <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">Latitude</label>
-                    <input
-                      type="number"
-                      step="any"
-                      value={editForm.latitude}
-                      onChange={(e) => setEditForm({ ...editForm, latitude: e.target.value })}
-                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">Longitude</label>
-                    <input
-                      type="number"
-                      step="any"
-                      value={editForm.longitude}
-                      onChange={(e) => setEditForm({ ...editForm, longitude: e.target.value })}
-                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm"
-                    />
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">GPS Latitude</label>
+                      <input
+                        type="number"
+                        step="any"
+                        value={editForm.latitude}
+                        onChange={(e) => setEditForm({ ...editForm, latitude: e.target.value })}
+                        className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">GPS Longitude</label>
+                      <input
+                        type="number"
+                        step="any"
+                        value={editForm.longitude}
+                        onChange={(e) => setEditForm({ ...editForm, longitude: e.target.value })}
+                        className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs"
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -477,17 +692,55 @@ function VendorDashboard() {
                   <button
                     type="button"
                     onClick={() => setIsEditing(false)}
-                    className="border border-slate-300 px-4 py-2 rounded-lg text-sm text-slate-600 hover:bg-slate-50 cursor-pointer"
+                    className="border border-slate-300 px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={savingShop}
-                    className="bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg text-sm hover:bg-blue-700 cursor-pointer"
+                    className="bg-slate-900 text-white font-bold px-6 py-2.5 rounded-xl text-xs hover:bg-emerald-600 transition cursor-pointer disabled:bg-slate-400 shadow-xs"
                   >
-                    {savingShop ? "Saving..." : "Save Changes"}
+                    {savingShop ? "Saving Changes..." : "Save Profile & Shop Changes"}
                   </button>
+                </div>
+
+                {/* Section C: Danger Zone */}
+                <div className="pt-6 border-t border-red-200 space-y-3">
+                  <p className="text-xs font-bold uppercase tracking-wider text-red-600">Danger Zone</p>
+                  <div className="p-4 bg-red-50/60 border border-red-200 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div>
+                      <p className="text-xs font-bold text-red-950">Delete Registered Shop</p>
+                      <p className="text-[11px] text-red-700 mt-0.5">
+                        Permanently delete this shop and all its catalog products, categories, and past orders.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleDeleteShop}
+                      disabled={savingShop}
+                      className="bg-white border border-red-300 hover:bg-red-50 text-red-700 text-xs font-bold px-4 py-2 rounded-xl transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+                    >
+                      <FiTrash2 size={13} /> Delete Registered Shop
+                    </button>
+                  </div>
+
+                  <div className="p-4 bg-red-50/60 border border-red-200 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div>
+                      <p className="text-xs font-bold text-red-950">Delete Entire Vendor Account</p>
+                      <p className="text-[10px] text-red-700 mt-0.5">
+                        Permanently purge your vendor credentials, registered shop, and all records.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleDeleteAccount}
+                      disabled={savingShop}
+                      className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap shadow-xs"
+                    >
+                      <FiTrash2 size={13} /> Delete Entire Account
+                    </button>
+                  </div>
                 </div>
               </form>
             )}

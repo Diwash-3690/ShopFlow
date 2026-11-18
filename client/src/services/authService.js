@@ -33,6 +33,16 @@ export const vendorGetMe = async () => {
   return response.data;
 };
 
+export const vendorUpdateProfile = async (profileData) => {
+  const response = await api.put("/auth/vendor/profile", profileData);
+  return response.data;
+};
+
+export const vendorDeleteAccount = async () => {
+  const response = await api.delete("/auth/vendor/profile");
+  return response.data;
+};
+
 // ============================================
 // Customer Authentication Services
 // ============================================
@@ -63,6 +73,16 @@ export const customerResetPassword = async ({ mobile, newPassword }) => {
 
 export const customerGetMe = async () => {
   const response = await api.get("/auth/customer/me");
+  return response.data;
+};
+
+export const customerUpdateProfile = async (profileData) => {
+  const response = await api.put("/auth/customer/profile", profileData);
+  return response.data;
+};
+
+export const customerDeleteAccount = async () => {
+  const response = await api.delete("/auth/customer/profile");
   return response.data;
 };
 

@@ -343,10 +343,60 @@ const searchNearbyShops = async (req, res) => {
     }
 };
 
+// @desc    Delete Registered Shop
+// @route   DELETE /api/shops/my-shop
+const deleteMyShop = async (req, res) => {
+    try {
+        const vendorId = req.vendor.id;
+
+        const shop = await prisma.shop.findUnique({
+            where: { vendorId },
+        });
+
+        if (!shop) {
+            return res.status(404).json({
+                success: false,
+                message: "No registered shop found for your account",
+            });
+        }
+
+        await prisma.$transaction(async (tx) => {
+            // Delete notifications
+            await tx.notification.deleteMany({ where: { shopId: shop.id } });
+            // Delete order items
+            await tx.orderItem.deleteMany({ where: { order: { shopId: shop.id } } });
+            // Delete bills
+            await tx.bill.deleteMany({ where: { order: { shopId: shop.id } } });
+            // Delete payments
+            await tx.payment.deleteMany({ where: { order: { shopId: shop.id } } });
+            // Delete orders
+            await tx.order.deleteMany({ where: { shopId: shop.id } });
+            // Delete products
+            await tx.product.deleteMany({ where: { shopId: shop.id } });
+            // Delete categories
+            await tx.category.deleteMany({ where: { shopId: shop.id } });
+            // Delete shop
+            await tx.shop.delete({ where: { id: shop.id } });
+        });
+
+        return res.status(200).json({
+            success: true,
+            message: "Registered shop and all its catalog products and orders have been deleted successfully.",
+        });
+    } catch (error) {
+        console.error("deleteMyShop error:", error);
+        return res.status(500).json({
+            success: false,
+            message: error.message || "Failed to delete shop",
+        });
+    }
+};
+
 module.exports = {
     createShop,
     getMyShop,
     updateMyShop,
+    deleteMyShop,
     getPublicShopById,
     searchNearbyShops,
 };

@@ -18,6 +18,12 @@ export const updateMyShop = async (shopData) => {
   return response.data;
 };
 
+// Delete current vendor's registered shop
+export const deleteMyShop = async () => {
+  const response = await api.delete("/shops/me");
+  return response.data;
+};
+
 // Public shop lookup by shopId or id
 export const getPublicShopById = async (shopId) => {
   const response = await api.get(`/shops/public/${shopId}`);

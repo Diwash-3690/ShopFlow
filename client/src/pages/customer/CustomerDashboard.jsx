@@ -11,8 +11,17 @@ import {
   FiMapPin,
   FiPackage,
   FiRefreshCw,
+  FiUser,
+  FiTrash2,
+  FiAlertCircle,
+  FiX,
 } from "react-icons/fi";
-import { customerGetMe, logout } from "../../services/authService";
+import {
+  customerGetMe,
+  customerUpdateProfile,
+  customerDeleteAccount,
+  logout,
+} from "../../services/authService";
 import { getCustomerOrders } from "../../services/orderService";
 import { getCustomerDashboardSummary } from "../../services/dashboardService";
 import BillModal from "../../components/BillModal";
@@ -25,6 +34,13 @@ function CustomerDashboard() {
   const [refreshing, setRefreshing] = useState(false);
   const [copiedId, setCopiedId] = useState("");
   const [activeBill, setActiveBill] = useState(null);
+
+  // Profile Edit & Settings Modal state
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [profileForm, setProfileForm] = useState({ email: "" });
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [profileMsg, setProfileMsg] = useState({ type: "", text: "" });
+
   const navigate = useNavigate();
 
   const fetchDashboardData = useCallback(async () => {
@@ -72,6 +88,48 @@ function CustomerDashboard() {
   const handleLogout = () => {
     logout();
     navigate("/customer/login");
+  };
+
+  const handleSaveProfile = async (e) => {
+    e.preventDefault();
+    try {
+      setSavingProfile(true);
+      setProfileMsg({ type: "", text: "" });
+      const res = await customerUpdateProfile({ email: profileForm.email });
+      setCustomer(res.customer);
+      localStorage.setItem("user", JSON.stringify(res.customer));
+      setProfileMsg({ type: "success", text: "Profile updated successfully!" });
+      setTimeout(() => setShowProfileModal(false), 1200);
+    } catch (err) {
+      setProfileMsg({
+        type: "error",
+        text: err.response?.data?.message || err.message || "Failed to update profile.",
+      });
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    const confirmation = window.prompt(
+      'Type "DELETE" to permanently delete your customer account and clear your data:'
+    );
+    if (confirmation !== "DELETE") {
+      if (confirmation !== null) alert("Confirmation did not match. Account was not deleted.");
+      return;
+    }
+
+    try {
+      setSavingProfile(true);
+      await customerDeleteAccount();
+      logout();
+      alert("Your customer account has been permanently deleted.");
+      navigate("/");
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to delete account.");
+    } finally {
+      setSavingProfile(false);
+    }
   };
 
   const copyPickupId = (id) => {
@@ -125,6 +183,18 @@ function CustomerDashboard() {
               ✓ Mobile Verified
             </span>
           </div>
+
+          <button
+            onClick={() => {
+              setProfileForm({ email: customer?.email || "" });
+              setProfileMsg({ type: "", text: "" });
+              setShowProfileModal(true);
+            }}
+            className="flex items-center gap-1.5 border border-slate-200 text-slate-700 hover:bg-slate-50 px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer"
+          >
+            <FiUser size={14} /> <span>Profile</span>
+          </button>
+
           <button
             onClick={handleLogout}
             className="flex items-center gap-1.5 border border-slate-200 text-slate-600 hover:text-red-600 hover:border-red-200 px-3 py-1.5 rounded-lg text-sm transition cursor-pointer"
@@ -427,6 +497,108 @@ function CustomerDashboard() {
       {/* Printable Bill Modal */}
       {activeBill && (
         <BillModal bill={activeBill} onClose={() => setActiveBill(null)} />
+      )}
+
+      {/* Customer Profile & Settings Modal */}
+      {showProfileModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-slate-200 space-y-5 animate-fadeIn">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">👤</span>
+                <h3 className="font-bold text-slate-900 text-lg">My Customer Profile</h3>
+              </div>
+              <button
+                onClick={() => setShowProfileModal(false)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg cursor-pointer transition"
+              >
+                <FiX size={18} />
+              </button>
+            </div>
+
+            {profileMsg.text && (
+              <div
+                className={`p-3 rounded-xl text-xs font-medium flex items-center gap-2 ${
+                  profileMsg.type === "success"
+                    ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                    : "bg-red-50 text-red-700 border border-red-200"
+                }`}
+              >
+                <FiAlertCircle size={15} />
+                <span>{profileMsg.text}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSaveProfile} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Verified Mobile Number
+                </label>
+                <input
+                  type="text"
+                  disabled
+                  value={customer?.mobile || ""}
+                  className="w-full bg-slate-100 border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-500 font-mono cursor-not-allowed"
+                />
+                <p className="text-[10px] text-slate-400 mt-0.5">Primary login and OTP identifier.</p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Email Address
+                </label>
+                <input
+                  type="email"
+                  value={profileForm.email}
+                  onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
+                  placeholder="e.g. customer@example.com"
+                  className="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                />
+                <p className="text-[10px] text-slate-400 mt-0.5">Used for order receipts and updates.</p>
+              </div>
+
+              <div className="pt-2 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowProfileModal(false)}
+                  className="px-4 py-2 border border-slate-200 text-slate-600 text-xs font-bold rounded-xl hover:bg-slate-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingProfile}
+                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition shadow-xs cursor-pointer disabled:bg-emerald-400"
+                >
+                  {savingProfile ? "Saving..." : "Save Profile"}
+                </button>
+              </div>
+            </form>
+
+            {/* Danger Zone: Delete Profile */}
+            <div className="pt-4 border-t border-red-100 space-y-2">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-red-600">
+                Danger Zone
+              </p>
+              <div className="p-3 bg-red-50/70 border border-red-200 rounded-2xl flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-bold text-red-950">Delete Customer Account</p>
+                  <p className="text-[10px] text-red-700 mt-0.5">
+                    Permanently delete your profile and personal data.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleDeleteAccount}
+                  disabled={savingProfile}
+                  className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-3 py-2 rounded-xl transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap shadow-xs"
+                >
+                  <FiTrash2 size={13} /> Delete Account
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

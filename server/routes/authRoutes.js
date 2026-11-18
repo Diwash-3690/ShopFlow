@@ -15,6 +15,8 @@ router.post("/vendor/register", vendorAuth.register);
 router.post("/vendor/login", vendorAuth.login);
 router.post("/vendor/reset-password", vendorAuth.resetPassword);
 router.get("/vendor/me", protectVendor, vendorAuth.getMe);
+router.put("/vendor/profile", protectVendor, vendorAuth.updateProfile);
+router.delete("/vendor/profile", protectVendor, vendorAuth.deleteAccount);
 
 // ============================================
 // Customer Authentication Routes
@@ -25,5 +27,7 @@ router.post("/customer/register", customerAuth.register);
 router.post("/customer/login", customerAuth.login);
 router.post("/customer/reset-password", customerAuth.resetPassword);
 router.get("/customer/me", protectCustomer, customerAuth.getMe);
+router.put("/customer/profile", protectCustomer, customerAuth.updateProfile);
+router.delete("/customer/profile", protectCustomer, customerAuth.deleteAccount);
 
 module.exports = router;

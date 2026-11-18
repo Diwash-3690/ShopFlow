@@ -125,6 +125,14 @@ function WalkInPos() {
   const handleCompleteSale = async () => {
     if (ticketItems.length === 0) return;
 
+    let utr = "";
+    if (paymentMethod === "UPI") {
+      const inputUtr = window.prompt("Enter customer's UPI UTR / Reference number from payment screen (or leave blank if cash/counter verified):");
+      if (inputUtr && inputUtr.trim()) {
+        utr = inputUtr.trim();
+      }
+    }
+
     try {
       setSubmitting(true);
       const res = await createWalkInOrder({
@@ -133,9 +141,10 @@ function WalkInPos() {
           quantity: i.quantity,
         })),
         paymentMethod,
+        providerTransactionId: utr || undefined,
       });
 
-      const { order, items, bill, payment } = res.data;
+      const { order, items, bill, payment, shop } = res.data;
 
       // Show receipt bill modal immediately
       setActiveBill({
@@ -145,6 +154,7 @@ function WalkInPos() {
         orderType: "WALK_IN",
         status: "COMPLETED",
         items,
+        shop: shop || null,
         payment,
         customer: { mobile: "Counter Walk-in" },
       });

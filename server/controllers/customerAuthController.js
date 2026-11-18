@@ -305,6 +305,83 @@ const getMe = async (req, res) => {
     }
 };
 
+// @desc    Update Customer Profile
+// @route   PUT /api/auth/customer/profile
+const updateProfile = async (req, res) => {
+    try {
+        const customerId = req.customer.id;
+        const { email } = req.body;
+
+        const updateData = {};
+        if (email !== undefined) {
+            const cleanEmail = email && email.trim() ? email.trim() : null;
+            if (cleanEmail) {
+                const existing = await prisma.customer.findFirst({
+                    where: { email: cleanEmail, NOT: { id: customerId } },
+                });
+                if (existing) {
+                    return res.status(400).json({
+                        success: false,
+                        message: "This email address is already in use by another customer.",
+                    });
+                }
+            }
+            updateData.email = cleanEmail;
+        }
+
+        const updatedCustomer = await prisma.customer.update({
+            where: { id: customerId },
+            data: updateData,
+        });
+
+        const { passwordHash: _, ...safeCustomer } = updatedCustomer;
+
+        return res.status(200).json({
+            success: true,
+            message: "Profile updated successfully",
+            customer: safeCustomer,
+        });
+    } catch (error) {
+        console.error("customer updateProfile error:", error);
+        return res.status(500).json({
+            success: false,
+            message: error.message || "Failed to update profile",
+        });
+    }
+};
+
+// @desc    Delete Customer Account
+// @route   DELETE /api/auth/customer/profile
+const deleteAccount = async (req, res) => {
+    try {
+        const customerId = req.customer.id;
+
+        await prisma.$transaction(async (tx) => {
+            // Unlink customer from past orders so merchant accounting history is preserved
+            await tx.order.updateMany({
+                where: { customerId },
+                data: { customerId: null },
+            });
+
+            // Delete customer account
+            await tx.customer.delete({
+                where: { id: customerId },
+            });
+        });
+
+        return res.status(200).json({
+            success: true,
+            message: "Your customer account has been permanently deleted.",
+        });
+    } catch (error) {
+        console.error("deleteCustomerAccount error:", error);
+        return res.status(500).json({
+            success: false,
+            message: error.message || "Failed to delete customer account",
+        });
+    }
+};
+
 module.exports = {
     sendOtp,
     verifyOtp,
@@ -312,4 +389,6 @@ module.exports = {
     login,
     resetPassword,
     getMe,
+    updateProfile,
+    deleteAccount,
 };

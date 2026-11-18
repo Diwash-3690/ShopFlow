@@ -5,6 +5,7 @@ const {
     createShop,
     getMyShop,
     updateMyShop,
+    deleteMyShop,
     getPublicShopById,
     searchNearbyShops,
 } = require("../controllers/shopController");
@@ -19,5 +20,6 @@ router.get("/public/:shopId", getPublicShopById);
 router.post("/", protectVendor, createShop);
 router.get("/me", protectVendor, getMyShop);
 router.put("/me", protectVendor, updateMyShop);
+router.delete("/me", protectVendor, deleteMyShop);
 
 module.exports = router;

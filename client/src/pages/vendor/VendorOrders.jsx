@@ -62,10 +62,19 @@ function VendorOrders() {
   };
 
   // Vendor manual payment verification (Zero-cost UPI flow)
-  const handleVerifyPayment = async (orderId) => {
+  const handleVerifyPayment = async (orderId, submittedUtr) => {
+    let utr = (submittedUtr || "").trim();
+    if (!utr) {
+      utr = window.prompt("Enter the 12-digit UPI UTR / Reference number from your bank app to confirm:");
+      if (!utr || !utr.trim()) {
+        alert("Payment confirmation cancelled: A valid UPI UTR is mandatory.");
+        return;
+      }
+      utr = utr.trim();
+    }
     try {
       setActionInProgress(orderId);
-      const res = await verifyPayment(orderId);
+      const res = await verifyPayment(orderId, { providerTransactionId: utr });
       alert(`Payment verified! Unique Pickup ID ${res.order.pickupId} generated for customer.`);
       fetchOrders();
     } catch (err) {
@@ -402,7 +411,7 @@ function VendorOrders() {
                           <FiXCircle size={14} /> Reject & Restore Stock
                         </button>
                         <button
-                          onClick={() => handleVerifyPayment(o.id)}
+                          onClick={() => handleVerifyPayment(o.id, o.payment?.providerTransactionId)}
                           disabled={actionInProgress === o.id}
                           className="flex items-center gap-1 bg-purple-700 hover:bg-purple-800 text-white px-3.5 py-1.5 rounded-lg font-bold transition cursor-pointer shadow-xs"
                         >
@@ -478,6 +487,7 @@ function VendorOrders() {
                               totalAmount: o.totalAmount,
                               subtotal: o.subtotal,
                               items: o.items,
+                              shop: o.shop,
                               payment: o.payment,
                               customer: { mobile: o.customerMobile },
                             })

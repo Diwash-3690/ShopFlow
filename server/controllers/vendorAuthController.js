@@ -325,6 +325,126 @@ const getMe = async (req, res) => {
     }
 };
 
+// @desc    Update Vendor Profile
+// @route   PUT /api/auth/vendor/profile
+const updateProfile = async (req, res) => {
+    try {
+        const vendorId = req.vendor.id;
+        const { ownerName, email, shopName, shopNumber, address, contactNumber, upiId } = req.body;
+
+        const vendorUpdate = {};
+        if (ownerName && ownerName.trim()) vendorUpdate.ownerName = ownerName.trim();
+        if (email !== undefined) vendorUpdate.email = email && email.trim() ? email.trim() : null;
+
+        // Check if email already used by another vendor
+        if (vendorUpdate.email) {
+            const existingEmail = await prisma.vendor.findFirst({
+                where: { email: vendorUpdate.email, NOT: { id: vendorId } },
+            });
+            if (existingEmail) {
+                return res.status(400).json({
+                    success: false,
+                    message: "This email address is already in use by another vendor.",
+                });
+            }
+        }
+
+        const updatedVendor = await prisma.vendor.update({
+            where: { id: vendorId },
+            data: vendorUpdate,
+            include: { shop: true },
+        });
+
+        // Also update shop details if vendor has registered a shop and shop fields are provided
+        let updatedShop = updatedVendor.shop;
+        if (updatedShop && (shopName || shopNumber !== undefined || address || contactNumber || upiId !== undefined)) {
+            const shopUpdate = {};
+            if (shopName && shopName.trim()) shopUpdate.shopName = shopName.trim();
+            if (shopNumber !== undefined) shopUpdate.shopNumber = shopNumber && shopNumber.trim() ? shopNumber.trim() : null;
+            if (address && address.trim()) shopUpdate.address = address.trim();
+            if (contactNumber && contactNumber.trim()) shopUpdate.contactNumber = contactNumber.trim();
+            if (upiId !== undefined) {
+                if (upiId && !/^[\w.\-_]{2,256}@[a-zA-Z]{2,64}$/.test(upiId.trim())) {
+                    return res.status(400).json({
+                        success: false,
+                        message: "Please enter a valid UPI ID (e.g., storename@okhdfcbank)",
+                    });
+                }
+                shopUpdate.upiId = upiId ? upiId.trim() : null;
+            }
+
+            updatedShop = await prisma.shop.update({
+                where: { id: updatedShop.id },
+                data: shopUpdate,
+            });
+        }
+
+        const { passwordHash: _, ...safeVendor } = updatedVendor;
+
+        return res.status(200).json({
+            success: true,
+            message: "Profile updated successfully",
+            vendor: safeVendor,
+            shop: updatedShop,
+            hasShop: !!updatedShop,
+        });
+    } catch (error) {
+        console.error("updateProfile error:", error);
+        return res.status(500).json({
+            success: false,
+            message: error.message || "Failed to update profile",
+        });
+    }
+};
+
+// @desc    Delete Vendor Account (and cascading registered shop)
+// @route   DELETE /api/auth/vendor/profile
+const deleteAccount = async (req, res) => {
+    try {
+        const vendorId = req.vendor.id;
+
+        // Perform cascading deletion in transaction
+        await prisma.$transaction(async (tx) => {
+            const shop = await tx.shop.findUnique({
+                where: { vendorId },
+            });
+
+            if (shop) {
+                // Delete notifications
+                await tx.notification.deleteMany({ where: { shopId: shop.id } });
+                // Delete order items
+                await tx.orderItem.deleteMany({ where: { order: { shopId: shop.id } } });
+                // Delete bills
+                await tx.bill.deleteMany({ where: { order: { shopId: shop.id } } });
+                // Delete payments
+                await tx.payment.deleteMany({ where: { order: { shopId: shop.id } } });
+                // Delete orders
+                await tx.order.deleteMany({ where: { shopId: shop.id } });
+                // Delete products
+                await tx.product.deleteMany({ where: { shopId: shop.id } });
+                // Delete categories
+                await tx.category.deleteMany({ where: { shopId: shop.id } });
+                // Delete shop
+                await tx.shop.delete({ where: { id: shop.id } });
+            }
+
+            // Finally, delete vendor record
+            await tx.vendor.delete({ where: { id: vendorId } });
+        });
+
+        return res.status(200).json({
+            success: true,
+            message: "Vendor account and all associated shop data have been permanently deleted.",
+        });
+    } catch (error) {
+        console.error("deleteVendorAccount error:", error);
+        return res.status(500).json({
+            success: false,
+            message: error.message || "Failed to delete account",
+        });
+    }
+};
+
 module.exports = {
     sendOtp,
     verifyOtp,
@@ -332,4 +452,6 @@ module.exports = {
     login,
     resetPassword,
     getMe,
+    updateProfile,
+    deleteAccount,
 };

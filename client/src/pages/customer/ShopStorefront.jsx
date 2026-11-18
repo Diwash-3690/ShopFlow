@@ -64,6 +64,7 @@ function ShopStorefront() {
   const [upiOrderData, setUpiOrderData] = useState(null);
   const [verifyingPayment, setVerifyingPayment] = useState(false);
   const [transactionRef, setTransactionRef] = useState("");
+  const [utrError, setUtrError] = useState("");
   const [confirmedOrder, setConfirmedOrder] = useState(null);
   const [copiedPickupId, setCopiedPickupId] = useState(false);
   const [activeBill, setActiveBill] = useState(null);
@@ -170,14 +171,25 @@ function ShopStorefront() {
     }
   };
 
-  // Step 3: Customer submits UPI payment reference for merchant verification (Zero-cost direct UPI)
+  // Step 3: Customer submits mandatory UPI payment reference (UTR) for merchant verification (Zero-cost direct UPI)
   const handleSubmitPayment = async () => {
     if (!upiOrderData) return;
 
+    const cleanUtr = (transactionRef || "").trim();
+    if (!cleanUtr) {
+      setUtrError("Please enter the 12-digit UPI Reference / UTR number from your payment app.");
+      return;
+    }
+    if (cleanUtr.length < 6) {
+      setUtrError("Please enter a valid UPI Reference / UTR number (at least 6 characters).");
+      return;
+    }
+
+    setUtrError("");
     try {
       setVerifyingPayment(true);
       await submitCustomerPayment(upiOrderData.order.id, {
-        providerTransactionId: transactionRef || undefined,
+        providerTransactionId: cleanUtr,
       });
 
       // Clear the cart
@@ -189,11 +201,11 @@ function ShopStorefront() {
         totalAmount: parseFloat(upiOrderData.order.totalAmount),
         shop: upiOrderData.shop,
         paymentStatus: "PENDING",
-        providerTransactionId: transactionRef || "Direct UPI",
+        providerTransactionId: cleanUtr,
       });
       setUpiOrderData(null);
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to submit payment reference.");
+      setUtrError(err.response?.data?.message || "Failed to submit payment reference.");
     } finally {
       setVerifyingPayment(false);
     }
@@ -703,16 +715,27 @@ function ShopStorefront() {
             {/* Verification trigger */}
             <div className="border-t border-slate-100 pt-4 space-y-3">
               <div>
-                <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                  UPI Reference / UTR Number (Optional)
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                  12-Digit UPI Reference / UTR Number <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   value={transactionRef}
-                  onChange={(e) => setTransactionRef(e.target.value)}
-                  placeholder="e.g. 431289456721"
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  onChange={(e) => {
+                    setTransactionRef(e.target.value);
+                    if (utrError) setUtrError("");
+                  }}
+                  placeholder="e.g. 431289456721 (from GPay / PhonePe / Paytm)"
+                  className="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-semibold focus:outline-none focus:ring-2 focus:ring-purple-500"
                 />
+                <p className="text-[10px] text-slate-500 mt-1">
+                  After paying via UPI, copy the 12-digit UTR/UPI Ref from your payment receipt and paste here for merchant verification.
+                </p>
+                {utrError && (
+                  <p className="text-xs text-red-600 mt-1.5 flex items-center gap-1 font-medium">
+                    <FiAlertCircle size={13} /> {utrError}
+                  </p>
+                )}
               </div>
 
               <button

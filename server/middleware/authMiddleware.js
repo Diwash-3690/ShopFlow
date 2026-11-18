@@ -165,8 +165,49 @@ const protectAny = async (req, res, next) => {
     }
 };
 
+/**
+ * Middleware to protect Admin-only routes.
+ * Decodes JWT, validates role === 'ADMIN'.
+ */
+const protectAdmin = async (req, res, next) => {
+    try {
+        let token;
+        if (
+            req.headers.authorization &&
+            req.headers.authorization.startsWith("Bearer")
+        ) {
+            token = req.headers.authorization.split(" ")[1];
+        }
+
+        if (!token) {
+            return res.status(401).json({
+                success: false,
+                message: "Not authorized, admin token missing",
+            });
+        }
+
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+        if (decoded.role !== "ADMIN") {
+            return res.status(403).json({
+                success: false,
+                message: "Access forbidden: Administrator privileges required",
+            });
+        }
+
+        req.admin = { id: decoded.id, role: decoded.role, username: decoded.username };
+        next();
+    } catch (error) {
+        return res.status(401).json({
+            success: false,
+            message: "Invalid or expired admin token",
+        });
+    }
+};
+
 module.exports = protectVendor;
 module.exports.protect = protectVendor;
 module.exports.protectVendor = protectVendor;
 module.exports.protectCustomer = protectCustomer;
 module.exports.protectAny = protectAny;
+module.exports.protectAdmin = protectAdmin;

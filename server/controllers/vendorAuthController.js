@@ -13,7 +13,7 @@ const generateToken = (id, role = "VENDOR") => {
 // @route   POST /api/auth/vendor/send-otp
 const sendOtp = async (req, res) => {
     try {
-        const { mobile, purpose = "VENDOR_REGISTER" } = req.body;
+        const { mobile, email, purpose = "VENDOR_REGISTER" } = req.body;
 
         if (!mobile || !/^\d{10}$/.test(mobile.trim())) {
             return res.status(400).json({
@@ -23,6 +23,7 @@ const sendOtp = async (req, res) => {
         }
 
         const cleanMobile = mobile.trim();
+        const cleanEmail = email && email.trim() ? email.trim().toLowerCase() : null;
 
         if (purpose !== "VENDOR_REGISTER" && purpose !== "PASSWORD_RESET") {
             return res.status(400).json({
@@ -40,6 +41,19 @@ const sendOtp = async (req, res) => {
                 success: false,
                 message: "A vendor with this mobile number is already registered",
             });
+        }
+
+        // Email uniqueness check right in Step 1 (Registration Page 1)
+        if (purpose === "VENDOR_REGISTER" && cleanEmail) {
+            const existingEmail = await prisma.vendor.findFirst({
+                where: { email: cleanEmail },
+            });
+            if (existingEmail) {
+                return res.status(400).json({
+                    success: false,
+                    message: "A vendor with this email address is already registered. Please login or use a different email.",
+                });
+            }
         }
 
         if (purpose === "PASSWORD_RESET" && !existingVendor) {
@@ -111,6 +125,7 @@ const register = async (req, res) => {
         }
 
         const cleanMobile = mobile.trim();
+        const cleanEmail = email && email.trim() ? email.trim().toLowerCase() : null;
 
         if (password.length < 6) {
             return res.status(400).json({
@@ -132,7 +147,7 @@ const register = async (req, res) => {
             });
         }
 
-        // Double-check existence
+        // Double-check existence for mobile
         const existing = await prisma.vendor.findUnique({
             where: { mobile: cleanMobile },
         });
@@ -144,6 +159,19 @@ const register = async (req, res) => {
             });
         }
 
+        // Double-check existence for email
+        if (cleanEmail) {
+            const existingEmail = await prisma.vendor.findFirst({
+                where: { email: cleanEmail },
+            });
+            if (existingEmail) {
+                return res.status(400).json({
+                    success: false,
+                    message: "A vendor with this email address is already registered. Please login or use a different email.",
+                });
+            }
+        }
+
         const passwordHash = await bcrypt.hash(password, 10);
 
         const vendor = await prisma.vendor.create({
@@ -152,7 +180,7 @@ const register = async (req, res) => {
                 mobile: cleanMobile,
                 passwordHash,
                 mobileVerified: true,
-                email: email ? email.trim() : null,
+                email: cleanEmail,
             },
         });
 
@@ -176,6 +204,16 @@ const register = async (req, res) => {
         });
     } catch (error) {
         console.error("register vendor error:", error);
+        if (error.code === "P2002") {
+            const target = error.meta?.target || [];
+            const isEmail = Array.isArray(target) ? target.includes("email") : String(target).includes("email");
+            return res.status(400).json({
+                success: false,
+                message: isEmail
+                    ? "A vendor with this email address is already registered."
+                    : "A vendor with this mobile number is already registered.",
+            });
+        }
         return res.status(500).json({
             success: false,
             message: error.message || "Vendor registration failed",

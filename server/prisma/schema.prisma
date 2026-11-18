@@ -51,6 +51,7 @@ model Vendor {
   updatedAt       DateTime @updatedAt
 
   shop            Shop?
+  reports         Report[]
 }
 
 model Shop {
@@ -64,6 +65,7 @@ model Shop {
   latitude        Float?
   longitude       Float?
   upiId           String?
+  isActive        Boolean  @default(true)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -72,6 +74,7 @@ model Shop {
   products        Product[]
   orders          Order[]
   notifications   Notification[]
+  reports         Report[]
 }
 
 model Customer {
@@ -84,6 +87,7 @@ model Customer {
   updatedAt       DateTime @updatedAt
 
   orders          Order[]
+  reports         Report[]
 }
 
 model Category {
@@ -204,4 +208,53 @@ model OtpVerification {
   createdAt       DateTime   @default(now())
 
   @@index([mobile, purpose])
+}
+
+model Admin {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  username     String   @unique
+  passwordHash String
+  name         String   @default("Platform Admin")
+  role         String   @default("ADMIN")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+enum ReportCategory {
+  MISBEHAVIOUR
+  PAYMENT_DISPUTE
+  FRAUD_SUSPICION
+  ORDER_ISSUE
+  INCORRECT_INVENTORY
+  OTHER
+}
+
+enum ReportStatus {
+  PENDING
+  UNDER_REVIEW
+  RESOLVED
+  DISMISSED
+}
+
+model Report {
+  id           String         @id @default(cuid())
+  reportNumber String         @unique
+  reporterType String         // "CUSTOMER" | "VENDOR"
+  customerId   String?
+  vendorId     String?
+  shopId       String?
+  orderNumber  String?
+  category     ReportCategory @default(OTHER)
+  subject      String
+  description  String
+  status       ReportStatus   @default(PENDING)
+  adminNotes   String?
+  resolvedAt   DateTime?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  customer     Customer?      @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  vendor       Vendor?        @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+  shop         Shop?          @relation(fields: [shopId], references: [id], onDelete: SetNull)
 }

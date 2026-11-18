@@ -27,6 +27,8 @@ const billRoutes = require("./routes/billRoutes");
 const ownerRoutes = require("./routes/ownerRoutes");
 const archiveRoutes = require("./routes/archiveRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
+const reportRoutes = require("./routes/reportRoutes");
+const adminRoutes = require("./routes/adminRoutes");
 
 // Mount API Routes
 app.use("/api/auth", authRoutes);
@@ -40,6 +42,8 @@ app.use("/api/bills", billRoutes);
 app.use("/api/owners", ownerRoutes);
 app.use("/api/archived-bills", archiveRoutes);
 app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/reports", reportRoutes);
+app.use("/api/admin", adminRoutes);
 
 app.get("/", (req, res) => {
     res.send("Welcome to ShopFlow Backend");

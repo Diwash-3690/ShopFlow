@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import {
   FiLogOut,
   FiBriefcase,
@@ -35,6 +35,7 @@ import { deleteMyShop } from "../../services/shopService";
 import { getNotifications, markAsRead, markAllAsRead } from "../../services/notificationService";
 import { getVendorDashboardSummary } from "../../services/dashboardService";
 import BillModal from "../../components/BillModal";
+import ReportIssueModal from "../../components/ReportIssueModal";
 
 function VendorDashboard() {
   const [vendorData, setVendorData] = useState(null);
@@ -52,6 +53,7 @@ function VendorDashboard() {
 
   // Active Bill Modal state
   const [activeBill, setActiveBill] = useState(null);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
 
   // Profile & Shop Edit state
   const [isEditing, setIsEditing] = useState(false);
@@ -112,6 +114,8 @@ function VendorDashboard() {
     }
   }, []);
 
+  const location = useLocation();
+
   useEffect(() => {
     const token = localStorage.getItem("token");
     const role = localStorage.getItem("role");
@@ -122,7 +126,15 @@ function VendorDashboard() {
     }
 
     fetchAllData();
-  }, [navigate, fetchAllData]);
+
+    const handleFocus = () => fetchAllData();
+    window.addEventListener("focus", handleFocus);
+    window.addEventListener("pageshow", handleFocus);
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      window.removeEventListener("pageshow", handleFocus);
+    };
+  }, [navigate, fetchAllData, location.key]);
 
   const handleLogout = () => {
     logout();
@@ -341,6 +353,13 @@ function VendorDashboard() {
             <p className="text-sm font-semibold text-slate-800">{vendorData?.ownerName || "Shop Owner"}</p>
             <p className="text-xs text-slate-500">{vendorData?.mobile}</p>
           </div>
+
+          <button
+            onClick={() => setIsReportModalOpen(true)}
+            className="flex items-center gap-1.5 border border-rose-200 text-rose-700 bg-rose-50 hover:bg-rose-100 px-3 py-1.5 rounded-lg text-sm font-semibold transition cursor-pointer"
+          >
+            <span>⚠️</span> <span>Report Issue</span>
+          </button>
 
           <button
             onClick={() => setIsEditing(!isEditing)}
@@ -1034,6 +1053,14 @@ function VendorDashboard() {
       {activeBill && (
         <BillModal bill={activeBill} onClose={() => setActiveBill(null)} />
       )}
+
+      {/* Report Issue Modal */}
+      <ReportIssueModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        shopId={shop?.id}
+        shopName={shop?.shopName}
+      />
     </div>
   );
 }

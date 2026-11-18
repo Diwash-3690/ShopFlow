@@ -13,7 +13,7 @@ const generateToken = (id, role = "CUSTOMER") => {
 // @route   POST /api/auth/customer/send-otp
 const sendOtp = async (req, res) => {
     try {
-        const { mobile, purpose = "CUSTOMER_REGISTER" } = req.body;
+        const { mobile, email, purpose = "CUSTOMER_REGISTER" } = req.body;
 
         if (!mobile || !/^\d{10}$/.test(mobile.trim())) {
             return res.status(400).json({
@@ -23,6 +23,7 @@ const sendOtp = async (req, res) => {
         }
 
         const cleanMobile = mobile.trim();
+        const cleanEmail = email && email.trim() ? email.trim().toLowerCase() : null;
 
         if (purpose !== "CUSTOMER_REGISTER" && purpose !== "PASSWORD_RESET") {
             return res.status(400).json({
@@ -40,6 +41,18 @@ const sendOtp = async (req, res) => {
                 success: false,
                 message: "A customer with this mobile number is already registered",
             });
+        }
+
+        if (purpose === "CUSTOMER_REGISTER" && cleanEmail) {
+            const existingEmail = await prisma.customer.findFirst({
+                where: { email: cleanEmail },
+            });
+            if (existingEmail) {
+                return res.status(400).json({
+                    success: false,
+                    message: "A customer with this email address is already registered. Please login or use a different email.",
+                });
+            }
         }
 
         if (purpose === "PASSWORD_RESET" && !existingCustomer) {
@@ -111,6 +124,7 @@ const register = async (req, res) => {
         }
 
         const cleanMobile = mobile.trim();
+        const cleanEmail = email && email.trim() ? email.trim().toLowerCase() : null;
 
         if (password.length < 6) {
             return res.status(400).json({
@@ -142,6 +156,18 @@ const register = async (req, res) => {
             });
         }
 
+        if (cleanEmail) {
+            const existingEmail = await prisma.customer.findFirst({
+                where: { email: cleanEmail },
+            });
+            if (existingEmail) {
+                return res.status(400).json({
+                    success: false,
+                    message: "A customer with this email address is already registered. Please login or use a different email.",
+                });
+            }
+        }
+
         const passwordHash = await bcrypt.hash(password, 10);
 
         const customer = await prisma.customer.create({
@@ -149,7 +175,7 @@ const register = async (req, res) => {
                 mobile: cleanMobile,
                 passwordHash,
                 mobileVerified: true,
-                email: email ? email.trim() : null,
+                email: cleanEmail,
             },
         });
 
@@ -169,6 +195,16 @@ const register = async (req, res) => {
         });
     } catch (error) {
         console.error("register customer error:", error);
+        if (error.code === "P2002") {
+            const target = error.meta?.target || [];
+            const isEmail = Array.isArray(target) ? target.includes("email") : String(target).includes("email");
+            return res.status(400).json({
+                success: false,
+                message: isEmail
+                    ? "A customer with this email address is already registered."
+                    : "A customer with this mobile number is already registered.",
+            });
+        }
         return res.status(500).json({
             success: false,
             message: error.message || "Customer registration failed",

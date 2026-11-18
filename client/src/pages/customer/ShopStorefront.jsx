@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import {
   FiArrowLeft,
   FiShoppingBag,
@@ -25,6 +25,7 @@ import {
 } from "../../services/orderService";
 import { useCart } from "../../context/CartContext";
 import BillModal from "../../components/BillModal";
+import ReportIssueModal from "../../components/ReportIssueModal";
 
 function ShopStorefront() {
   const { shopId } = useParams();
@@ -68,6 +69,7 @@ function ShopStorefront() {
   const [confirmedOrder, setConfirmedOrder] = useState(null);
   const [copiedPickupId, setCopiedPickupId] = useState(false);
   const [activeBill, setActiveBill] = useState(null);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
 
   const loadStoreData = useCallback(async () => {
     try {
@@ -88,9 +90,19 @@ function ShopStorefront() {
     }
   }, [shopId]);
 
+  const location = useLocation();
+
   useEffect(() => {
     loadStoreData();
-  }, [loadStoreData]);
+
+    const handleFocus = () => loadStoreData();
+    window.addEventListener("focus", handleFocus);
+    window.addEventListener("pageshow", handleFocus);
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      window.removeEventListener("pageshow", handleFocus);
+    };
+  }, [loadStoreData, location.key]);
 
   const handleAddToCart = (product) => {
     if (!shop) return;
@@ -319,12 +331,22 @@ function ShopStorefront() {
             </div>
           </div>
 
-          {/* Quick Notice */}
-          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3 text-xs text-slate-600 max-w-sm">
-            <p className="font-semibold text-slate-800">🛍️ Storefront Pickup</p>
-            <p className="text-[11px] text-slate-500 mt-0.5">
-              Order items from this store, pay securely via UPI, and pick them up at the counter with your unique Pickup ID.
-            </p>
+          {/* Quick Notice & Actions */}
+          <div className="flex flex-col sm:flex-row md:flex-col items-start md:items-end gap-3 max-w-sm">
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3 text-xs text-slate-600">
+              <p className="font-semibold text-slate-800">🛍️ Storefront Pickup</p>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                Order items from this store, pay securely via UPI, and pick them up at the counter with your unique Pickup ID.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsReportModalOpen(true)}
+              className="text-xs font-semibold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 px-3 py-1.5 rounded-xl transition flex items-center gap-1.5"
+            >
+              <span>⚠️</span>
+              <span>Report Shop / Misbehaviour</span>
+            </button>
           </div>
         </div>
       </header>
@@ -879,6 +901,14 @@ function ShopStorefront() {
           </div>
         </div>
       )}
+
+      {/* Report Issue Modal */}
+      <ReportIssueModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        shopId={shop?.id}
+        shopName={shop?.shopName}
+      />
     </div>
   );
 }

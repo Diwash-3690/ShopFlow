@@ -3,8 +3,8 @@ import api from "./api";
 // ============================================
 // Vendor Authentication Services
 // ============================================
-export const vendorSendOtp = async ({ mobile, purpose = "VENDOR_REGISTER" }) => {
-  const response = await api.post("/auth/vendor/send-otp", { mobile, purpose });
+export const vendorSendOtp = async ({ mobile, email, purpose = "VENDOR_REGISTER" }) => {
+  const response = await api.post("/auth/vendor/send-otp", { mobile, email, purpose });
   return response.data;
 };
 
@@ -46,8 +46,8 @@ export const vendorDeleteAccount = async () => {
 // ============================================
 // Customer Authentication Services
 // ============================================
-export const customerSendOtp = async ({ mobile, purpose = "CUSTOMER_REGISTER" }) => {
-  const response = await api.post("/auth/customer/send-otp", { mobile, purpose });
+export const customerSendOtp = async ({ mobile, email, purpose = "CUSTOMER_REGISTER" }) => {
+  const response = await api.post("/auth/customer/send-otp", { mobile, email, purpose });
   return response.data;
 };
 

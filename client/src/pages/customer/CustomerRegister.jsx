@@ -46,6 +46,7 @@ function CustomerRegister() {
       setErrorMsg("");
       const res = await customerSendOtp({
         mobile: formData.mobile.trim(),
+        email: formData.email?.trim() || undefined,
         purpose: "CUSTOMER_REGISTER",
       });
 

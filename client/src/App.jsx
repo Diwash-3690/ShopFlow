@@ -21,6 +21,10 @@ import CustomerDashboard from "./pages/customer/CustomerDashboard";
 import ShopDiscovery from "./pages/customer/ShopDiscovery";
 import ShopStorefront from "./pages/customer/ShopStorefront";
 
+// Admin Pages
+import AdminLogin from "./pages/admin/AdminLogin";
+import AdminDashboard from "./pages/admin/AdminDashboard";
+
 function App() {
   return (
     <Routes>
@@ -45,6 +49,11 @@ function App() {
       <Route path="/customer/dashboard" element={<CustomerDashboard />} />
       <Route path="/shops" element={<ShopDiscovery />} />
       <Route path="/shops/:shopId" element={<ShopStorefront />} />
+
+      {/* Admin Routes */}
+      <Route path="/admin" element={<Navigate to="/admin/login" replace />} />
+      <Route path="/admin/login" element={<AdminLogin />} />
+      <Route path="/admin/dashboard" element={<AdminDashboard />} />
 
       {/* Backwards-Compatibility Aliases */}
       <Route path="/login" element={<Navigate to="/vendor/login" replace />} />

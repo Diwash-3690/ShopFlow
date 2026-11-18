@@ -51,6 +51,7 @@ function VendorRegister() {
       setErrorMsg("");
       const res = await vendorSendOtp({
         mobile: formData.mobile.trim(),
+        email: formData.email?.trim() || undefined,
         purpose: "VENDOR_REGISTER",
       });
 

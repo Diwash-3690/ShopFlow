@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import {
   FiLogOut,
   FiShoppingBag,
@@ -25,6 +25,7 @@ import {
 import { getCustomerOrders } from "../../services/orderService";
 import { getCustomerDashboardSummary } from "../../services/dashboardService";
 import BillModal from "../../components/BillModal";
+import ReportIssueModal from "../../components/ReportIssueModal";
 
 function CustomerDashboard() {
   const [customer, setCustomer] = useState(null);
@@ -40,6 +41,12 @@ function CustomerDashboard() {
   const [profileForm, setProfileForm] = useState({ email: "" });
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileMsg, setProfileMsg] = useState({ type: "", text: "" });
+  const [reportModalData, setReportModalData] = useState({
+    isOpen: false,
+    shopId: null,
+    shopName: null,
+    orderNumber: "",
+  });
 
   const navigate = useNavigate();
 
@@ -68,6 +75,8 @@ function CustomerDashboard() {
     }
   }, []);
 
+  const location = useLocation();
+
   useEffect(() => {
     const token = localStorage.getItem("token");
     const role = localStorage.getItem("role");
@@ -78,7 +87,15 @@ function CustomerDashboard() {
     }
 
     fetchDashboardData();
-  }, [navigate, fetchDashboardData]);
+
+    const handleFocus = () => fetchDashboardData();
+    window.addEventListener("focus", handleFocus);
+    window.addEventListener("pageshow", handleFocus);
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      window.removeEventListener("pageshow", handleFocus);
+    };
+  }, [navigate, fetchDashboardData, location.key]);
 
   const handleRefresh = () => {
     setRefreshing(true);
@@ -183,6 +200,20 @@ function CustomerDashboard() {
               ✓ Mobile Verified
             </span>
           </div>
+
+          <button
+            onClick={() =>
+              setReportModalData({
+                isOpen: true,
+                shopId: null,
+                shopName: null,
+                orderNumber: "",
+              })
+            }
+            className="flex items-center gap-1.5 border border-rose-200 text-rose-700 bg-rose-50 hover:bg-rose-100 px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer"
+          >
+            <span>⚠️</span> <span>Report Issue</span>
+          </button>
 
           <button
             onClick={() => {
@@ -362,7 +393,7 @@ function CustomerDashboard() {
                     </div>
                   </div>
 
-                  {/* Footer: Total & Bill Button */}
+                  {/* Footer: Total & Actions */}
                   <div className="pt-3 border-t border-slate-200 flex items-center justify-between">
                     <div>
                       <p className="text-[10px] text-slate-400 uppercase font-semibold">Total Paid</p>
@@ -371,25 +402,42 @@ function CustomerDashboard() {
                       </p>
                     </div>
 
-                    {o.bill && (
+                    <div className="flex items-center gap-2">
                       <button
                         onClick={() =>
-                          setActiveBill({
-                            ...o.bill,
+                          setReportModalData({
+                            isOpen: true,
+                            shopId: o.shop?.id,
+                            shopName: o.shop?.name,
                             orderNumber: o.orderNumber,
-                            pickupId: o.pickupId,
-                            shop: o.shop,
-                            items: o.items,
-                            totalAmount: o.totalAmount,
-                            status: o.status,
-                            payment: o.payment,
                           })
                         }
-                        className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-xl text-xs font-bold transition cursor-pointer"
+                        className="text-[11px] text-slate-400 hover:text-rose-600 font-semibold px-2 py-1 rounded-lg hover:bg-rose-50 transition cursor-pointer"
+                        title="Report an issue with this order"
                       >
-                        <FiPrinter size={14} /> Receipt
+                        ⚠️ Report
                       </button>
-                    )}
+
+                      {o.bill && (
+                        <button
+                          onClick={() =>
+                            setActiveBill({
+                              ...o.bill,
+                              orderNumber: o.orderNumber,
+                              pickupId: o.pickupId,
+                              shop: o.shop,
+                              items: o.items,
+                              totalAmount: o.totalAmount,
+                              status: o.status,
+                              payment: o.payment,
+                            })
+                          }
+                          className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-xl text-xs font-bold transition cursor-pointer"
+                        >
+                          <FiPrinter size={14} /> Receipt
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}
@@ -600,6 +648,22 @@ function CustomerDashboard() {
           </div>
         </div>
       )}
+
+      {/* Incident / Misbehaviour Report Modal */}
+      <ReportIssueModal
+        isOpen={reportModalData.isOpen}
+        onClose={() =>
+          setReportModalData({
+            isOpen: false,
+            shopId: null,
+            shopName: null,
+            orderNumber: "",
+          })
+        }
+        shopId={reportModalData.shopId}
+        shopName={reportModalData.shopName}
+        orderNumber={reportModalData.orderNumber}
+      />
     </div>
   );
 }

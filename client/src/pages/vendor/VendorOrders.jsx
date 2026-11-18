@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import {
   FiArrowLeft,
   FiShoppingBag,
@@ -45,6 +45,8 @@ function VendorOrders() {
     }
   }, [searchQuery]);
 
+  const location = useLocation();
+
   useEffect(() => {
     const token = localStorage.getItem("token");
     const role = localStorage.getItem("role");
@@ -54,7 +56,15 @@ function VendorOrders() {
     }
 
     fetchOrders();
-  }, [navigate, fetchOrders]);
+
+    const handleFocus = () => fetchOrders();
+    window.addEventListener("focus", handleFocus);
+    window.addEventListener("pageshow", handleFocus);
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      window.removeEventListener("pageshow", handleFocus);
+    };
+  }, [navigate, fetchOrders, location.key]);
 
   const handleRefresh = () => {
     setRefreshing(true);

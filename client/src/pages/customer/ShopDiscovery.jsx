@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import {
   FiArrowLeft,
   FiSearch,
@@ -40,9 +40,19 @@ function ShopDiscovery() {
     }
   }, [searchQuery, userCoords]);
 
+  const location = useLocation();
+
   useEffect(() => {
     loadShops();
-  }, [loadShops]);
+
+    const handleFocus = () => loadShops();
+    window.addEventListener("focus", handleFocus);
+    window.addEventListener("pageshow", handleFocus);
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      window.removeEventListener("pageshow", handleFocus);
+    };
+  }, [loadShops, location.key]);
 
   const handleDetectLocation = () => {
     if (!navigator.geolocation) {

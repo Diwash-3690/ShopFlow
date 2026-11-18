@@ -473,7 +473,7 @@ export default function AdminDashboard() {
                               <span>
                                 <span className="text-slate-500">Reporter:</span>{" "}
                                 <strong className="text-white">
-                                  {report.customer.name}
+                                  {report.customer.name || report.customer.mobile}
                                 </strong>{" "}
                                 ({report.customer.mobile})
                               </span>
@@ -482,7 +482,7 @@ export default function AdminDashboard() {
                               <span>
                                 <span className="text-slate-500">Reporter:</span>{" "}
                                 <strong className="text-white">
-                                  {report.vendor.name}
+                                  {report.vendor.ownerName || report.vendor.mobile}
                                 </strong>{" "}
                                 ({report.vendor.mobile})
                               </span>
@@ -491,7 +491,7 @@ export default function AdminDashboard() {
                               <span>
                                 <span className="text-slate-500">Shop:</span>{" "}
                                 <strong className="text-white">
-                                  {report.shop.name}
+                                  {report.shop.shopName || report.shop.name}
                                 </strong>
                               </span>
                             )}
@@ -532,7 +532,7 @@ export default function AdminDashboard() {
                               onClick={() =>
                                 handleToggleShop(
                                   report.shop.id,
-                                  report.shop.name,
+                                  report.shop.shopName || report.shop.name,
                                   report.shop.isActive
                                 )
                               }
@@ -626,18 +626,18 @@ export default function AdminDashboard() {
                           >
                             <td className="py-3.5 px-4">
                               <div className="font-bold text-white text-sm">
-                                {shop.name}
+                                {shop.shopName || shop.name}
                               </div>
                               <div className="text-slate-400 text-[11px] truncate max-w-xs">
                                 {shop.address || "No address provided"}
                               </div>
                               <div className="text-slate-500 text-[11px] font-mono">
-                                {shop.phone}
+                                {shop.contactNumber || shop.phone}
                               </div>
                             </td>
                             <td className="py-3.5 px-4">
                               <div className="font-semibold text-slate-200">
-                                {shop.vendor?.name}
+                                {shop.vendor?.ownerName || shop.vendor?.name}
                               </div>
                               <div className="text-slate-400 text-[11px]">
                                 {shop.vendor?.email}
@@ -677,7 +677,7 @@ export default function AdminDashboard() {
                                 onClick={() =>
                                   handleToggleShop(
                                     shop.id,
-                                    shop.name,
+                                    shop.shopName || shop.name,
                                     shop.isActive
                                   )
                                 }
@@ -920,7 +920,7 @@ export default function AdminDashboard() {
                   <div>
                     <span className="text-slate-500 block">Shop</span>
                     <span className="font-bold text-indigo-300">
-                      {selectedReport.shop.name}
+                      {selectedReport.shop.shopName || selectedReport.shop.name}
                     </span>
                   </div>
                 )}

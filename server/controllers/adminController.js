@@ -201,13 +201,13 @@ const getAdminReports = async (req, res) => {
             where,
             include: {
                 customer: {
-                    select: { id: true, name: true, mobile: true, email: true },
+                    select: { id: true, mobile: true, email: true },
                 },
                 vendor: {
-                    select: { id: true, name: true, mobile: true, email: true },
+                    select: { id: true, ownerName: true, mobile: true, email: true },
                 },
                 shop: {
-                    select: { id: true, name: true, phone: true, address: true, isActive: true },
+                    select: { id: true, shopName: true, contactNumber: true, address: true, isActive: true },
                 },
             },
             orderBy: { createdAt: "desc" },
@@ -260,9 +260,9 @@ const updateReportStatus = async (req, res) => {
             where: { id },
             data: updateData,
             include: {
-                customer: { select: { id: true, name: true, mobile: true, email: true } },
-                vendor: { select: { id: true, name: true, mobile: true, email: true } },
-                shop: { select: { id: true, name: true, phone: true, address: true, isActive: true } },
+                customer: { select: { id: true, mobile: true, email: true } },
+                vendor: { select: { id: true, ownerName: true, mobile: true, email: true } },
+                shop: { select: { id: true, shopName: true, contactNumber: true, address: true, isActive: true } },
             },
         });
 
@@ -293,12 +293,12 @@ const getAdminShops = async (req, res) => {
 
         if (search) {
             where.OR = [
-                { name: { contains: search, mode: "insensitive" } },
+                { shopName: { contains: search, mode: "insensitive" } },
                 { address: { contains: search, mode: "insensitive" } },
-                { phone: { contains: search, mode: "insensitive" } },
+                { contactNumber: { contains: search, mode: "insensitive" } },
                 {
                     vendor: {
-                        name: { contains: search, mode: "insensitive" },
+                        ownerName: { contains: search, mode: "insensitive" },
                     },
                 },
             ];
@@ -308,7 +308,7 @@ const getAdminShops = async (req, res) => {
             where,
             include: {
                 vendor: {
-                    select: { id: true, name: true, email: true, mobile: true, isActive: true },
+                    select: { id: true, ownerName: true, email: true, mobile: true, isActive: true },
                 },
                 _count: {
                     select: {
@@ -361,7 +361,7 @@ const toggleShopStatus = async (req, res) => {
 
         return res.status(200).json({
             success: true,
-            message: `Shop "${updatedShop.name}" has been ${updatedShop.isActive ? "activated" : "suspended"}`,
+            message: `Shop "${updatedShop.shopName}" has been ${updatedShop.isActive ? "activated" : "suspended"}`,
             data: updatedShop,
         });
     } catch (error) {

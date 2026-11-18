@@ -37,7 +37,7 @@ const createReport = async (req, res) => {
             },
             include: {
                 shop: {
-                    select: { id: true, name: true, phone: true },
+                    select: { id: true, shopName: true, contactNumber: true, address: true },
                 },
             },
         });
@@ -70,7 +70,7 @@ const getMyReports = async (req, res) => {
             where: whereClause,
             include: {
                 shop: {
-                    select: { id: true, name: true, phone: true },
+                    select: { id: true, shopName: true, contactNumber: true, address: true },
                 },
             },
             orderBy: { createdAt: "desc" },

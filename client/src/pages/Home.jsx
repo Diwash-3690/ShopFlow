@@ -1,102 +1,140 @@
+import React from "react";
 import { Link } from "react-router-dom";
-import { FiShoppingBag, FiBriefcase, FiShield, FiArrowRight } from "react-icons/fi";
+import {
+  ShoppingBag,
+  Store,
+  ShieldCheck,
+  ArrowRight,
+  QrCode,
+  MapPin,
+  Receipt,
+} from "lucide-react";
+import { Button } from "../components/ui/button";
+import { Card, CardHeader, CardTitle, CardDescription, CardFooter } from "../components/ui/card";
 
 function Home() {
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col justify-between">
-      {/* Header */}
-      <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          <span className="text-3xl">🛒</span>
-          <span className="text-2xl font-black text-slate-900 tracking-tight">ShopFlow</span>
+    <div className="min-h-screen bg-slate-50 flex flex-col justify-between font-sans">
+      {/* Header Navbar */}
+      <header className="bg-white/90 backdrop-blur-md border-b border-slate-200/80 px-6 py-4 flex items-center justify-between sticky top-0 z-30">
+        <div className="flex items-center space-x-2.5">
+          <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center font-black text-xl shadow-md shadow-blue-500/20">
+            🛒
+          </div>
+          <div>
+            <span className="text-xl font-black text-slate-900 tracking-tight">ShopFlow</span>
+            <span className="hidden sm:inline-block ml-2 text-[10px] bg-blue-50 text-blue-700 font-bold px-2 py-0.5 rounded-full border border-blue-200">
+              COMMERCE 2.0
+            </span>
+          </div>
         </div>
-        <div className="flex items-center space-x-4 text-sm font-medium">
-          <Link to="/customer/login" className="text-slate-600 hover:text-blue-600 transition">
-            Customer Sign In
+
+        <div className="flex items-center space-x-3">
+          <Link to="/customer/login">
+            <Button variant="ghost" size="sm" className="font-semibold text-slate-700">
+              Customer Sign In
+            </Button>
           </Link>
-          <Link
-            to="/vendor/login"
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
-          >
-            Vendor Portal
+          <Link to="/vendor/login">
+            <Button size="sm" className="font-bold bg-blue-600 hover:bg-blue-700 shadow-sm">
+              Vendor Portal
+            </Button>
           </Link>
         </div>
       </header>
 
       {/* Hero Section */}
-      <main className="max-w-6xl mx-auto px-6 py-16 flex-1 flex flex-col justify-center items-center text-center">
-        <div className="inline-flex items-center gap-2 bg-blue-50 border border-blue-200 text-blue-700 text-xs font-semibold px-3 py-1.5 rounded-full mb-6">
-          <FiShield size={16} /> Multi-Vendor Local Shopping & Digital Invoicing
+      <main className="max-w-6xl mx-auto px-6 py-14 sm:py-20 flex-1 flex flex-col justify-center items-center text-center space-y-8">
+        <div className="inline-flex items-center gap-2 bg-blue-50 border border-blue-200 text-blue-700 text-xs font-bold px-3.5 py-1.5 rounded-full shadow-2xs">
+          <ShieldCheck className="w-4 h-4 text-blue-600" />
+          <span>Zero-Commission Local Retail & Direct UPI Invoicing</span>
         </div>
 
-        <h1 className="text-4xl md:text-6xl font-extrabold text-slate-900 tracking-tight max-w-3xl leading-tight">
-          Connect Local Shops With Nearby Customers.
-        </h1>
-        <p className="mt-4 text-lg md:text-xl text-slate-600 max-w-2xl">
-          ShopFlow empowers local shop owners with smart inventory, billing, and verified UPI pickup orders — while customers discover nearby stores and shop with ease.
-        </p>
+        <div className="space-y-4 max-w-3xl">
+          <h1 className="text-4xl sm:text-6xl font-black text-slate-900 tracking-tight leading-[1.1]">
+            Empower Local Retail. <br />
+            <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+              Connect Nearby Shoppers.
+            </span>
+          </h1>
+          <p className="text-base sm:text-lg text-slate-600 max-w-2xl mx-auto leading-relaxed">
+            ShopFlow connects neighbourhood retail shops directly with nearby customers for fast counter pickup, digital bills, and zero-fee UPI payments.
+          </p>
+        </div>
+
+        {/* Feature Pills */}
+        <div className="flex flex-wrap items-center justify-center gap-3 text-xs font-semibold text-slate-600 pt-2">
+          <div className="flex items-center gap-1.5 bg-white border border-slate-200 px-3 py-1.5 rounded-xl shadow-2xs">
+            <MapPin className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Storefront Geolocation</span>
+          </div>
+          <div className="flex items-center gap-1.5 bg-white border border-slate-200 px-3 py-1.5 rounded-xl shadow-2xs">
+            <QrCode className="w-3.5 h-3.5 text-purple-600" />
+            <span>Direct Vendor UPI</span>
+          </div>
+          <div className="flex items-center gap-1.5 bg-white border border-slate-200 px-3 py-1.5 rounded-xl shadow-2xs">
+            <Receipt className="w-3.5 h-3.5 text-blue-600" />
+            <span>Instant Digital Receipts</span>
+          </div>
+        </div>
 
         {/* Two-Sided Portal Cards */}
-        <div className="grid md:grid-cols-2 gap-8 w-full max-w-4xl mt-12 text-left">
+        <div className="grid md:grid-cols-2 gap-6 w-full max-w-4xl pt-6 text-left">
           {/* Customer Side */}
-          <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition flex flex-col justify-between">
-            <div>
-              <div className="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center mb-6">
-                <FiShoppingBag size={24} />
+          <Card className="hover:shadow-lg transition-all border-slate-200/90 rounded-3xl flex flex-col justify-between">
+            <CardHeader className="space-y-3">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center">
+                <ShoppingBag className="w-6 h-6" />
               </div>
-              <h3 className="text-2xl font-bold text-slate-900">For Customers</h3>
-              <p className="mt-2 text-slate-600 leading-relaxed">
-                Discover neighborhood stores, explore product catalogs, place orders, pay seamlessly via UPI, and collect with a secure pickup ID.
-              </p>
-            </div>
-            <div className="mt-8 flex flex-col sm:flex-row gap-3">
-              <Link
-                to="/customer/login"
-                className="flex items-center justify-center gap-2 bg-emerald-600 text-white font-medium px-5 py-2.5 rounded-lg hover:bg-emerald-700 transition text-sm"
-              >
-                Customer Sign In <FiArrowRight />
+              <CardTitle className="text-2xl font-black text-slate-900">For Buyers & Shoppers</CardTitle>
+              <CardDescription className="text-slate-600 text-xs sm:text-sm leading-relaxed">
+                Browse nearby retail stores, check live product inventory and pricing, place pickup orders, pay securely via UPI, and collect with a private Pickup Code.
+              </CardDescription>
+            </CardHeader>
+            <CardFooter className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-slate-100">
+              <Link to="/customer/login" className="w-full sm:w-auto">
+                <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold gap-2">
+                  Customer Sign In <ArrowRight className="w-4 h-4" />
+                </Button>
               </Link>
-              <Link
-                to="/customer/register"
-                className="flex items-center justify-center border border-slate-300 text-slate-700 font-medium px-5 py-2.5 rounded-lg hover:bg-slate-100 transition text-sm"
-              >
-                Register as Customer
+              <Link to="/customer/register" className="w-full sm:w-auto">
+                <Button variant="outline" className="w-full font-semibold">
+                  Register as Buyer
+                </Button>
               </Link>
-            </div>
-          </div>
+            </CardFooter>
+          </Card>
 
           {/* Vendor Side */}
-          <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition flex flex-col justify-between">
-            <div>
-              <div className="w-12 h-12 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center mb-6">
-                <FiBriefcase size={24} />
+          <Card className="hover:shadow-lg transition-all border-slate-200/90 rounded-3xl flex flex-col justify-between">
+            <CardHeader className="space-y-3">
+              <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center">
+                <Store className="w-6 h-6" />
               </div>
-              <h3 className="text-2xl font-bold text-slate-900">For Shop Owners</h3>
-              <p className="mt-2 text-slate-600 leading-relaxed">
-                Digitize your inventory, manage categories and prices, create walk-in bills with instant PDF receipts, and receive incoming verified online orders.
-              </p>
-            </div>
-            <div className="mt-8 flex flex-col sm:flex-row gap-3">
-              <Link
-                to="/vendor/login"
-                className="flex items-center justify-center gap-2 bg-blue-600 text-white font-medium px-5 py-2.5 rounded-lg hover:bg-blue-700 transition text-sm"
-              >
-                Vendor Sign In <FiArrowRight />
+              <CardTitle className="text-2xl font-black text-slate-900">For Store Owners</CardTitle>
+              <CardDescription className="text-slate-600 text-xs sm:text-sm leading-relaxed">
+                Digitize your shop in minutes. Manage categories, track stock, create rapid counter walk-in bills with PDF receipts, and receive verified customer orders.
+              </CardDescription>
+            </CardHeader>
+            <CardFooter className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-slate-100">
+              <Link to="/vendor/login" className="w-full sm:w-auto">
+                <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold gap-2">
+                  Vendor Sign In <ArrowRight className="w-4 h-4" />
+                </Button>
               </Link>
-              <Link
-                to="/vendor/register"
-                className="flex items-center justify-center border border-slate-300 text-slate-700 font-medium px-5 py-2.5 rounded-lg hover:bg-slate-100 transition text-sm"
-              >
-                Register Your Shop
+              <Link to="/vendor/register" className="w-full sm:w-auto">
+                <Button variant="outline" className="w-full font-semibold">
+                  Register Shop
+                </Button>
               </Link>
-            </div>
-          </div>
+            </CardFooter>
+          </Card>
         </div>
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-slate-200 py-6 text-center text-sm text-slate-500 bg-white">
-        © {new Date().getFullYear()} ShopFlow. Built for local retail businesses and smart commerce.
+      <footer className="border-t border-slate-200/80 py-6 text-center text-xs text-slate-500 bg-white">
+        © {new Date().getFullYear()} ShopFlow. Built for modern local commerce and neighborhood merchants.
       </footer>
     </div>
   );

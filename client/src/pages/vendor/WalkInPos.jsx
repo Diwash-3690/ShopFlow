@@ -21,6 +21,7 @@ import BillModal from "../../components/BillModal";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
+import ShopFlowRoleLogo from "../../components/ShopFlowRoleLogo";
 
 function WalkInPos() {
   const [products, setProducts] = useState([]);
@@ -189,15 +190,13 @@ function WalkInPos() {
       {/* Top Navbar */}
       <nav className="bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-4 sm:px-8 py-3.5 flex items-center justify-between sticky top-0 z-30 shadow-2xs">
         <div className="flex items-center space-x-3">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate("/vendor/dashboard")}
-            className="h-9 w-9 text-slate-500 hover:text-slate-900 rounded-xl"
-            title="Back to Dashboard"
-          >
-            <ArrowLeft className="w-4 h-4" />
-          </Button>
+          <ShopFlowRoleLogo
+            role="VENDOR"
+            isDirty={ticketItems.length > 0}
+            customWarningMessage="You have an active counter ticket in progress. Do you want to leave without finishing? Click Cancel to stay."
+            onNavigate={() => setTicketItems([])}
+          />
+          <span className="text-slate-300">/</span>
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center font-bold">
               <DollarSign className="w-4 h-4" />

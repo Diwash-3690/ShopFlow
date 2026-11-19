@@ -41,6 +41,7 @@ import { getNotifications, markAsRead, markAllAsRead } from "../../services/noti
 import { getVendorDashboardSummary } from "../../services/dashboardService";
 import BillModal from "../../components/BillModal";
 import ReportIssueModal from "../../components/ReportIssueModal";
+import ShopFlowRoleLogo from "../../components/ShopFlowRoleLogo";
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "../../components/ui/card";
@@ -250,6 +251,10 @@ function VendorDashboard() {
         code: emailOtpCode.trim(),
       });
       setVendorData(res.vendor);
+      setEditForm((prev) => ({
+        ...prev,
+        email: res.vendor.email || "",
+      }));
       localStorage.setItem("user", JSON.stringify(res.vendor));
       setEmailOtpSent(false);
       setEmailOtpCode("");
@@ -301,6 +306,10 @@ function VendorDashboard() {
         code: phoneOtpCode.trim(),
       });
       setVendorData(res.vendor);
+      setEditForm((prev) => ({
+        ...prev,
+        contactNumber: prev.contactNumber === vendorData?.mobile || !prev.contactNumber ? res.vendor.mobile : prev.contactNumber,
+      }));
       localStorage.setItem("user", JSON.stringify(res.vendor));
       setEditingPhone(false);
       setPhoneOtpSent(false);
@@ -405,15 +414,15 @@ function VendorDashboard() {
       {/* Top Navbar */}
       <nav className="bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-4 sm:px-8 py-3 flex items-center justify-between sticky top-0 z-30 shadow-2xs">
         <div className="flex items-center space-x-3">
-          <Link to="/vendor/dashboard" className="text-slate-900 font-black text-xl tracking-tight flex items-center gap-2 group">
-            <span className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center text-sm font-black shadow-xs group-hover:scale-105 transition">
-              🛒
-            </span>
-            <span className="hidden sm:inline">ShopFlow</span>
-            <Badge variant="secondary" className="text-[10px] font-bold uppercase tracking-wider py-0.5 px-2 bg-blue-50 text-blue-700 border-blue-200">
-              Vendor
-            </Badge>
-          </Link>
+          <ShopFlowRoleLogo
+            role="VENDOR"
+            isDirty={isEditing || editingPhone || savingShop}
+            customWarningMessage="You have an active profile or shop editing task in progress. Do you want to leave without saving? Click Cancel to stay."
+            onNavigate={() => {
+              setIsEditing(false);
+              setEditingPhone(false);
+            }}
+          />
         </div>
 
         <div className="flex items-center space-x-2 sm:space-x-3">

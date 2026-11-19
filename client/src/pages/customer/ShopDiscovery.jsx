@@ -17,6 +17,7 @@ import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
 import { Card, CardContent } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
+import ShopFlowRoleLogo from "../../components/ShopFlowRoleLogo";
 
 function ShopDiscovery() {
   const navigate = useNavigate();
@@ -102,15 +103,10 @@ function ShopDiscovery() {
           <span className="font-bold text-slate-900 text-xs sm:text-sm">Discover Shops</span>
         </div>
 
-        <Link
-          to="/customer/dashboard"
-          className="text-slate-900 font-black text-lg sm:text-xl tracking-tight flex items-center gap-2"
-        >
-          <span className="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center text-xs font-black">
-            🛍️
-          </span>
-          <span className="hidden sm:inline">ShopFlow</span>
-        </Link>
+        <ShopFlowRoleLogo
+          role="CUSTOMER"
+          isDirty={false}
+        />
       </nav>
 
       {/* Main Content Area */}

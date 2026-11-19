@@ -33,6 +33,7 @@ import {
   TableRow,
   TableCell,
 } from "../../components/ui/table";
+import ShopFlowRoleLogo from "../../components/ShopFlowRoleLogo";
 
 function VendorOrders() {
   const [orders, setOrders] = useState([]);
@@ -167,15 +168,12 @@ function VendorOrders() {
       {/* Top Navbar */}
       <nav className="bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-4 sm:px-8 py-3.5 flex items-center justify-between sticky top-0 z-30 shadow-2xs">
         <div className="flex items-center space-x-3">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate("/vendor/dashboard")}
-            className="h-9 w-9 text-slate-500 hover:text-slate-900 rounded-xl"
-            title="Back to Dashboard"
-          >
-            <ArrowLeft className="w-4 h-4" />
-          </Button>
+          <ShopFlowRoleLogo
+            role="VENDOR"
+            isDirty={!!actionInProgress}
+            customWarningMessage="You have an active payment verification or order action in progress. Do you want to leave? Click Cancel to stay."
+          />
+          <span className="text-slate-300">/</span>
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center font-bold">
               <ShoppingBag className="w-4 h-4" />

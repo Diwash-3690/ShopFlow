@@ -22,6 +22,7 @@ import { Badge } from "../../components/ui/badge";
 import { Card, CardHeader, CardTitle, CardContent } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 import { Alert, AlertDescription } from "../../components/ui/alert";
+import ShopFlowRoleLogo from "../../components/ShopFlowRoleLogo";
 
 function Categories() {
   const navigate = useNavigate();
@@ -115,13 +116,15 @@ function Categories() {
       {/* Top Navbar */}
       <nav className="bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-4 sm:px-8 py-3.5 flex items-center justify-between sticky top-0 z-20 shadow-2xs">
         <div className="flex items-center space-x-3">
-          <Link
-            to="/vendor/dashboard"
-            className="text-slate-500 hover:text-slate-900 transition flex items-center gap-1.5 text-xs sm:text-sm font-semibold"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span>Dashboard</span>
-          </Link>
+          <ShopFlowRoleLogo
+            role="VENDOR"
+            isDirty={!!newCatName.trim() || !!editingId}
+            customWarningMessage="You have category creation or editing in progress. Do you want to leave without saving? Click Cancel to stay."
+            onNavigate={() => {
+              setNewCatName("");
+              setEditingId(null);
+            }}
+          />
           <span className="text-slate-300">/</span>
           <span className="font-bold text-slate-900 text-xs sm:text-sm">Categories</span>
         </div>

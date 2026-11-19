@@ -38,6 +38,7 @@ import { Textarea } from "../../components/ui/textarea";
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "../../components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../../components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "../../components/ui/tabs";
+import ShopFlowRoleLogo from "../../components/ShopFlowRoleLogo";
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -266,19 +267,16 @@ export default function AdminDashboard() {
       {/* Top Navbar Header */}
       <header className="bg-slate-900/90 border-b border-slate-800 sticky top-0 z-40 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center font-bold">
-              <Shield className="w-5 h-5" />
-            </div>
-            <div>
-              <span className="font-black text-lg text-white tracking-tight flex items-center gap-1.5">
-                ShopFlow <span className="text-indigo-400 font-extrabold">Admin</span>
-              </span>
-              <span className="text-[10px] bg-indigo-500/10 text-indigo-300 font-mono px-2 py-0.5 rounded border border-indigo-500/20">
-                MASTER CONSOLE
-              </span>
-            </div>
-          </div>
+          <ShopFlowRoleLogo
+            role="ADMIN"
+            variant="dark"
+            isDirty={showPasswordModal || !!selectedReport}
+            customWarningMessage="You have an active admin modal or report review in progress. Do you want to leave without saving? Click Cancel to stay."
+            onNavigate={() => {
+              setShowPasswordModal(false);
+              setSelectedReport(null);
+            }}
+          />
 
           <div className="flex items-center space-x-2 sm:space-x-3">
             <Button

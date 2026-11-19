@@ -32,6 +32,7 @@ import {
 import { useCart } from "../../context/CartContext";
 import BillModal from "../../components/BillModal";
 import ReportIssueModal from "../../components/ReportIssueModal";
+import ShopFlowRoleLogo from "../../components/ShopFlowRoleLogo";
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
 import { Card, CardContent } from "../../components/ui/card";
@@ -312,19 +313,28 @@ function ShopStorefront() {
           </div>
         </div>
 
-        {/* Cart Button */}
-        <Button
-          onClick={() => setIsCartOpen(true)}
-          className="relative bg-emerald-600 hover:bg-emerald-700 text-white px-4 h-9 rounded-xl font-bold text-xs shadow-xs gap-2"
-        >
-          <ShoppingBag className="w-4 h-4" />
-          <span>Cart</span>
-          {totalCount > 0 && (
-            <span className="bg-white text-emerald-800 rounded-full px-1.5 py-0.2 text-[10px] font-black ml-0.5">
-              {totalCount}
-            </span>
-          )}
-        </Button>
+        <div className="flex items-center gap-4">
+          <ShopFlowRoleLogo
+            role="CUSTOMER"
+            isDirty={totalCount > 0 || isCartOpen || !!upiOrderData}
+            customWarningMessage="You have an active cart or pending order at this shop. Do you want to leave without completing your order? Click Cancel to stay."
+            className="hidden sm:inline-flex"
+          />
+
+          {/* Cart Button */}
+          <Button
+            onClick={() => setIsCartOpen(true)}
+            className="relative bg-emerald-600 hover:bg-emerald-700 text-white px-4 h-9 rounded-xl font-bold text-xs shadow-xs gap-2"
+          >
+            <ShoppingBag className="w-4 h-4" />
+            <span>Cart</span>
+            {totalCount > 0 && (
+              <span className="bg-white text-emerald-800 rounded-full px-1.5 py-0.2 text-[10px] font-black ml-0.5">
+                {totalCount}
+              </span>
+            )}
+          </Button>
+        </div>
       </nav>
 
       {/* Store Header Banner */}

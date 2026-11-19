@@ -14,6 +14,7 @@ import { Badge } from "../../components/ui/badge";
 import { Card } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 import { Alert, AlertDescription } from "../../components/ui/alert";
+import ShopFlowRoleLogo from "../../components/ShopFlowRoleLogo";
 
 function ShopRegistration() {
   const navigate = useNavigate();
@@ -146,14 +147,21 @@ function ShopRegistration() {
   return (
     <div className="min-h-screen bg-slate-50 py-10 px-4 font-sans">
       <div className="max-w-2xl mx-auto space-y-6">
-        {/* Back Link */}
-        <Link
-          to="/vendor/dashboard"
-          className="inline-flex items-center gap-2 text-xs font-semibold text-slate-500 hover:text-slate-900 transition"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Back to Dashboard</span>
-        </Link>
+        {/* Navigation / Header */}
+        <div className="flex items-center justify-between">
+          <ShopFlowRoleLogo
+            role="VENDOR"
+            isDirty={Object.values(formData).some((v) => !!v)}
+            customWarningMessage="You have entered shop registration details that are not yet submitted. Do you want to leave without saving? Click Cancel to stay."
+          />
+          <Link
+            to="/vendor/dashboard"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-900 transition"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Back to Dashboard</span>
+          </Link>
+        </div>
 
         {/* Registration Card */}
         <Card className="rounded-3xl border-slate-200/90 shadow-sm p-6 sm:p-10 bg-white">

@@ -12,15 +12,20 @@ import {
 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardFooter } from "../components/ui/card";
+import ShopFlowRoleLogo from "../components/ShopFlowRoleLogo";
 
 function Home() {
   const navigate = useNavigate();
   const [authenticatedRole, setAuthenticatedRole] = useState(null);
 
   useEffect(() => {
+    const adminToken = localStorage.getItem("adminToken");
     const token = localStorage.getItem("token");
     const role = localStorage.getItem("role");
-    if (token && role === "VENDOR") {
+    if (adminToken) {
+      setAuthenticatedRole("ADMIN");
+      navigate("/admin/dashboard", { replace: true });
+    } else if (token && role === "VENDOR") {
       setAuthenticatedRole("VENDOR");
       navigate("/vendor/dashboard", { replace: true });
     } else if (token && role === "CUSTOMER") {
@@ -30,27 +35,35 @@ function Home() {
   }, [navigate]);
 
   const dashboardPath =
-    authenticatedRole === "VENDOR" ? "/vendor/dashboard" : "/customer/dashboard";
+    authenticatedRole === "ADMIN"
+      ? "/admin/dashboard"
+      : authenticatedRole === "VENDOR"
+      ? "/vendor/dashboard"
+      : "/customer/dashboard";
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col justify-between font-sans">
       {/* Header Navbar */}
       <header className="bg-white/90 backdrop-blur-md border-b border-slate-200/80 px-6 py-4 flex items-center justify-between sticky top-0 z-30">
         <div className="flex items-center space-x-2.5">
-          <Link
-            to={authenticatedRole ? dashboardPath : "/"}
-            className="flex items-center space-x-2.5"
-          >
-            <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center font-black text-xl shadow-md shadow-blue-500/20">
-              🛒
-            </div>
-            <div>
-              <span className="text-xl font-black text-slate-900 tracking-tight">ShopFlow</span>
-              <span className="hidden sm:inline-block ml-2 text-[10px] bg-blue-50 text-blue-700 font-bold px-2 py-0.5 rounded-full border border-blue-200">
-                COMMERCE 2.0
-              </span>
-            </div>
-          </Link>
+          {authenticatedRole ? (
+            <ShopFlowRoleLogo role={authenticatedRole} />
+          ) : (
+            <Link
+              to="/"
+              className="flex items-center space-x-2.5"
+            >
+              <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center font-black text-xl shadow-md shadow-blue-500/20">
+                🛒
+              </div>
+              <div>
+                <span className="text-xl font-black text-slate-900 tracking-tight">ShopFlow</span>
+                <span className="hidden sm:inline-block ml-2 text-[10px] bg-blue-50 text-blue-700 font-bold px-2 py-0.5 rounded-full border border-blue-200">
+                  COMMERCE 2.0
+                </span>
+              </div>
+            </Link>
+          )}
         </div>
 
         <div className="flex items-center space-x-3">

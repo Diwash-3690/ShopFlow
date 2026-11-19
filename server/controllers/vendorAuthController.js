@@ -737,7 +737,7 @@ const verifyPhoneChangeOtp = async (req, res) => {
         }
 
         // Update vendor with new verified phone number
-        const updatedVendor = await prisma.vendor.update({
+        let updatedVendor = await prisma.vendor.update({
             where: { id: vendor.id },
             data: {
                 mobile: cleanMobile,
@@ -745,6 +745,15 @@ const verifyPhoneChangeOtp = async (req, res) => {
             },
             include: { shop: true },
         });
+
+        // Also override registered shop contact number if matching previous or unset
+        if (updatedVendor.shop && (!updatedVendor.shop.contactNumber || updatedVendor.shop.contactNumber === vendor.mobile)) {
+            const updatedShop = await prisma.shop.update({
+                where: { id: updatedVendor.shop.id },
+                data: { contactNumber: cleanMobile },
+            });
+            updatedVendor.shop = updatedShop;
+        }
 
         await otpService.consumeVerification({
             mobile: cleanMobile,

@@ -53,6 +53,26 @@ export const vendorVerifyEmailOtp = async ({ email, code }) => {
   return response.data;
 };
 
+export const vendorSendPhoneOtp = async ({ newMobile }) => {
+  const response = await api.post("/auth/vendor/send-phone-otp", { newMobile });
+  return response.data;
+};
+
+export const vendorVerifyPhoneOtp = async ({ newMobile, code }) => {
+  const response = await api.post("/auth/vendor/verify-phone-otp", { newMobile, code });
+  return response.data;
+};
+
+export const vendorSendMobileVerifyOtp = async ({ mobile }) => {
+  const response = await api.post("/auth/vendor/send-mobile-verify-otp", { mobile });
+  return response.data;
+};
+
+export const vendorVerifyMobileVerifyOtp = async ({ mobile, code }) => {
+  const response = await api.post("/auth/vendor/verify-mobile-verify-otp", { mobile, code });
+  return response.data;
+};
+
 // ============================================
 // Customer Authentication Services
 // ============================================
@@ -103,6 +123,26 @@ export const customerSendEmailOtp = async ({ email }) => {
 
 export const customerVerifyEmailOtp = async ({ email, code }) => {
   const response = await api.post("/auth/customer/verify-email-otp", { email, code });
+  return response.data;
+};
+
+export const customerSendPhoneOtp = async ({ newMobile }) => {
+  const response = await api.post("/auth/customer/send-phone-otp", { newMobile });
+  return response.data;
+};
+
+export const customerVerifyPhoneOtp = async ({ newMobile, code }) => {
+  const response = await api.post("/auth/customer/verify-phone-otp", { newMobile, code });
+  return response.data;
+};
+
+export const customerSendMobileVerifyOtp = async ({ mobile }) => {
+  const response = await api.post("/auth/customer/send-mobile-verify-otp", { mobile });
+  return response.data;
+};
+
+export const customerVerifyMobileVerifyOtp = async ({ mobile, code }) => {
+  const response = await api.post("/auth/customer/verify-mobile-verify-otp", { mobile, code });
   return response.data;
 };
 

@@ -526,12 +526,20 @@ function ShopStorefront() {
                       )}
                     </div>
 
-                    <div className="flex items-baseline justify-between pt-1">
-                      <div>
-                        <span className="text-base font-black text-slate-900">
+                    <div className="pt-1 space-y-1">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                          Registered Price
+                        </span>
+                        <Badge variant="outline" className="text-[9px] font-bold text-emerald-800 bg-emerald-50 border-emerald-200/80 px-1.5 py-0">
+                          Fixed by Shop Owner
+                        </Badge>
+                      </div>
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-lg font-black text-slate-900">
                           ₹{parseFloat(p.sellingPrice || 0).toFixed(2)}
                         </span>
-                        <span className="text-[11px] text-slate-400 ml-1">/ {p.unit}</span>
+                        <span className="text-xs text-slate-500 font-medium">/ {p.unit}</span>
                       </div>
                     </div>
 
@@ -621,7 +629,7 @@ function ShopStorefront() {
                     <div>
                       <p className="font-bold text-slate-800 text-sm">{item.productName}</p>
                       <p className="text-xs text-slate-500">
-                        ₹{parseFloat(item.sellingPrice || 0).toFixed(2)} / {item.unit}
+                        Registered Price: ₹{parseFloat(item.sellingPrice || 0).toFixed(2)} / {item.unit}
                       </p>
                     </div>
 

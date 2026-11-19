@@ -259,6 +259,15 @@ const login = async (req, res) => {
                     message: "Invalid mobile number or password",
                 });
             }
+
+            if (!customer.mobileVerified) {
+                return res.status(403).json({
+                    success: false,
+                    requiresMobileVerification: true,
+                    mobile: customer.mobile,
+                    message: "Your phone number has been changed or is not verified yet. Please verify your phone number with OTP before signing in.",
+                });
+            }
         }
 
         const isMatch = await bcrypt.compare(password, customer.passwordHash);
@@ -369,7 +378,7 @@ const getMe = async (req, res) => {
 const updateProfile = async (req, res) => {
     try {
         const customerId = req.customer.id;
-        const { email } = req.body;
+        const { email, mobile } = req.body;
 
         const updateData = {};
         if (email !== undefined) {
@@ -388,6 +397,30 @@ const updateProfile = async (req, res) => {
             updateData.email = cleanEmail;
             if (cleanEmail !== req.customer.email) {
                 updateData.emailVerified = false;
+            }
+        }
+
+        if (mobile !== undefined) {
+            const cleanMobile = mobile && mobile.trim() ? mobile.trim() : null;
+            if (cleanMobile && cleanMobile !== req.customer.mobile) {
+                if (!/^\d{10}$/.test(cleanMobile)) {
+                    return res.status(400).json({
+                        success: false,
+                        message: "Please enter a valid 10-digit mobile number",
+                    });
+                }
+                const existingMobile = await prisma.customer.findUnique({
+                    where: { mobile: cleanMobile },
+                });
+                if (existingMobile) {
+                    return res.status(400).json({
+                        success: false,
+                        message: "This mobile number is already registered to another customer.",
+                    });
+                }
+                updateData.mobile = cleanMobile;
+                // If number changed without immediate OTP verification, mark unverified
+                updateData.mobileVerified = false;
             }
         }
 
@@ -553,6 +586,207 @@ const deleteAccount = async (req, res) => {
     }
 };
 
+// @desc    Send Phone Number Change OTP
+// @route   POST /api/auth/customer/send-phone-otp
+const sendPhoneChangeOtp = async (req, res) => {
+    try {
+        const customer = req.customer;
+        const { newMobile } = req.body;
+
+        if (!newMobile || !/^\d{10}$/.test(newMobile.trim())) {
+            return res.status(400).json({
+                success: false,
+                message: "Please provide a valid 10-digit mobile number",
+            });
+        }
+
+        const cleanMobile = newMobile.trim();
+        if (cleanMobile === customer.mobile) {
+            return res.status(400).json({
+                success: false,
+                message: "The new phone number must be different from your current registered number",
+            });
+        }
+
+        const existing = await prisma.customer.findUnique({
+            where: { mobile: cleanMobile },
+        });
+
+        if (existing) {
+            return res.status(400).json({
+                success: false,
+                message: "This mobile number is already registered to another customer account.",
+            });
+        }
+
+        const result = await otpService.generateAndSendOtp({
+            mobile: cleanMobile,
+            purpose: "PHONE_CHANGE",
+        });
+
+        return res.status(200).json(result);
+    } catch (error) {
+        console.error("customer sendPhoneChangeOtp error:", error);
+        return res.status(500).json({
+            success: false,
+            message: error.message || "Failed to send phone verification code",
+        });
+    }
+};
+
+// @desc    Verify Phone Number Change OTP & Update Number
+// @route   POST /api/auth/customer/verify-phone-otp
+const verifyPhoneChangeOtp = async (req, res) => {
+    try {
+        const customer = req.customer;
+        const { newMobile, code } = req.body;
+
+        if (!newMobile || !/^\d{10}$/.test(newMobile.trim())) {
+            return res.status(400).json({
+                success: false,
+                message: "Valid 10-digit mobile number is required",
+            });
+        }
+
+        if (!code || typeof code !== "string") {
+            return res.status(400).json({
+                success: false,
+                message: "Verification code is required",
+            });
+        }
+
+        const cleanMobile = newMobile.trim();
+
+        const verifyResult = await otpService.verifyOtp({
+            mobile: cleanMobile,
+            purpose: "PHONE_CHANGE",
+            code,
+        });
+
+        if (!verifyResult.success) {
+            return res.status(400).json(verifyResult);
+        }
+
+        // Update customer with new verified phone number
+        const updatedCustomer = await prisma.customer.update({
+            where: { id: customer.id },
+            data: {
+                mobile: cleanMobile,
+                mobileVerified: true,
+            },
+        });
+
+        await otpService.consumeVerification({
+            mobile: cleanMobile,
+            purpose: "PHONE_CHANGE",
+        });
+
+        const { passwordHash: _, ...safeCustomer } = updatedCustomer;
+
+        return res.status(200).json({
+            success: true,
+            message: "Phone number changed and verified successfully! You can now use your new phone number to log in.",
+            customer: safeCustomer,
+        });
+    } catch (error) {
+        console.error("customer verifyPhoneChangeOtp error:", error);
+        return res.status(500).json({
+            success: false,
+            message: error.message || "Failed to verify phone number",
+        });
+    }
+};
+
+// @desc    Send OTP to verify an unverified mobile number for login
+// @route   POST /api/auth/customer/send-mobile-verify-otp
+const sendMobileVerificationOtp = async (req, res) => {
+    try {
+        const { mobile } = req.body;
+        if (!mobile || !/^\d{10}$/.test(mobile.trim())) {
+            return res.status(400).json({
+                success: false,
+                message: "Please provide a valid 10-digit mobile number",
+            });
+        }
+
+        const cleanMobile = mobile.trim();
+        const customer = await prisma.customer.findUnique({
+            where: { mobile: cleanMobile },
+        });
+
+        if (!customer) {
+            return res.status(404).json({
+                success: false,
+                message: "No customer account found with this mobile number",
+            });
+        }
+
+        const result = await otpService.generateAndSendOtp({
+            mobile: cleanMobile,
+            purpose: "MOBILE_VERIFICATION",
+        });
+
+        return res.status(200).json(result);
+    } catch (error) {
+        console.error("sendMobileVerificationOtp error:", error);
+        return res.status(500).json({
+            success: false,
+            message: error.message || "Failed to send verification code",
+        });
+    }
+};
+
+// @desc    Verify unverified mobile number for login
+// @route   POST /api/auth/customer/verify-mobile-verify-otp
+const verifyMobileVerificationOtp = async (req, res) => {
+    try {
+        const { mobile, code } = req.body;
+        if (!mobile || !/^\d{10}$/.test(mobile.trim())) {
+            return res.status(400).json({
+                success: false,
+                message: "Valid 10-digit mobile number is required",
+            });
+        }
+
+        const cleanMobile = mobile.trim();
+        const verifyResult = await otpService.verifyOtp({
+            mobile: cleanMobile,
+            purpose: "MOBILE_VERIFICATION",
+            code,
+        });
+
+        if (!verifyResult.success) {
+            return res.status(400).json(verifyResult);
+        }
+
+        const customer = await prisma.customer.update({
+            where: { mobile: cleanMobile },
+            data: { mobileVerified: true },
+        });
+
+        await otpService.consumeVerification({
+            mobile: cleanMobile,
+            purpose: "MOBILE_VERIFICATION",
+        });
+
+        const token = generateToken(customer.id, "CUSTOMER");
+        const { passwordHash: _, ...safeCustomer } = customer;
+
+        return res.status(200).json({
+            success: true,
+            message: "Mobile number verified successfully! You are now logged in.",
+            token,
+            customer: safeCustomer,
+        });
+    } catch (error) {
+        console.error("verifyMobileVerificationOtp error:", error);
+        return res.status(500).json({
+            success: false,
+            message: error.message || "Failed to verify mobile number",
+        });
+    }
+};
+
 module.exports = {
     sendOtp,
     verifyOtp,
@@ -564,4 +798,8 @@ module.exports = {
     deleteAccount,
     sendEmailVerificationOtp,
     verifyEmailOtp,
+    sendPhoneChangeOtp,
+    verifyPhoneChangeOtp,
+    sendMobileVerificationOtp,
+    verifyMobileVerificationOtp,
 };

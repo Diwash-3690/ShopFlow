@@ -32,6 +32,8 @@ import {
   vendorDeleteAccount,
   vendorSendEmailOtp,
   vendorVerifyEmailOtp,
+  vendorSendPhoneOtp,
+  vendorVerifyPhoneOtp,
   logout,
 } from "../../services/authService";
 import { deleteMyShop } from "../../services/shopService";
@@ -91,6 +93,13 @@ function VendorDashboard() {
   const [sendingEmailOtp, setSendingEmailOtp] = useState(false);
   const [verifyingEmailOtp, setVerifyingEmailOtp] = useState(false);
   const [emailVerificationMsg, setEmailVerificationMsg] = useState({ type: "", text: "" });
+  const [editingPhone, setEditingPhone] = useState(false);
+  const [newMobile, setNewMobile] = useState("");
+  const [phoneOtpSent, setPhoneOtpSent] = useState(false);
+  const [phoneOtpCode, setPhoneOtpCode] = useState("");
+  const [phoneOtpDevCode, setPhoneOtpDevCode] = useState("");
+  const [sendingPhoneOtp, setSendingPhoneOtp] = useState(false);
+  const [verifyingPhoneOtp, setVerifyingPhoneOtp] = useState(false);
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -253,6 +262,56 @@ function VendorDashboard() {
       setEditError(err.response?.data?.message || err.message || "Failed to verify email code.");
     } finally {
       setVerifyingEmailOtp(false);
+    }
+  };
+
+  const handleSendVendorPhoneOtp = async () => {
+    if (!newMobile || !/^\d{10}$/.test(newMobile.trim())) {
+      setEditError("Please enter a valid 10-digit mobile number.");
+      return;
+    }
+    if (newMobile.trim() === vendorData?.mobile) {
+      setEditError("New mobile number must be different from your current registered number.");
+      return;
+    }
+    try {
+      setSendingPhoneOtp(true);
+      setEditError("");
+      const res = await vendorSendPhoneOtp({ newMobile: newMobile.trim() });
+      setPhoneOtpSent(true);
+      setPhoneOtpDevCode(res.devCode || "");
+      alert(`Verification code sent to ${newMobile.trim()}`);
+    } catch (err) {
+      setEditError(err.response?.data?.message || err.message || "Failed to send verification code.");
+    } finally {
+      setSendingPhoneOtp(false);
+    }
+  };
+
+  const handleVerifyVendorPhoneOtp = async () => {
+    if (!phoneOtpCode.trim()) {
+      setEditError("Please enter the 6-digit verification code.");
+      return;
+    }
+    try {
+      setVerifyingPhoneOtp(true);
+      setEditError("");
+      const res = await vendorVerifyPhoneOtp({
+        newMobile: newMobile.trim(),
+        code: phoneOtpCode.trim(),
+      });
+      setVendorData(res.vendor);
+      localStorage.setItem("user", JSON.stringify(res.vendor));
+      setEditingPhone(false);
+      setPhoneOtpSent(false);
+      setPhoneOtpCode("");
+      setPhoneOtpDevCode("");
+      setNewMobile("");
+      alert("Phone number updated and verified successfully! You can now use your new phone number to sign in.");
+    } catch (err) {
+      setEditError(err.response?.data?.message || err.message || "Failed to verify phone number.");
+    } finally {
+      setVerifyingPhoneOtp(false);
     }
   };
 
@@ -622,6 +681,110 @@ function VendorDashboard() {
                           </div>
                         )}
                       </div>
+
+                      <div className="space-y-1 sm:col-span-2 pt-2 border-t border-slate-200/60">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-bold text-slate-700">Registered Mobile Number</label>
+                          <div className="flex items-center gap-1.5">
+                            <Badge variant={vendorData?.mobileVerified ? "success" : "warning"} className="text-[10px] font-bold gap-1 py-0 px-2">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600" /> {vendorData?.mobileVerified ? "Verified" : "Unverified"}
+                            </Badge>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setEditingPhone(!editingPhone);
+                                setPhoneOtpSent(false);
+                                setNewMobile("");
+                                setPhoneOtpCode("");
+                              }}
+                              className="h-6 px-2 text-[11px] font-bold text-blue-700 hover:text-blue-800 hover:bg-blue-50"
+                            >
+                              {editingPhone ? "Cancel Change" : "Change Number"}
+                            </Button>
+                          </div>
+                        </div>
+
+                        {!editingPhone ? (
+                          <Input
+                            type="text"
+                            disabled
+                            value={vendorData?.mobile || ""}
+                            className="text-xs bg-slate-100 border-slate-200 font-mono text-slate-600 cursor-not-allowed"
+                          />
+                        ) : (
+                          <div className="space-y-2 p-3 bg-white border border-slate-200 rounded-2xl">
+                            <div className="flex gap-2">
+                              <Input
+                                type="tel"
+                                maxLength={10}
+                                placeholder="Enter new 10-digit number"
+                                value={newMobile}
+                                onChange={(e) => setNewMobile(e.target.value)}
+                                className="text-xs bg-white border-slate-300 flex-1 font-mono"
+                              />
+                              {!phoneOtpSent ? (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  onClick={handleSendVendorPhoneOtp}
+                                  disabled={sendingPhoneOtp || newMobile.length !== 10}
+                                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs h-9 px-3 rounded-xl shrink-0"
+                                >
+                                  {sendingPhoneOtp ? "Sending..." : "Send OTP"}
+                                </Button>
+                              ) : (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={handleSendVendorPhoneOtp}
+                                  disabled={sendingPhoneOtp}
+                                  className="text-xs h-9 px-2 text-slate-600"
+                                >
+                                  Resend
+                                </Button>
+                              )}
+                            </div>
+                            <p className="text-[10px] text-slate-500">
+                              A 6-digit OTP will be sent to verify your new mobile number. After change, you must use this verified number to log in.
+                            </p>
+
+                            {phoneOtpSent && (
+                              <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[11px] font-bold text-blue-950">Enter Verification Code</span>
+                                  {phoneOtpDevCode && (
+                                    <span className="text-[10px] font-mono font-bold bg-blue-200 text-blue-900 px-1.5 py-0.5 rounded">
+                                      Dev OTP: {phoneOtpDevCode}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="flex gap-2">
+                                  <Input
+                                    type="text"
+                                    maxLength={6}
+                                    placeholder="e.g. 123456"
+                                    value={phoneOtpCode}
+                                    onChange={(e) => setPhoneOtpCode(e.target.value)}
+                                    className="text-xs bg-white border-blue-300 h-8 font-mono tracking-widest text-center"
+                                  />
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    onClick={handleVerifyVendorPhoneOtp}
+                                    disabled={verifyingPhoneOtp || !phoneOtpCode.trim()}
+                                    className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs h-8 px-3 rounded-xl shrink-0"
+                                  >
+                                    {verifyingPhoneOtp ? "Verifying..." : "Verify & Save"}
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
 
@@ -841,6 +1004,110 @@ function VendorDashboard() {
                               {verifyingEmailOtp ? "Verifying..." : "Confirm OTP"}
                             </Button>
                           </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="space-y-1 sm:col-span-2 pt-2 border-t border-slate-200/60">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold text-slate-700">Registered Mobile Number</label>
+                        <div className="flex items-center gap-1.5">
+                          <Badge variant={vendorData?.mobileVerified ? "success" : "warning"} className="text-[10px] font-bold gap-1 py-0 px-2">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600" /> {vendorData?.mobileVerified ? "Verified" : "Unverified"}
+                          </Badge>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setEditingPhone(!editingPhone);
+                              setPhoneOtpSent(false);
+                              setNewMobile("");
+                              setPhoneOtpCode("");
+                            }}
+                            className="h-6 px-2 text-[11px] font-bold text-blue-700 hover:text-blue-800 hover:bg-blue-50"
+                          >
+                            {editingPhone ? "Cancel Change" : "Change Number"}
+                          </Button>
+                        </div>
+                      </div>
+
+                      {!editingPhone ? (
+                        <Input
+                          type="text"
+                          disabled
+                          value={vendorData?.mobile || ""}
+                          className="text-xs bg-slate-100 border-slate-200 font-mono text-slate-600 cursor-not-allowed"
+                        />
+                      ) : (
+                        <div className="space-y-2 p-3 bg-white border border-slate-200 rounded-2xl">
+                          <div className="flex gap-2">
+                            <Input
+                              type="tel"
+                              maxLength={10}
+                              placeholder="Enter new 10-digit number"
+                              value={newMobile}
+                              onChange={(e) => setNewMobile(e.target.value)}
+                              className="text-xs bg-white border-slate-300 flex-1 font-mono"
+                            />
+                            {!phoneOtpSent ? (
+                              <Button
+                                type="button"
+                                size="sm"
+                                onClick={handleSendVendorPhoneOtp}
+                                disabled={sendingPhoneOtp || newMobile.length !== 10}
+                                className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs h-9 px-3 rounded-xl shrink-0"
+                              >
+                                {sendingPhoneOtp ? "Sending..." : "Send OTP"}
+                              </Button>
+                            ) : (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                onClick={handleSendVendorPhoneOtp}
+                                disabled={sendingPhoneOtp}
+                                className="text-xs h-9 px-2 text-slate-600"
+                              >
+                                Resend
+                              </Button>
+                            )}
+                          </div>
+                          <p className="text-[10px] text-slate-500">
+                            A 6-digit OTP will be sent to verify your new mobile number. After change, you must use this verified number to log in.
+                          </p>
+
+                          {phoneOtpSent && (
+                            <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl space-y-2">
+                              <div className="flex items-center justify-between">
+                                <span className="text-[11px] font-bold text-blue-950">Enter Verification Code</span>
+                                {phoneOtpDevCode && (
+                                  <span className="text-[10px] font-mono font-bold bg-blue-200 text-blue-900 px-1.5 py-0.5 rounded">
+                                    Dev OTP: {phoneOtpDevCode}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex gap-2">
+                                <Input
+                                  type="text"
+                                  maxLength={6}
+                                  placeholder="e.g. 123456"
+                                  value={phoneOtpCode}
+                                  onChange={(e) => setPhoneOtpCode(e.target.value)}
+                                  className="text-xs bg-white border-blue-300 h-8 font-mono tracking-widest text-center"
+                                />
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  onClick={handleVerifyVendorPhoneOtp}
+                                  disabled={verifyingPhoneOtp || !phoneOtpCode.trim()}
+                                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs h-8 px-3 rounded-xl shrink-0"
+                                >
+                                  {verifyingPhoneOtp ? "Verifying..." : "Verify & Save"}
+                                </Button>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>

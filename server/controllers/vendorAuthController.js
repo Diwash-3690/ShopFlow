@@ -270,6 +270,15 @@ const login = async (req, res) => {
                     message: "Invalid mobile number or password",
                 });
             }
+
+            if (!vendor.mobileVerified) {
+                return res.status(403).json({
+                    success: false,
+                    requiresMobileVerification: true,
+                    mobile: vendor.mobile,
+                    message: "Your phone number has been changed or is not verified yet. Please verify your phone number with OTP before signing in.",
+                });
+            }
         }
 
         if (!vendor.isActive) {
@@ -392,7 +401,7 @@ const getMe = async (req, res) => {
 const updateProfile = async (req, res) => {
     try {
         const vendorId = req.vendor.id;
-        const { ownerName, email, shopName, shopNumber, address, contactNumber, upiId } = req.body;
+        const { ownerName, email, mobile, shopName, shopNumber, address, contactNumber, upiId } = req.body;
 
         const vendorUpdate = {};
         if (ownerName && ownerName.trim()) vendorUpdate.ownerName = ownerName.trim();
@@ -412,6 +421,30 @@ const updateProfile = async (req, res) => {
             vendorUpdate.email = cleanEmail;
             if (cleanEmail !== req.vendor.email) {
                 vendorUpdate.emailVerified = false;
+            }
+        }
+
+        if (mobile !== undefined) {
+            const cleanMobile = mobile && mobile.trim() ? mobile.trim() : null;
+            if (cleanMobile && cleanMobile !== req.vendor.mobile) {
+                if (!/^\d{10}$/.test(cleanMobile)) {
+                    return res.status(400).json({
+                        success: false,
+                        message: "Please enter a valid 10-digit mobile number",
+                    });
+                }
+                const existingMobile = await prisma.vendor.findUnique({
+                    where: { mobile: cleanMobile },
+                });
+                if (existingMobile) {
+                    return res.status(400).json({
+                        success: false,
+                        message: "This mobile number is already registered to another vendor.",
+                    });
+                }
+                vendorUpdate.mobile = cleanMobile;
+                // If number changed without immediate OTP verification, mark unverified
+                vendorUpdate.mobileVerified = false;
             }
         }
 
@@ -622,6 +655,213 @@ const verifyEmailOtp = async (req, res) => {
     }
 };
 
+// @desc    Send Phone Number Change OTP for Vendor
+// @route   POST /api/auth/vendor/send-phone-otp
+const sendPhoneChangeOtp = async (req, res) => {
+    try {
+        const vendor = req.vendor;
+        const { newMobile } = req.body;
+
+        if (!newMobile || !/^\d{10}$/.test(newMobile.trim())) {
+            return res.status(400).json({
+                success: false,
+                message: "Please provide a valid 10-digit mobile number",
+            });
+        }
+
+        const cleanMobile = newMobile.trim();
+        if (cleanMobile === vendor.mobile) {
+            return res.status(400).json({
+                success: false,
+                message: "The new phone number must be different from your current registered number",
+            });
+        }
+
+        const existing = await prisma.vendor.findUnique({
+            where: { mobile: cleanMobile },
+        });
+
+        if (existing) {
+            return res.status(400).json({
+                success: false,
+                message: "This mobile number is already registered to another vendor account.",
+            });
+        }
+
+        const result = await otpService.generateAndSendOtp({
+            mobile: cleanMobile,
+            purpose: "PHONE_CHANGE",
+        });
+
+        return res.status(200).json(result);
+    } catch (error) {
+        console.error("vendor sendPhoneChangeOtp error:", error);
+        return res.status(500).json({
+            success: false,
+            message: error.message || "Failed to send phone verification code",
+        });
+    }
+};
+
+// @desc    Verify Phone Number Change OTP & Update Number for Vendor
+// @route   POST /api/auth/vendor/verify-phone-otp
+const verifyPhoneChangeOtp = async (req, res) => {
+    try {
+        const vendor = req.vendor;
+        const { newMobile, code } = req.body;
+
+        if (!newMobile || !/^\d{10}$/.test(newMobile.trim())) {
+            return res.status(400).json({
+                success: false,
+                message: "Valid 10-digit mobile number is required",
+            });
+        }
+
+        if (!code || typeof code !== "string") {
+            return res.status(400).json({
+                success: false,
+                message: "Verification code is required",
+            });
+        }
+
+        const cleanMobile = newMobile.trim();
+
+        const verifyResult = await otpService.verifyOtp({
+            mobile: cleanMobile,
+            purpose: "PHONE_CHANGE",
+            code,
+        });
+
+        if (!verifyResult.success) {
+            return res.status(400).json(verifyResult);
+        }
+
+        // Update vendor with new verified phone number
+        const updatedVendor = await prisma.vendor.update({
+            where: { id: vendor.id },
+            data: {
+                mobile: cleanMobile,
+                mobileVerified: true,
+            },
+            include: { shop: true },
+        });
+
+        await otpService.consumeVerification({
+            mobile: cleanMobile,
+            purpose: "PHONE_CHANGE",
+        });
+
+        const { passwordHash: _, ...safeVendor } = updatedVendor;
+
+        return res.status(200).json({
+            success: true,
+            message: "Phone number updated and verified successfully! You can now use your new phone number to log in.",
+            vendor: safeVendor,
+            shop: safeVendor.shop,
+            hasShop: !!safeVendor.shop,
+        });
+    } catch (error) {
+        console.error("vendor verifyPhoneChangeOtp error:", error);
+        return res.status(500).json({
+            success: false,
+            message: error.message || "Failed to verify phone number",
+        });
+    }
+};
+
+// @desc    Send OTP to verify an unverified mobile number for login (Vendor)
+// @route   POST /api/auth/vendor/send-mobile-verify-otp
+const sendMobileVerificationOtp = async (req, res) => {
+    try {
+        const { mobile } = req.body;
+        if (!mobile || !/^\d{10}$/.test(mobile.trim())) {
+            return res.status(400).json({
+                success: false,
+                message: "Please provide a valid 10-digit mobile number",
+            });
+        }
+
+        const cleanMobile = mobile.trim();
+        const vendor = await prisma.vendor.findUnique({
+            where: { mobile: cleanMobile },
+        });
+
+        if (!vendor) {
+            return res.status(404).json({
+                success: false,
+                message: "No vendor account found with this mobile number",
+            });
+        }
+
+        const result = await otpService.generateAndSendOtp({
+            mobile: cleanMobile,
+            purpose: "MOBILE_VERIFICATION",
+        });
+
+        return res.status(200).json(result);
+    } catch (error) {
+        console.error("vendor sendMobileVerificationOtp error:", error);
+        return res.status(500).json({
+            success: false,
+            message: error.message || "Failed to send verification code",
+        });
+    }
+};
+
+// @desc    Verify unverified mobile number for login (Vendor)
+// @route   POST /api/auth/vendor/verify-mobile-verify-otp
+const verifyMobileVerificationOtp = async (req, res) => {
+    try {
+        const { mobile, code } = req.body;
+        if (!mobile || !/^\d{10}$/.test(mobile.trim())) {
+            return res.status(400).json({
+                success: false,
+                message: "Valid 10-digit mobile number is required",
+            });
+        }
+
+        const cleanMobile = mobile.trim();
+        const verifyResult = await otpService.verifyOtp({
+            mobile: cleanMobile,
+            purpose: "MOBILE_VERIFICATION",
+            code,
+        });
+
+        if (!verifyResult.success) {
+            return res.status(400).json(verifyResult);
+        }
+
+        const vendor = await prisma.vendor.update({
+            where: { mobile: cleanMobile },
+            data: { mobileVerified: true },
+            include: { shop: true },
+        });
+
+        await otpService.consumeVerification({
+            mobile: cleanMobile,
+            purpose: "MOBILE_VERIFICATION",
+        });
+
+        const token = generateToken(vendor.id, "VENDOR");
+        const { passwordHash: _, ...safeVendor } = vendor;
+
+        return res.status(200).json({
+            success: true,
+            message: "Mobile number verified successfully! You are now logged in.",
+            token,
+            vendor: safeVendor,
+            shop: safeVendor.shop,
+            hasShop: !!safeVendor.shop,
+        });
+    } catch (error) {
+        console.error("vendor verifyMobileVerificationOtp error:", error);
+        return res.status(500).json({
+            success: false,
+            message: error.message || "Failed to verify mobile number",
+        });
+    }
+};
+
 module.exports = {
     sendOtp,
     verifyOtp,
@@ -633,4 +873,8 @@ module.exports = {
     deleteAccount,
     sendEmailVerificationOtp,
     verifyEmailOtp,
+    sendPhoneChangeOtp,
+    verifyPhoneChangeOtp,
+    sendMobileVerificationOtp,
+    verifyMobileVerificationOtp,
 };

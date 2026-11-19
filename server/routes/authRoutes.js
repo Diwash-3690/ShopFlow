@@ -19,6 +19,10 @@ router.put("/vendor/profile", protectVendor, vendorAuth.updateProfile);
 router.delete("/vendor/profile", protectVendor, vendorAuth.deleteAccount);
 router.post("/vendor/send-email-otp", protectVendor, vendorAuth.sendEmailVerificationOtp);
 router.post("/vendor/verify-email-otp", protectVendor, vendorAuth.verifyEmailOtp);
+router.post("/vendor/send-phone-otp", protectVendor, vendorAuth.sendPhoneChangeOtp);
+router.post("/vendor/verify-phone-otp", protectVendor, vendorAuth.verifyPhoneChangeOtp);
+router.post("/vendor/send-mobile-verify-otp", otpLimiter, vendorAuth.sendMobileVerificationOtp);
+router.post("/vendor/verify-mobile-verify-otp", vendorAuth.verifyMobileVerificationOtp);
 
 // ============================================
 // Customer Authentication Routes
@@ -33,5 +37,9 @@ router.put("/customer/profile", protectCustomer, customerAuth.updateProfile);
 router.delete("/customer/profile", protectCustomer, customerAuth.deleteAccount);
 router.post("/customer/send-email-otp", protectCustomer, customerAuth.sendEmailVerificationOtp);
 router.post("/customer/verify-email-otp", protectCustomer, customerAuth.verifyEmailOtp);
+router.post("/customer/send-phone-otp", protectCustomer, customerAuth.sendPhoneChangeOtp);
+router.post("/customer/verify-phone-otp", protectCustomer, customerAuth.verifyPhoneChangeOtp);
+router.post("/customer/send-mobile-verify-otp", otpLimiter, customerAuth.sendMobileVerificationOtp);
+router.post("/customer/verify-mobile-verify-otp", customerAuth.verifyMobileVerificationOtp);
 
 module.exports = router;

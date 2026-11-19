@@ -25,6 +25,8 @@ import {
   customerDeleteAccount,
   customerSendEmailOtp,
   customerVerifyEmailOtp,
+  customerSendPhoneOtp,
+  customerVerifyPhoneOtp,
   logout,
 } from "../../services/authService";
 import { getCustomerOrders } from "../../services/orderService";
@@ -72,6 +74,13 @@ function CustomerDashboard() {
   const [emailOtpDevCode, setEmailOtpDevCode] = useState("");
   const [sendingEmailOtp, setSendingEmailOtp] = useState(false);
   const [verifyingEmailOtp, setVerifyingEmailOtp] = useState(false);
+  const [editingPhone, setEditingPhone] = useState(false);
+  const [newMobile, setNewMobile] = useState("");
+  const [phoneOtpSent, setPhoneOtpSent] = useState(false);
+  const [phoneOtpCode, setPhoneOtpCode] = useState("");
+  const [phoneOtpDevCode, setPhoneOtpDevCode] = useState("");
+  const [sendingPhoneOtp, setSendingPhoneOtp] = useState(false);
+  const [verifyingPhoneOtp, setVerifyingPhoneOtp] = useState(false);
   const [reportModalData, setReportModalData] = useState({
     isOpen: false,
     shopId: null,
@@ -212,6 +221,68 @@ function CustomerDashboard() {
       });
     } finally {
       setVerifyingEmailOtp(false);
+    }
+  };
+
+  const handleSendPhoneOtp = async () => {
+    if (!newMobile || !/^\d{10}$/.test(newMobile.trim())) {
+      setProfileMsg({ type: "error", text: "Please enter a valid 10-digit mobile number." });
+      return;
+    }
+    if (newMobile.trim() === customer?.mobile) {
+      setProfileMsg({ type: "error", text: "New mobile number must be different from your current number." });
+      return;
+    }
+    try {
+      setSendingPhoneOtp(true);
+      setProfileMsg({ type: "", text: "" });
+      const res = await customerSendPhoneOtp({ newMobile: newMobile.trim() });
+      setPhoneOtpSent(true);
+      setPhoneOtpDevCode(res.devCode || "");
+      setProfileMsg({
+        type: "success",
+        text: res.message || `Verification code sent to ${newMobile.trim()}`,
+      });
+    } catch (err) {
+      setProfileMsg({
+        type: "error",
+        text: err.response?.data?.message || err.message || "Failed to send verification code.",
+      });
+    } finally {
+      setSendingPhoneOtp(false);
+    }
+  };
+
+  const handleVerifyPhoneOtp = async () => {
+    if (!phoneOtpCode.trim()) {
+      setProfileMsg({ type: "error", text: "Please enter the 6-digit verification code." });
+      return;
+    }
+    try {
+      setVerifyingPhoneOtp(true);
+      setProfileMsg({ type: "", text: "" });
+      const res = await customerVerifyPhoneOtp({
+        newMobile: newMobile.trim(),
+        code: phoneOtpCode.trim(),
+      });
+      setCustomer(res.customer);
+      localStorage.setItem("user", JSON.stringify(res.customer));
+      setEditingPhone(false);
+      setPhoneOtpSent(false);
+      setPhoneOtpCode("");
+      setPhoneOtpDevCode("");
+      setNewMobile("");
+      setProfileMsg({
+        type: "success",
+        text: "Phone number updated and verified successfully! You can now use your new number to sign in.",
+      });
+    } catch (err) {
+      setProfileMsg({
+        type: "error",
+        text: err.response?.data?.message || err.message || "Failed to verify phone number.",
+      });
+    } finally {
+      setVerifyingPhoneOtp(false);
     }
   };
 
@@ -726,16 +797,109 @@ function CustomerDashboard() {
 
           <form onSubmit={handleSaveProfile} className="space-y-4 pt-1">
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-700">
-                Verified Mobile Number
-              </label>
-              <Input
-                type="text"
-                disabled
-                value={customer?.mobile || ""}
-                className="bg-slate-100 border-slate-200 font-mono text-xs cursor-not-allowed text-slate-500"
-              />
-              <p className="text-[10px] text-slate-400">Primary phone number used for login and counter pickup verification.</p>
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-slate-700">
+                  Registered Mobile Number
+                </label>
+                <div className="flex items-center gap-1.5">
+                  <Badge variant={customer?.mobileVerified ? "success" : "warning"} className="text-[10px] font-bold gap-1 py-0 px-2">
+                    <ShieldCheck className="w-3 h-3" /> {customer?.mobileVerified ? "Verified" : "Unverified"}
+                  </Badge>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setEditingPhone(!editingPhone);
+                      setPhoneOtpSent(false);
+                      setNewMobile("");
+                      setPhoneOtpCode("");
+                    }}
+                    className="h-6 px-2 text-[11px] font-bold text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50"
+                  >
+                    {editingPhone ? "Cancel Change" : "Change Number"}
+                  </Button>
+                </div>
+              </div>
+
+              {!editingPhone ? (
+                <Input
+                  type="text"
+                  disabled
+                  value={customer?.mobile || ""}
+                  className="bg-slate-100 border-slate-200 font-mono text-xs cursor-not-allowed text-slate-600"
+                />
+              ) : (
+                <div className="space-y-2 p-3 bg-slate-50 border border-slate-200 rounded-2xl">
+                  <div className="flex gap-2">
+                    <Input
+                      type="tel"
+                      maxLength={10}
+                      placeholder="Enter new 10-digit number"
+                      value={newMobile}
+                      onChange={(e) => setNewMobile(e.target.value)}
+                      className="text-xs bg-white border-slate-300 flex-1 font-mono"
+                    />
+                    {!phoneOtpSent ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={handleSendPhoneOtp}
+                        disabled={sendingPhoneOtp || newMobile.length !== 10}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs h-9 px-3 rounded-xl shrink-0"
+                      >
+                        {sendingPhoneOtp ? "Sending..." : "Send OTP"}
+                      </Button>
+                    ) : (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={handleSendPhoneOtp}
+                        disabled={sendingPhoneOtp}
+                        className="text-xs h-9 px-2 text-slate-600"
+                      >
+                        Resend
+                      </Button>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-slate-500">
+                    A 6-digit OTP will be sent to verify your new number. After change, you must use this verified number to log in.
+                  </p>
+
+                  {phoneOtpSent && (
+                    <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-bold text-emerald-950">Enter Verification Code</span>
+                        {phoneOtpDevCode && (
+                          <span className="text-[10px] font-mono font-bold bg-emerald-200 text-emerald-900 px-1.5 py-0.5 rounded">
+                            Dev OTP: {phoneOtpDevCode}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex gap-2">
+                        <Input
+                          type="text"
+                          maxLength={6}
+                          placeholder="e.g. 123456"
+                          value={phoneOtpCode}
+                          onChange={(e) => setPhoneOtpCode(e.target.value)}
+                          className="text-xs bg-white border-emerald-300 h-8 font-mono tracking-widest text-center"
+                        />
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={handleVerifyPhoneOtp}
+                          disabled={verifyingPhoneOtp || !phoneOtpCode.trim()}
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs h-8 px-3 rounded-xl shrink-0"
+                        >
+                          {verifyingPhoneOtp ? "Verifying..." : "Verify & Save"}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="space-y-1.5">

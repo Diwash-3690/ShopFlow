@@ -4,7 +4,11 @@ import AuthLayout from "../../components/AuthLayout";
 import InputField from "../../components/InputField";
 import PasswordInput from "../../components/PasswordInput";
 import Button from "../../components/Button";
-import { vendorLogin } from "../../services/authService";
+import {
+  vendorLogin,
+  vendorSendMobileVerifyOtp,
+  vendorVerifyMobileVerifyOtp,
+} from "../../services/authService";
 
 function VendorLogin() {
   const [formData, setFormData] = useState({
@@ -13,6 +17,11 @@ function VendorLogin() {
   });
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [unverifiedMobile, setUnverifiedMobile] = useState("");
+  const [mobileOtpSent, setMobileOtpSent] = useState(false);
+  const [mobileOtpCode, setMobileOtpCode] = useState("");
+  const [mobileOtpDevCode, setMobileOtpDevCode] = useState("");
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -21,6 +30,48 @@ function VendorLogin() {
       ...prev,
       [e.target.name]: e.target.value,
     }));
+  };
+
+  const handleSendMobileOtp = async () => {
+    try {
+      setVerifyingOtp(true);
+      setErrorMsg("");
+      const res = await vendorSendMobileVerifyOtp({ mobile: unverifiedMobile });
+      setMobileOtpSent(true);
+      setMobileOtpDevCode(res.devCode || "");
+    } catch (err) {
+      setErrorMsg(err.response?.data?.message || "Failed to send verification code.");
+    } finally {
+      setVerifyingOtp(false);
+    }
+  };
+
+  const handleVerifyMobileOtp = async () => {
+    if (!mobileOtpCode.trim()) {
+      setErrorMsg("Please enter the 6-digit verification code.");
+      return;
+    }
+    try {
+      setVerifyingOtp(true);
+      setErrorMsg("");
+      const response = await vendorVerifyMobileVerifyOtp({
+        mobile: unverifiedMobile,
+        code: mobileOtpCode.trim(),
+      });
+      localStorage.setItem("token", response.token);
+      localStorage.setItem("role", "VENDOR");
+      localStorage.setItem("user", JSON.stringify(response.vendor));
+      if (response.shop) {
+        localStorage.setItem("shop", JSON.stringify(response.shop));
+      } else {
+        localStorage.removeItem("shop");
+      }
+      navigate("/vendor/dashboard");
+    } catch (err) {
+      setErrorMsg(err.response?.data?.message || "Failed to verify mobile number.");
+    } finally {
+      setVerifyingOtp(false);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -33,6 +84,7 @@ function VendorLogin() {
     try {
       setLoading(true);
       setErrorMsg("");
+      setUnverifiedMobile("");
 
       const response = await vendorLogin({
         mobile: formData.mobile.trim(),
@@ -51,6 +103,9 @@ function VendorLogin() {
 
       navigate("/vendor/dashboard");
     } catch (err) {
+      if (err.response?.data?.requiresMobileVerification) {
+        setUnverifiedMobile(err.response.data.mobile || formData.mobile.trim());
+      }
       setErrorMsg(
         err.response?.data?.message ||
         err.message ||
@@ -69,6 +124,53 @@ function VendorLogin() {
       {errorMsg && (
         <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg">
           {errorMsg}
+        </div>
+      )}
+
+      {unverifiedMobile && (
+        <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-2xl space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-amber-900">
+              Verify Phone Number: <span className="font-mono">{unverifiedMobile}</span>
+            </span>
+            {mobileOtpDevCode && (
+              <span className="text-[10px] font-mono font-bold bg-amber-200 text-amber-900 px-1.5 py-0.5 rounded">
+                Dev OTP: {mobileOtpDevCode}
+              </span>
+            )}
+          </div>
+          {!mobileOtpSent ? (
+            <Button
+              type="button"
+              onClick={handleSendMobileOtp}
+              disabled={verifyingOtp}
+              variant="outline"
+              className="w-full text-xs font-bold h-9 border-amber-300 text-amber-900 hover:bg-amber-100"
+            >
+              {verifyingOtp ? "Sending Code..." : "Send Verification OTP"}
+            </Button>
+          ) : (
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  maxLength={6}
+                  placeholder="Enter 6-digit OTP"
+                  value={mobileOtpCode}
+                  onChange={(e) => setMobileOtpCode(e.target.value)}
+                  className="w-full px-3 py-1.5 border border-amber-300 rounded-xl text-xs bg-white font-mono tracking-widest text-center"
+                />
+                <Button
+                  type="button"
+                  onClick={handleVerifyMobileOtp}
+                  disabled={verifyingOtp || !mobileOtpCode.trim()}
+                  className="h-9 text-xs font-bold px-4 shrink-0 bg-blue-600 hover:bg-blue-700 text-white rounded-xl"
+                >
+                  {verifyingOtp ? "Verifying..." : "Verify & Sign In"}
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

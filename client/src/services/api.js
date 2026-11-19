@@ -1,7 +1,13 @@
 import axios from "axios";
 
+const API_BASE = (
+  import.meta.env.VITE_API_URL ||
+  import.meta.env.VITE_API_BASE_URL ||
+  "https://shopflow-2fxx.onrender.com/api"
+).replace(/\/+$/, "");
+
 const api = axios.create({
-  baseURL: "https://shopflow-2fxx.onrender.com/api",
+  baseURL: API_BASE,
   headers: {
     "Content-Type": "application/json",
   },

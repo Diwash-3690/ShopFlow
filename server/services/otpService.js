@@ -58,8 +58,7 @@ const generateAndSendOtp = async ({ mobile, purpose }) => {
     return {
         success: true,
         message: "OTP sent successfully",
-        // Return code in development/testing mode for convenience
-        ...(process.env.NODE_ENV !== "production" ? { devCode: code } : {}),
+        devCode: code, // returned for display & instant helper verification in both dev & deployed environments
     };
 };
 

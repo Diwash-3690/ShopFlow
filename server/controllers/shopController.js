@@ -56,11 +56,19 @@ const createShop = async (req, res) => {
             });
         }
 
-        // Validate UPI ID format if provided (e.g. merchant@okhdfcbank)
-        if (upiId && !/^[\w.\-_]{2,256}@[a-zA-Z]{2,64}$/.test(upiId.trim())) {
+        // UPI ID is mandatory for shop registration to support direct customer counter-pickup payments
+        if (!upiId || !upiId.trim()) {
             return res.status(400).json({
                 success: false,
-                message: "Please enter a valid UPI ID (e.g., shopname@okhdfcbank)",
+                message: "Shop UPI ID is mandatory for receiving customer direct payments",
+            });
+        }
+
+        // Validate UPI ID format (e.g. merchant@okhdfcbank or 9876543210@paytm)
+        if (!/^[\w.\-_]{2,256}@[a-zA-Z0-9.\-_]{2,64}$/.test(upiId.trim())) {
+            return res.status(400).json({
+                success: false,
+                message: "Please enter a valid UPI ID (e.g., shopname@okhdfcbank or 9876543210@paytm)",
             });
         }
 
@@ -80,7 +88,7 @@ const createShop = async (req, res) => {
                 shopNumber: shopNumber && shopNumber.trim() ? shopNumber.trim() : null,
                 latitude: latFloat,
                 longitude: lonFloat,
-                upiId: upiId ? upiId.trim() : null,
+                upiId: upiId.trim(),
             },
         });
 
@@ -168,10 +176,10 @@ const updateMyShop = async (req, res) => {
             shopNumber,
         } = req.body;
 
-        if (upiId && !/^[\w.\-_]{2,256}@[a-zA-Z]{2,64}$/.test(upiId.trim())) {
+        if (upiId && !/^[\w.\-_]{2,256}@[a-zA-Z0-9.\-_]{2,64}$/.test(upiId.trim())) {
             return res.status(400).json({
                 success: false,
-                message: "Please enter a valid UPI ID (e.g., shopname@okhdfcbank)",
+                message: "Please enter a valid UPI ID (e.g., shopname@okhdfcbank or 9876543210@paytm)",
             });
         }
 

@@ -118,6 +118,14 @@ function ShopRegistration() {
       setErrorMsg("Please enter the physical shop address.");
       return;
     }
+    if (!formData.upiId.trim()) {
+      setErrorMsg("Please enter your Shop UPI ID. It is mandatory for receiving customer direct payments.");
+      return;
+    }
+    if (!/^[\w.\-_]{2,256}@[a-zA-Z0-9.\-_]{2,64}$/.test(formData.upiId.trim())) {
+      setErrorMsg("Please enter a valid UPI ID (e.g., yourshop@okhdfcbank or 9876543210@paytm).");
+      return;
+    }
 
     try {
       setLoading(true);
@@ -130,7 +138,7 @@ function ShopRegistration() {
         shopNumber: formData.shopNumber.trim() || undefined,
         latitude: formData.latitude ? parseFloat(formData.latitude) : undefined,
         longitude: formData.longitude ? parseFloat(formData.longitude) : undefined,
-        upiId: formData.upiId.trim() || undefined,
+        upiId: formData.upiId.trim(),
       });
 
       localStorage.setItem("shop", JSON.stringify(res.shop));
@@ -311,21 +319,25 @@ function ShopRegistration() {
               </div>
             </div>
 
-            {/* UPI ID Section */}
-            <div className="p-4 bg-purple-50/50 border border-purple-200/80 rounded-2xl space-y-2">
-              <label className="text-xs font-bold text-purple-950">
-                Vendor UPI ID / Payment Destination (Optional)
+            {/* UPI ID Section (Mandatory) */}
+            <div className="p-4 bg-purple-50/60 border border-purple-200 rounded-2xl space-y-2">
+              <label className="text-xs font-bold text-purple-950 flex items-center justify-between">
+                <span>Shop UPI ID / Direct Payment Destination <span className="text-rose-500">*</span></span>
+                <Badge variant="outline" className="text-[9px] font-bold text-purple-700 bg-purple-100/70 border-purple-300">
+                  Mandatory
+                </Badge>
               </label>
               <p className="text-[11px] text-purple-800/80 leading-relaxed">
-                When customers pay online for counter pickup, payments route directly to this UPI ID without platform deduction (e.g., <code>yourshop@okhdfcbank</code>).
+                When customers pay online for counter pickup orders, 100% of the funds route directly to this UPI ID (e.g., <code>yourshop@okhdfcbank</code> or <code>9876543210@paytm</code>).
               </p>
               <Input
                 type="text"
                 name="upiId"
-                placeholder="e.g. yourshop@okhdfcbank"
+                required
+                placeholder="e.g. yourshop@okhdfcbank or 9876543210@paytm"
                 value={formData.upiId}
                 onChange={handleChange}
-                className="text-xs font-mono bg-white h-10 border-purple-200"
+                className="text-xs font-mono bg-white h-10 border-purple-300 focus-visible:ring-purple-500"
               />
             </div>
 

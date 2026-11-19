@@ -23,12 +23,14 @@ import { Card, CardHeader, CardTitle, CardContent } from "../../components/ui/ca
 import { Input } from "../../components/ui/input";
 import { Alert, AlertDescription } from "../../components/ui/alert";
 import ShopFlowRoleLogo from "../../components/ShopFlowRoleLogo";
+import { STANDARD_CATEGORIES } from "../../constants/categoryOptions";
 
 function Categories() {
   const navigate = useNavigate();
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [newCatName, setNewCatName] = useState("");
+  const [selectedPreset, setSelectedPreset] = useState("");
   const [creating, setCreating] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
@@ -61,7 +63,7 @@ function Categories() {
   }, [navigate]);
 
   const handleCreate = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     if (!newCatName.trim()) return;
 
     try {
@@ -70,11 +72,29 @@ function Categories() {
       setSuccessMsg("");
       await createCategory({ name: newCatName.trim() });
       setNewCatName("");
+      setSelectedPreset("");
       setSuccessMsg("Category created successfully!");
       setTimeout(() => setSuccessMsg(""), 3000);
       await loadCategories();
     } catch (err) {
       setErrorMsg(err.response?.data?.message || err.message || "Failed to create category");
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleQuickAdd = async (catName) => {
+    if (!catName || !catName.trim()) return;
+    try {
+      setCreating(true);
+      setErrorMsg("");
+      setSuccessMsg("");
+      await createCategory({ name: catName.trim() });
+      setSuccessMsg(`Category "${catName}" added successfully!`);
+      setTimeout(() => setSuccessMsg(""), 3000);
+      await loadCategories();
+    } catch (err) {
+      setErrorMsg(err.response?.data?.message || err.message || "Failed to add category");
     } finally {
       setCreating(false);
     }
@@ -162,25 +182,82 @@ function Categories() {
           </Alert>
         )}
 
-        {/* Create Category Bar */}
-        <Card className="rounded-3xl border-slate-200/90 shadow-2xs p-5 sm:p-6 bg-white">
-          <form onSubmit={handleCreate} className="flex flex-col sm:flex-row gap-3">
-            <Input
-              type="text"
-              placeholder="e.g. Dairy & Eggs, Snacks, Beverages, Bakery"
-              value={newCatName}
-              onChange={(e) => setNewCatName(e.target.value)}
-              className="flex-1 text-xs bg-slate-50 border-slate-200 rounded-xl h-11"
-            />
-            <Button
-              type="submit"
-              disabled={creating || !newCatName.trim()}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 h-11 rounded-xl text-xs gap-1.5 shadow-xs whitespace-nowrap"
-            >
-              <Plus className="w-4 h-4" />
-              <span>{creating ? "Adding..." : "Add Category"}</span>
-            </Button>
-          </form>
+        {/* Create Category Bar & Dropdown */}
+        <Card className="rounded-3xl border-slate-200/90 shadow-2xs p-5 sm:p-6 bg-white space-y-4">
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center justify-between">
+              <span>Add Category from Dropdown or Type Below</span>
+              <span className="text-[11px] text-slate-400 font-normal">Choose from standard options or enter custom name</span>
+            </label>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <select
+                value={selectedPreset}
+                onChange={(e) => {
+                  setSelectedPreset(e.target.value);
+                  if (e.target.value) {
+                    setNewCatName(e.target.value);
+                  }
+                }}
+                className="w-full sm:w-1/2 text-xs bg-slate-50 border border-slate-200 rounded-xl h-11 px-3 text-slate-700 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+              >
+                <option value="">-- Choose from Category Dropdown ({STANDARD_CATEGORIES.length}+ Options) --</option>
+                {STANDARD_CATEGORIES.map((preset) => {
+                  const alreadyExists = categories.some(
+                    (c) => c.name.toLowerCase() === preset.toLowerCase()
+                  );
+                  return (
+                    <option key={preset} value={preset} disabled={alreadyExists}>
+                      {preset} {alreadyExists ? "(Already Added)" : ""}
+                    </option>
+                  );
+                })}
+              </select>
+
+              <form onSubmit={handleCreate} className="flex-1 flex gap-2">
+                <Input
+                  type="text"
+                  placeholder="Category Name (e.g. Dairy & Eggs, Snacks)..."
+                  value={newCatName}
+                  onChange={(e) => setNewCatName(e.target.value)}
+                  className="flex-1 text-xs bg-slate-50 border-slate-200 rounded-xl h-11"
+                />
+                <Button
+                  type="submit"
+                  disabled={creating || !newCatName.trim()}
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-5 h-11 rounded-xl text-xs gap-1.5 shadow-xs whitespace-nowrap"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>{creating ? "Adding..." : "Add"}</span>
+                </Button>
+              </form>
+            </div>
+          </div>
+
+          {/* Quick Suggestions Chips */}
+          <div className="pt-2 border-t border-slate-100 space-y-2">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+              Quick Suggestions (Click to Add):
+            </span>
+            <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto pr-1">
+              {STANDARD_CATEGORIES.filter(
+                (preset) =>
+                  !categories.some(
+                    (c) => c.name.toLowerCase() === preset.toLowerCase()
+                  )
+              ).slice(0, 12).map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  disabled={creating}
+                  onClick={() => handleQuickAdd(preset)}
+                  className="text-[11px] font-medium text-slate-700 bg-slate-100 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 border border-slate-200/80 px-2.5 py-1 rounded-lg transition flex items-center gap-1 group cursor-pointer"
+                >
+                  <Plus className="w-3 h-3 text-slate-400 group-hover:text-blue-600" />
+                  <span>{preset}</span>
+                </button>
+              ))}
+            </div>
+          </div>
         </Card>
 
         {/* Categories List */}

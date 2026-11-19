@@ -391,41 +391,62 @@ function ShopStorefront() {
 
       {/* Main Content Area */}
       <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full space-y-6">
-        {/* Controls: Category Filter & Search Bar */}
-        <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between">
-          {/* Category Chips */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-none">
-            <Button
-              variant={selectedCategory === "ALL" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setSelectedCategory("ALL")}
-              className={`rounded-xl text-xs font-bold whitespace-nowrap h-8 px-3.5 ${
-                selectedCategory === "ALL"
-                  ? "bg-slate-900 text-white"
-                  : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
-              }`}
-            >
-              All Items ({products.length})
-            </Button>
-            {categories.map((c) => (
+        {/* Controls: Category Dropdown & Filter & Search Bar */}
+        <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 flex-1 min-w-0">
+            {/* Category Dropdown */}
+            <div className="shrink-0 w-full sm:w-56">
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="w-full text-xs font-bold text-slate-800 bg-white border border-slate-200/90 rounded-xl h-9 px-3 shadow-2xs focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+              >
+                <option value="ALL">All Categories ({products.length})</option>
+                {categories.map((c) => {
+                  const count = products.filter((p) => p.categoryId === c.id).length;
+                  return (
+                    <option key={c.id} value={c.id}>
+                      {c.name} ({count})
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+
+            {/* Quick Category Chips */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none flex-1 min-w-0">
               <Button
-                key={c.id}
-                variant={selectedCategory === c.id ? "default" : "outline"}
+                variant={selectedCategory === "ALL" ? "default" : "outline"}
                 size="sm"
-                onClick={() => setSelectedCategory(c.id)}
-                className={`rounded-xl text-xs font-bold whitespace-nowrap h-8 px-3.5 ${
-                  selectedCategory === c.id
+                onClick={() => setSelectedCategory("ALL")}
+                className={`rounded-xl text-xs font-bold whitespace-nowrap h-8 px-3 ${
+                  selectedCategory === "ALL"
                     ? "bg-slate-900 text-white"
                     : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
                 }`}
               >
-                {c.name}
+                All
               </Button>
-            ))}
+              {categories.map((c) => (
+                <Button
+                  key={c.id}
+                  variant={selectedCategory === c.id ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setSelectedCategory(c.id)}
+                  className={`rounded-xl text-xs font-bold whitespace-nowrap h-8 px-3 ${
+                    selectedCategory === c.id
+                      ? "bg-slate-900 text-white"
+                      : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                  }`}
+                >
+                  {c.name}
+                </Button>
+              ))}
+            </div>
           </div>
 
           {/* Search Box */}
-          <div className="relative w-full md:w-72">
+          <div className="relative w-full md:w-64 shrink-0">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
             <Input
               type="text"

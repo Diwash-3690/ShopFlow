@@ -17,7 +17,8 @@ import {
   updateProductStock,
   deleteProduct,
 } from "../../services/productService";
-import { getCategories } from "../../services/categoryService";
+import { getCategories, createCategory } from "../../services/categoryService";
+import { STANDARD_CATEGORIES } from "../../constants/categoryOptions";
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
 import { Card } from "../../components/ui/card";
@@ -129,6 +130,45 @@ function Products() {
     });
     setModalError("");
     setIsModalOpen(true);
+  };
+
+  const handleCategorySelectChange = async (val) => {
+    if (val.startsWith("__STANDARD__:")) {
+      const standardName = val.replace("__STANDARD__:", "");
+      try {
+        const res = await createCategory({ name: standardName });
+        if (res.category) {
+          setCategories((prev) => [...prev, res.category]);
+          setForm((prev) => ({ ...prev, categoryId: res.category.id }));
+        }
+      } catch (err) {
+        const match = categories.find(
+          (c) => c.name.toLowerCase() === standardName.toLowerCase()
+        );
+        if (match) {
+          setForm((prev) => ({ ...prev, categoryId: match.id }));
+        }
+      }
+      return;
+    }
+
+    if (val === "__CUSTOM__") {
+      const customName = window.prompt("Enter new category name:");
+      if (customName && customName.trim()) {
+        try {
+          const res = await createCategory({ name: customName.trim() });
+          if (res.category) {
+            setCategories((prev) => [...prev, res.category]);
+            setForm((prev) => ({ ...prev, categoryId: res.category.id }));
+          }
+        } catch (err) {
+          alert(err.response?.data?.message || "Failed to create category");
+        }
+      }
+      return;
+    }
+
+    setForm((prev) => ({ ...prev, categoryId: val }));
   };
 
   const handleSubmitModal = async (e) => {
@@ -480,20 +520,37 @@ function Products() {
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700">
-                  Category
+                <label className="text-xs font-bold text-slate-700 flex items-center justify-between">
+                  <span>Category</span>
+                  <span className="text-[10px] text-blue-600 font-semibold cursor-pointer" onClick={() => handleCategorySelectChange("__CUSTOM__")}>
+                    + New
+                  </span>
                 </label>
                 <select
                   value={form.categoryId}
-                  onChange={(e) => setForm({ ...form, categoryId: e.target.value })}
-                  className="w-full border border-slate-300 rounded-xl px-3 h-9 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  onChange={(e) => handleCategorySelectChange(e.target.value)}
+                  className="w-full border border-slate-300 rounded-xl px-3 h-9 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
                 >
                   <option value="">None (Uncategorized)</option>
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
+                  {categories.length > 0 && (
+                    <optgroup label="Shop Categories">
+                      {categories.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                  <optgroup label="Add Standard Category (Auto-creates)">
+                    {STANDARD_CATEGORIES.filter(
+                      (preset) => !categories.some((c) => c.name.toLowerCase() === preset.toLowerCase())
+                    ).map((preset) => (
+                      <option key={preset} value={`__STANDARD__:${preset}`}>
+                        + {preset}
+                      </option>
+                    ))}
+                  </optgroup>
+                  <option value="__CUSTOM__">+ Create Custom Category...</option>
                 </select>
               </div>
 

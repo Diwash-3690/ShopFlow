@@ -229,15 +229,35 @@ function WalkInPos() {
         <div className="lg:col-span-7 flex flex-col space-y-4">
           {/* Search & Category Filter */}
           <Card className="rounded-2xl border-slate-200/90 shadow-2xs p-4 bg-white space-y-3">
-            <div className="relative">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
-              <Input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search products by name to add to sale ticket..."
-                className="pl-9 text-xs bg-slate-50 border-slate-200 rounded-xl h-9"
-              />
+            {/* Search & Category Dropdown */}
+            <div className="flex flex-col sm:flex-row gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+                <Input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search products by name to add to sale ticket..."
+                  className="pl-9 text-xs bg-slate-50 border-slate-200 rounded-xl h-9"
+                />
+              </div>
+              <div className="sm:w-52">
+                <select
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  className="w-full text-xs font-semibold text-slate-700 bg-slate-50 border border-slate-200 rounded-xl h-9 px-3 focus:outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer"
+                >
+                  <option value="ALL">All Categories ({products.length})</option>
+                  {categories.map((c) => {
+                    const count = products.filter((p) => p.categoryId === c.id).length;
+                    return (
+                      <option key={c.id} value={c.id}>
+                        {c.name} ({count})
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
             </div>
 
             {/* Category Chips */}

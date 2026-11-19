@@ -28,6 +28,8 @@ import {
   updateReportStatus,
   getAdminShops,
   toggleShopStatus,
+  getAdminCustomers,
+  toggleCustomerStatus,
   updateAdminPassword,
 } from "../../services/adminService";
 import { Button } from "../../components/ui/button";
@@ -49,6 +51,7 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState(null);
   const [reports, setReports] = useState([]);
   const [shops, setShops] = useState([]);
+  const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [message, setMessage] = useState({ text: "", type: "" });
@@ -58,6 +61,8 @@ export default function AdminDashboard() {
   const [reportSearch, setReportSearch] = useState("");
   const [shopSearch, setShopSearch] = useState("");
   const [shopFilter, setShopFilter] = useState("all");
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [customerFilter, setCustomerFilter] = useState("all");
 
   // Report detail / editing state
   const [selectedReport, setSelectedReport] = useState(null);
@@ -80,15 +85,17 @@ export default function AdminDashboard() {
   const loadAllData = useCallback(async () => {
     setLoading(true);
     try {
-      const [statsRes, reportsRes, shopsRes] = await Promise.all([
+      const [statsRes, reportsRes, shopsRes, customersRes] = await Promise.all([
         getAdminStats(),
         getAdminReports({ status: reportFilter, search: reportSearch }),
         getAdminShops({ status: shopFilter, search: shopSearch }),
+        getAdminCustomers({ status: customerFilter, search: customerSearch }),
       ]);
 
       if (statsRes.success) setStats(statsRes.data);
       if (reportsRes.success) setReports(reportsRes.data);
       if (shopsRes.success) setShops(shopsRes.data);
+      if (customersRes.success) setCustomers(customersRes.data);
     } catch (err) {
       if (err.response?.status === 401 || err.response?.status === 403) {
         adminLogout();
@@ -99,7 +106,7 @@ export default function AdminDashboard() {
     } finally {
       setLoading(false);
     }
-  }, [navigate, reportFilter, reportSearch, shopFilter, shopSearch]);
+  }, [navigate, reportFilter, reportSearch, shopFilter, shopSearch, customerFilter, customerSearch]);
 
   // Check auth
   useEffect(() => {
@@ -214,6 +221,53 @@ export default function AdminDashboard() {
       }
     } catch (err) {
       showToast(err.response?.data?.message || "Failed to toggle shop status", "error");
+    }
+  };
+
+  const handleToggleCustomerStatus = async (customerId, currentActive, mobile) => {
+    const action = currentActive ? "suspend" : "activate";
+    const confirmAction = window.confirm(
+      `Are you sure you want to ${action} customer account (${mobile})? ${
+        currentActive
+          ? "The customer will be notified and will not be allowed to browse shops or place orders until further action is taken."
+          : "The customer will be allowed to sign in and browse shops."
+      }`
+    );
+    if (!confirmAction) return;
+
+    try {
+      const res = await toggleCustomerStatus(customerId);
+      if (res.success) {
+        showToast(res.message);
+        const [custRes, statsRes] = await Promise.all([
+          getAdminCustomers({ status: customerFilter, search: customerSearch }),
+          getAdminStats(),
+        ]);
+        if (custRes.success) setCustomers(custRes.data);
+        if (statsRes.success) setStats(statsRes.data);
+      }
+    } catch (err) {
+      showToast(err.response?.data?.message || "Failed to toggle customer status", "error");
+    }
+  };
+
+  const handleFilterCustomers = async (status) => {
+    setCustomerFilter(status);
+    try {
+      const res = await getAdminCustomers({ status, search: customerSearch });
+      if (res.success) setCustomers(res.data);
+    } catch (err) {
+      showToast("Failed to filter customers", "error");
+    }
+  };
+
+  const handleSearchCustomers = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await getAdminCustomers({ status: customerFilter, search: customerSearch });
+      if (res.success) setCustomers(res.data);
+    } catch (err) {
+      showToast("Failed to search customers", "error");
     }
   };
 
@@ -365,6 +419,17 @@ export default function AdminDashboard() {
                 <span>Shop Moderation</span>
                 <Badge variant="secondary" className="ml-1 px-1.5 py-0 text-[10px] bg-slate-800 text-slate-300">
                   {shops.length}
+                </Badge>
+              </TabsTrigger>
+
+              <TabsTrigger
+                value="customers"
+                className="gap-2 data-[state=active]:bg-indigo-600 data-[state=active]:text-white text-slate-400"
+              >
+                <Users className="w-3.5 h-3.5" />
+                <span>Customer Accounts</span>
+                <Badge variant="secondary" className="ml-1 px-1.5 py-0 text-[10px] bg-slate-800 text-slate-300">
+                  {customers.length}
                 </Badge>
               </TabsTrigger>
 
@@ -708,6 +773,173 @@ export default function AdminDashboard() {
                       </TableCell>
                     </TableRow>
                   ))}
+                </TableBody>
+              </Table>
+            </Card>
+          </TabsContent>
+
+          {/* TAB: CUSTOMER ACCOUNTS MODERATION */}
+          <TabsContent value="customers" className="space-y-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-extrabold text-white tracking-tight flex items-center gap-2">
+                  <span>Customer Account Governance</span>
+                  <Badge variant="secondary" className="bg-slate-800 text-slate-300 text-xs">
+                    {customers.length} Accounts
+                  </Badge>
+                </h2>
+                <p className="text-xs text-slate-400 mt-1">
+                  Manage consumer privileges, view verification statuses, and suspend abusive accounts
+                </p>
+              </div>
+
+              {/* Status Filter Chips */}
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  { label: "All", value: "all" },
+                  { label: "Active", value: "active" },
+                  { label: "Suspended", value: "inactive" },
+                ].map((st) => (
+                  <Button
+                    key={st.value}
+                    size="sm"
+                    variant={customerFilter === st.value ? "default" : "outline"}
+                    onClick={() => handleFilterCustomers(st.value)}
+                    className={`rounded-xl text-xs font-semibold ${
+                      customerFilter === st.value
+                        ? "bg-indigo-600 hover:bg-indigo-700 text-white"
+                        : "bg-slate-900/80 border-slate-800 text-slate-400 hover:text-white"
+                    }`}
+                  >
+                    {st.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            {/* Customer Search Bar */}
+            <form onSubmit={handleSearchCustomers} className="flex gap-2">
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
+                <Input
+                  type="text"
+                  placeholder="Search by customer mobile number or registered email..."
+                  value={customerSearch}
+                  onChange={(e) => setCustomerSearch(e.target.value)}
+                  className="pl-10 bg-slate-900/90 border-slate-800 text-white placeholder-slate-500 focus-visible:ring-indigo-500 rounded-xl"
+                />
+              </div>
+              <Button type="submit" variant="secondary" className="bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 rounded-xl px-5">
+                Search
+              </Button>
+            </form>
+
+            {/* Customers Table */}
+            <Card className="bg-slate-900/60 border-slate-800 overflow-hidden rounded-2xl">
+              <Table>
+                <TableHeader className="bg-slate-900 border-b border-slate-800">
+                  <TableRow className="border-slate-800 hover:bg-transparent">
+                    <TableHead className="text-slate-400 py-3.5">Customer Identity</TableHead>
+                    <TableHead className="text-slate-400 text-center py-3.5">Verification</TableHead>
+                    <TableHead className="text-slate-400 text-center py-3.5">Orders Placed</TableHead>
+                    <TableHead className="text-slate-400 text-center py-3.5">Reports Filed</TableHead>
+                    <TableHead className="text-slate-400 py-3.5">Joined</TableHead>
+                    <TableHead className="text-slate-400 text-center py-3.5">Status</TableHead>
+                    <TableHead className="text-slate-400 text-right py-3.5">Moderation Action</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody className="divide-y divide-slate-800/60">
+                  {customers.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-8 text-slate-500 text-xs">
+                        No customer accounts found matching criteria.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    customers.map((cust) => (
+                      <TableRow key={cust.id} className="border-slate-800/60 hover:bg-slate-850/50">
+                        <TableCell className="py-4">
+                          <div className="font-mono font-bold text-white text-sm flex items-center gap-1.5">
+                            <Phone className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                            <span>{cust.mobile}</span>
+                          </div>
+                          <div className="text-slate-400 text-xs flex items-center gap-1.5 mt-1">
+                            <Mail className="w-3 h-3 text-slate-500 shrink-0" />
+                            <span>{cust.email || "No email registered"}</span>
+                          </div>
+                        </TableCell>
+
+                        <TableCell className="text-center">
+                          <div className="flex flex-col items-center gap-1">
+                            {cust.mobileVerified ? (
+                              <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-400 border-emerald-500/30">
+                                Phone Verified
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-[10px] bg-slate-800 text-slate-400 border-slate-700">
+                                Phone Unverified
+                              </Badge>
+                            )}
+                            {cust.email && (
+                              cust.emailVerified ? (
+                                <Badge variant="outline" className="text-[10px] bg-sky-500/10 text-sky-400 border-sky-500/30">
+                                  Email Verified
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-400 border-amber-500/30">
+                                  Email Pending
+                                </Badge>
+                              )
+                            )}
+                          </div>
+                        </TableCell>
+
+                        <TableCell className="text-center font-bold text-slate-200">
+                          {cust._count?.orders || 0}
+                        </TableCell>
+
+                        <TableCell className="text-center">
+                          {cust._count?.reports > 0 ? (
+                            <Badge variant="destructive" className="font-bold text-xs">
+                              {cust._count.reports}
+                            </Badge>
+                          ) : (
+                            <span className="text-slate-500 text-xs">0</span>
+                          )}
+                        </TableCell>
+
+                        <TableCell className="text-slate-400 text-xs">
+                          {new Date(cust.createdAt).toLocaleDateString()}
+                        </TableCell>
+
+                        <TableCell className="text-center">
+                          <Badge
+                            variant={cust.isActive !== false ? "success" : "destructive"}
+                            className="font-bold text-[10px] tracking-wide"
+                          >
+                            {cust.isActive !== false ? "ACTIVE" : "SUSPENDED"}
+                          </Badge>
+                        </TableCell>
+
+                        <TableCell className="text-right">
+                          <Button
+                            variant={cust.isActive !== false ? "destructive" : "success"}
+                            size="sm"
+                            onClick={() =>
+                              handleToggleCustomerStatus(
+                                cust.id,
+                                cust.isActive !== false,
+                                cust.mobile
+                              )
+                            }
+                            className="rounded-xl text-xs font-semibold"
+                          >
+                            {cust.isActive !== false ? "Suspend Customer" : "Activate Customer"}
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </Card>

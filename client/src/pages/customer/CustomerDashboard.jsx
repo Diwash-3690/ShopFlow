@@ -23,6 +23,7 @@ import {
   customerGetMe,
   customerUpdateProfile,
   customerDeleteAccount,
+  customerChangePassword,
   customerSendEmailOtp,
   customerVerifyEmailOtp,
   customerSendPhoneOtp,
@@ -82,6 +83,51 @@ function CustomerDashboard() {
   const [phoneOtpDevCode, setPhoneOtpDevCode] = useState("");
   const [sendingPhoneOtp, setSendingPhoneOtp] = useState(false);
   const [verifyingPhoneOtp, setVerifyingPhoneOtp] = useState(false);
+
+  // Change Password state
+  const [showPasswordSection, setShowPasswordSection] = useState(false);
+  const [passwords, setPasswords] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
+  const [passwordMsg, setPasswordMsg] = useState({ type: "", text: "" });
+  const [changingPassword, setChangingPassword] = useState(false);
+
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    setPasswordMsg({ type: "", text: "" });
+
+    if (!passwords.currentPassword || !passwords.newPassword) {
+      setPasswordMsg({ type: "error", text: "Please enter your current and new password." });
+      return;
+    }
+    if (passwords.newPassword.length < 6) {
+      setPasswordMsg({ type: "error", text: "New password must be at least 6 characters." });
+      return;
+    }
+    if (passwords.newPassword !== passwords.confirmPassword) {
+      setPasswordMsg({ type: "error", text: "New passwords do not match." });
+      return;
+    }
+
+    try {
+      setChangingPassword(true);
+      const res = await customerChangePassword({
+        currentPassword: passwords.currentPassword,
+        newPassword: passwords.newPassword,
+      });
+      setPasswordMsg({ type: "success", text: res.message || "Password changed successfully!" });
+      setPasswords({ currentPassword: "", newPassword: "", confirmPassword: "" });
+      setTimeout(() => {
+        setShowPasswordSection(false);
+        setPasswordMsg({ type: "", text: "" });
+      }, 2000);
+    } catch (err) {
+      setPasswordMsg({
+        type: "error",
+        text: err.response?.data?.message || err.message || "Failed to change password",
+      });
+    } finally {
+      setChangingPassword(false);
+    }
+  };
   const [reportModalData, setReportModalData] = useState({
     isOpen: false,
     shopId: null,
@@ -410,6 +456,28 @@ function CustomerDashboard() {
 
       {/* Main Container */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full space-y-8">
+        {/* Account Suspended Alert Banner */}
+        {customer?.isActive === false && (
+          <div className="bg-rose-50 border-2 border-rose-300 text-rose-950 rounded-3xl p-5 sm:p-6 shadow-sm space-y-2">
+            <div className="flex items-start gap-3.5">
+              <div className="w-10 h-10 rounded-2xl bg-rose-600 text-white flex items-center justify-center font-bold text-lg shrink-0 shadow-sm">
+                ⚠️
+              </div>
+              <div>
+                <Badge variant="destructive" className="text-[10px] uppercase tracking-wider font-bold mb-1">
+                  Suspension Notice
+                </Badge>
+                <h3 className="text-base sm:text-lg font-black text-rose-950">
+                  Customer Account Suspended by Administration
+                </h3>
+                <p className="text-xs sm:text-sm text-rose-800 leading-relaxed mt-1">
+                  Your customer account has been suspended until further action is taken. You are temporarily not allowed to browse shops or place orders. If you believe this was in error, please contact platform support.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Banner to Discover Shops */}
         <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-emerald-700 via-teal-700 to-emerald-800 p-6 sm:p-8 text-white shadow-lg">
           <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
@@ -425,11 +493,22 @@ function CustomerDashboard() {
               </p>
             </div>
             <Button
-              onClick={() => navigate("/shops")}
-              className="bg-white text-emerald-900 hover:bg-emerald-50 font-black px-6 h-12 rounded-2xl shadow-md text-sm gap-2 shrink-0 cursor-pointer"
+              onClick={() => {
+                if (customer?.isActive === false) {
+                  alert("Your account is currently suspended by administration. Browsing stores is disabled until further notice.");
+                  return;
+                }
+                navigate("/shops");
+              }}
+              disabled={customer?.isActive === false}
+              className={`font-black px-6 h-12 rounded-2xl shadow-md text-sm gap-2 shrink-0 cursor-pointer ${
+                customer?.isActive === false
+                  ? "bg-slate-200 text-slate-500 cursor-not-allowed"
+                  : "bg-white text-emerald-900 hover:bg-emerald-50"
+              }`}
             >
               <Search className="w-4 h-4 text-emerald-700" />
-              <span>Discover Shops</span>
+              <span>{customer?.isActive === false ? "Browsing Suspended" : "Discover Shops"}</span>
               <ArrowRight className="w-4 h-4 ml-1" />
             </Button>
           </div>
@@ -972,6 +1051,90 @@ function CustomerDashboard() {
                       className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs h-8 px-3 rounded-xl shrink-0"
                     >
                       {verifyingEmailOtp ? "Verifying..." : "Confirm OTP"}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Change Password Section */}
+            <div className="pt-2 border-t border-slate-100 space-y-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-xs font-bold text-slate-800">Security & Password</span>
+                  <p className="text-[10px] text-slate-400">Update your sign-in password</p>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setShowPasswordSection(!showPasswordSection);
+                    setPasswordMsg({ type: "", text: "" });
+                  }}
+                  className="h-7 text-xs font-bold text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50 px-2"
+                >
+                  {showPasswordSection ? "Close" : "Change Password"}
+                </Button>
+              </div>
+
+              {showPasswordSection && (
+                <div className="p-3.5 bg-slate-50 border border-slate-200/90 rounded-2xl space-y-3">
+                  {passwordMsg.text && (
+                    <div
+                      className={`p-2.5 rounded-xl text-xs font-semibold ${
+                        passwordMsg.type === "error"
+                          ? "bg-rose-50 text-rose-700 border border-rose-200"
+                          : "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                      }`}
+                    >
+                      {passwordMsg.text}
+                    </div>
+                  )}
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase text-slate-600">Current Password</label>
+                    <Input
+                      type="password"
+                      placeholder="••••••••"
+                      value={passwords.currentPassword}
+                      onChange={(e) => setPasswords({ ...passwords, currentPassword: e.target.value })}
+                      className="text-xs bg-white h-9"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold uppercase text-slate-600">New Password</label>
+                      <Input
+                        type="password"
+                        placeholder="At least 6 chars"
+                        value={passwords.newPassword}
+                        onChange={(e) => setPasswords({ ...passwords, newPassword: e.target.value })}
+                        className="text-xs bg-white h-9"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold uppercase text-slate-600">Confirm Password</label>
+                      <Input
+                        type="password"
+                        placeholder="Re-enter password"
+                        value={passwords.confirmPassword}
+                        onChange={(e) => setPasswords({ ...passwords, confirmPassword: e.target.value })}
+                        className="text-xs bg-white h-9"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end pt-1">
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={handleChangePassword}
+                      disabled={changingPassword}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs h-8 px-4 rounded-xl"
+                    >
+                      {changingPassword ? "Updating..." : "Update Password"}
                     </Button>
                   </div>
                 </div>

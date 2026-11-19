@@ -270,6 +270,14 @@ const login = async (req, res) => {
             }
         }
 
+        if (customer.isActive === false) {
+            return res.status(403).json({
+                success: false,
+                isSuspended: true,
+                message: "Your customer account has been suspended by administration until further action is taken. You cannot sign in or browse at this time.",
+            });
+        }
+
         const isMatch = await bcrypt.compare(password, customer.passwordHash);
 
         if (!isMatch) {
@@ -787,6 +795,62 @@ const verifyMobileVerificationOtp = async (req, res) => {
     }
 };
 
+// @desc    Change customer password while logged in
+// @route   PUT /api/auth/customer/change-password
+const changePassword = async (req, res) => {
+    try {
+        const { currentPassword, newPassword } = req.body;
+        if (!currentPassword || !newPassword) {
+            return res.status(400).json({
+                success: false,
+                message: "Current password and new password are required",
+            });
+        }
+        if (newPassword.length < 6) {
+            return res.status(400).json({
+                success: false,
+                message: "New password must be at least 6 characters long",
+            });
+        }
+
+        const customer = await prisma.customer.findUnique({
+            where: { id: req.customer.id },
+        });
+
+        if (!customer) {
+            return res.status(404).json({
+                success: false,
+                message: "Customer account not found",
+            });
+        }
+
+        const isMatch = await bcrypt.compare(currentPassword, customer.passwordHash);
+        if (!isMatch) {
+            return res.status(400).json({
+                success: false,
+                message: "Current password is incorrect",
+            });
+        }
+
+        const passwordHash = await bcrypt.hash(newPassword, 10);
+        await prisma.customer.update({
+            where: { id: customer.id },
+            data: { passwordHash },
+        });
+
+        return res.status(200).json({
+            success: true,
+            message: "Password changed successfully",
+        });
+    } catch (error) {
+        console.error("customer changePassword error:", error);
+        return res.status(500).json({
+            success: false,
+            message: error.message || "Failed to change password",
+        });
+    }
+};
+
 module.exports = {
     sendOtp,
     verifyOtp,
@@ -796,6 +860,7 @@ module.exports = {
     getMe,
     updateProfile,
     deleteAccount,
+    changePassword,
     sendEmailVerificationOtp,
     verifyEmailOtp,
     sendPhoneChangeOtp,

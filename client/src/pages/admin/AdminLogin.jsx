@@ -60,28 +60,6 @@ export default function AdminLogin() {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md px-4 relative z-10">
         <Card className="bg-slate-900/90 border-slate-800 backdrop-blur-xl shadow-2xl rounded-3xl p-6 sm:p-8">
-          {/* Quick Credential Helper */}
-          <div className="mb-5 p-3.5 bg-indigo-950/60 border border-indigo-800/60 rounded-2xl flex items-center justify-between gap-3 text-xs">
-            <div className="space-y-0.5">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-400">Default Credentials</span>
-              <p className="text-slate-300 font-mono text-[11px]">
-                admin <span className="text-slate-500">/</span> Admin@123456
-              </p>
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setIdentifier("admin");
-                setPassword("Admin@123456");
-              }}
-              className="text-[11px] font-bold text-indigo-300 bg-indigo-900/40 border-indigo-700/60 hover:bg-indigo-800/60 hover:text-white h-7 px-2.5 rounded-lg whitespace-nowrap"
-            >
-              Auto Fill
-            </Button>
-          </div>
-
           <form className="space-y-5" onSubmit={handleSubmit}>
             {error && (
               <div className="p-3.5 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-300 text-xs font-semibold">

@@ -70,6 +70,16 @@ export const toggleShopStatus = async (shopId) => {
   return response.data;
 };
 
+export const getAdminCustomers = async (params = {}) => {
+  const response = await adminApi.get("/customers", { params });
+  return response.data;
+};
+
+export const toggleCustomerStatus = async (customerId) => {
+  const response = await adminApi.patch(`/customers/${customerId}/toggle-status`);
+  return response.data;
+};
+
 export const updateAdminPassword = async (currentPassword, newPassword) => {
   const response = await adminApi.put("/password", { currentPassword, newPassword });
   return response.data;
@@ -85,5 +95,7 @@ export default {
   updateReportStatus,
   getAdminShops,
   toggleShopStatus,
+  getAdminCustomers,
+  toggleCustomerStatus,
   updateAdminPassword,
 };

@@ -296,6 +296,7 @@ const searchNearbyShops = async (req, res) => {
                 latitude: true,
                 longitude: true,
                 upiId: true,
+                isActive: true,
                 _count: {
                     select: {
                         products: {

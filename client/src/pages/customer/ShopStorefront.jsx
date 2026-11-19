@@ -24,6 +24,7 @@ import {
 import { getPublicShopById } from "../../services/shopService";
 import { getPublicShopProducts } from "../../services/productService";
 import { getPublicShopCategories } from "../../services/categoryService";
+import { customerGetMe } from "../../services/authService";
 import {
   calculateCheckout,
   createOnlineOrder,
@@ -90,6 +91,23 @@ function ShopStorefront() {
   const [copiedPickupId, setCopiedPickupId] = useState(false);
   const [activeBill, setActiveBill] = useState(null);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [customer, setCustomer] = useState(null);
+
+  useEffect(() => {
+    customerGetMe()
+      .then((res) => {
+        if (res?.customer) {
+          setCustomer(res.customer);
+          localStorage.setItem("user", JSON.stringify(res.customer));
+        }
+      })
+      .catch(() => {
+        const cached = localStorage.getItem("user");
+        if (cached) {
+          try { setCustomer(JSON.parse(cached)); } catch (e) {}
+        }
+      });
+  }, []);
 
   const loadStoreData = useCallback(async () => {
     try {
@@ -126,6 +144,14 @@ function ShopStorefront() {
 
   const handleAddToCart = (product) => {
     if (!shop) return;
+    if (customer?.isActive === false) {
+      alert("Your customer account is suspended. You cannot add products to cart.");
+      return;
+    }
+    if (shop?.isActive === false) {
+      alert("This shop is suspended by administration. Ordering is disabled.");
+      return;
+    }
     const res = addToCart(product, shop);
     if (res?.conflict) {
       setConflictModal({
@@ -391,6 +417,50 @@ function ShopStorefront() {
 
       {/* Main Content Area */}
       <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full space-y-6">
+        {/* Customer Suspended Notice */}
+        {customer?.isActive === false && (
+          <div className="bg-rose-50 border-2 border-rose-300 text-rose-950 rounded-3xl p-5 sm:p-6 shadow-sm space-y-2">
+            <div className="flex items-start gap-3.5">
+              <div className="w-10 h-10 rounded-2xl bg-rose-600 text-white flex items-center justify-center font-bold text-lg shrink-0 shadow-sm">
+                ⚠️
+              </div>
+              <div>
+                <Badge variant="destructive" className="text-[10px] uppercase tracking-wider font-bold mb-1">
+                  Account Suspended
+                </Badge>
+                <h3 className="text-base sm:text-lg font-black text-rose-950">
+                  Your Account Is Currently Suspended
+                </h3>
+                <p className="text-xs sm:text-sm text-rose-800 leading-relaxed mt-1">
+                  Your customer account has been suspended until further action is taken by platform administration. Adding items to cart and placing orders is disabled.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Shop Suspended Notice */}
+        {shop?.isActive === false && (
+          <div className="bg-rose-50 border-2 border-rose-300 text-rose-950 rounded-3xl p-5 sm:p-6 shadow-sm space-y-2">
+            <div className="flex items-start gap-3.5">
+              <div className="w-10 h-10 rounded-2xl bg-rose-600 text-white flex items-center justify-center font-bold text-lg shrink-0 shadow-sm">
+                🚨
+              </div>
+              <div>
+                <Badge variant="destructive" className="text-[10px] uppercase tracking-wider font-bold mb-1">
+                  Shop Suspended
+                </Badge>
+                <h3 className="text-base sm:text-lg font-black text-rose-950">
+                  This Shop Is Suspended by Platform Administration
+                </h3>
+                <p className="text-xs sm:text-sm text-rose-800 leading-relaxed mt-1">
+                  This shop is temporarily suspended until further action is taken by administrators. Ordering from this store is paused.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Controls: Category Dropdown & Filter & Search Bar */}
         <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 flex-1 min-w-0">
@@ -575,7 +645,15 @@ function ShopStorefront() {
                     </div>
 
                     {/* Action: Add to Cart / Qty Stepper */}
-                    {isOutOfStock ? (
+                    {shop?.isActive === false || customer?.isActive === false ? (
+                      <Button
+                        disabled
+                        variant="secondary"
+                        className="w-full h-9 rounded-xl text-xs font-bold text-rose-400 bg-rose-50 border border-rose-200 cursor-not-allowed"
+                      >
+                        {shop?.isActive === false ? "Shop Suspended" : "Account Suspended"}
+                      </Button>
+                    ) : isOutOfStock ? (
                       <Button
                         disabled
                         variant="secondary"

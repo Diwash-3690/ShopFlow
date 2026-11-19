@@ -343,6 +343,7 @@ const toggleShopStatus = async (req, res) => {
 
         const shop = await prisma.shop.findUnique({
             where: { id: shopId },
+            include: { vendor: true },
         });
 
         if (!shop) {
@@ -352,12 +353,39 @@ const toggleShopStatus = async (req, res) => {
             });
         }
 
+        const newStatus = !shop.isActive;
+
         const updatedShop = await prisma.shop.update({
             where: { id: shopId },
             data: {
-                isActive: !shop.isActive,
+                isActive: newStatus,
             },
+            include: { vendor: true },
         });
+
+        // Sync vendor account status with shop status
+        if (shop.vendorId) {
+            await prisma.vendor.update({
+                where: { id: shop.vendorId },
+                data: { isActive: newStatus },
+            });
+        }
+
+        // When suspending, create an alert notification for the vendor's dashboard
+        if (!newStatus) {
+            try {
+                await prisma.notification.create({
+                    data: {
+                        shopId: shop.id,
+                        type: "OUT_OF_STOCK",
+                        title: "Account & Shop Suspended by Platform Admin",
+                        message: "Your shop and vendor account have been suspended by platform administration until further action is taken. Storefront discovery is marked as suspended and ordering is paused. Please contact admin support.",
+                    },
+                });
+            } catch (notifErr) {
+                console.warn("Could not create suspension notification:", notifErr.message);
+            }
+        }
 
         return res.status(200).json({
             success: true,
@@ -369,6 +397,96 @@ const toggleShopStatus = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: "Failed to update shop status",
+        });
+    }
+};
+
+/**
+ * Get all Customer accounts for Admin moderation
+ */
+const getAdminCustomers = async (req, res) => {
+    try {
+        const { search, status } = req.query;
+
+        const where = {};
+        if (status === "active") where.isActive = true;
+        if (status === "inactive") where.isActive = false;
+
+        if (search) {
+            where.OR = [
+                { mobile: { contains: search, mode: "insensitive" } },
+                { email: { contains: search, mode: "insensitive" } },
+            ];
+        }
+
+        const customers = await prisma.customer.findMany({
+            where,
+            select: {
+                id: true,
+                mobile: true,
+                email: true,
+                isActive: true,
+                mobileVerified: true,
+                emailVerified: true,
+                createdAt: true,
+                _count: {
+                    select: {
+                        orders: true,
+                        reports: true,
+                    },
+                },
+            },
+            orderBy: { createdAt: "desc" },
+        });
+
+        return res.status(200).json({
+            success: true,
+            data: customers,
+        });
+    } catch (error) {
+        console.error("Get admin customers error:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to load customers",
+        });
+    }
+};
+
+/**
+ * Toggle Customer Active / Suspended Status
+ */
+const toggleCustomerStatus = async (req, res) => {
+    try {
+        const { customerId } = req.params;
+
+        const customer = await prisma.customer.findUnique({
+            where: { id: customerId },
+        });
+
+        if (!customer) {
+            return res.status(404).json({
+                success: false,
+                message: "Customer account not found",
+            });
+        }
+
+        const newStatus = !customer.isActive;
+
+        const updatedCustomer = await prisma.customer.update({
+            where: { id: customerId },
+            data: { isActive: newStatus },
+        });
+
+        return res.status(200).json({
+            success: true,
+            message: `Customer account (${updatedCustomer.mobile}) has been ${updatedCustomer.isActive ? "activated" : "suspended"}`,
+            data: updatedCustomer,
+        });
+    } catch (error) {
+        console.error("Toggle customer status error:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to update customer status",
         });
     }
 };
@@ -439,5 +557,7 @@ module.exports = {
     updateReportStatus,
     getAdminShops,
     toggleShopStatus,
+    getAdminCustomers,
+    toggleCustomerStatus,
     updateAdminPassword,
 };

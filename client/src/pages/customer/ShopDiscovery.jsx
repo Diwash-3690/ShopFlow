@@ -13,6 +13,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { searchNearbyShops } from "../../services/shopService";
+import { customerGetMe } from "../../services/authService";
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
 import { Card, CardContent } from "../../components/ui/card";
@@ -27,6 +28,23 @@ function ShopDiscovery() {
   const [userCoords, setUserCoords] = useState(null);
   const [detectingGps, setDetectingGps] = useState(false);
   const [gpsError, setGpsError] = useState("");
+  const [customer, setCustomer] = useState(null);
+
+  useEffect(() => {
+    customerGetMe()
+      .then((res) => {
+        if (res?.customer) {
+          setCustomer(res.customer);
+          localStorage.setItem("user", JSON.stringify(res.customer));
+        }
+      })
+      .catch(() => {
+        const cached = localStorage.getItem("user");
+        if (cached) {
+          try { setCustomer(JSON.parse(cached)); } catch (e) {}
+        }
+      });
+  }, []);
 
   const loadShops = useCallback(async () => {
     try {
@@ -111,6 +129,28 @@ function ShopDiscovery() {
 
       {/* Main Content Area */}
       <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full space-y-6">
+        {/* Customer Suspended Notice */}
+        {customer?.isActive === false && (
+          <div className="bg-rose-50 border-2 border-rose-300 text-rose-950 rounded-3xl p-5 sm:p-6 shadow-sm space-y-2">
+            <div className="flex items-start gap-3.5">
+              <div className="w-10 h-10 rounded-2xl bg-rose-600 text-white flex items-center justify-center font-bold text-lg shrink-0 shadow-sm">
+                ⚠️
+              </div>
+              <div>
+                <Badge variant="destructive" className="text-[10px] uppercase tracking-wider font-bold mb-1">
+                  Account Suspended
+                </Badge>
+                <h3 className="text-base sm:text-lg font-black text-rose-950">
+                  You are not allowed to browse shops or place orders
+                </h3>
+                <p className="text-xs sm:text-sm text-rose-800 leading-relaxed mt-1">
+                  Your customer account has been suspended by administration until further action is taken. Store discovery, ordering, and cart actions are currently blocked. Please contact platform administration to review your account status.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Banner Section */}
         <div className="space-y-1.5">
           <Badge variant="success" className="text-[11px] gap-1 px-3 py-1 font-bold">
@@ -247,60 +287,95 @@ function ShopDiscovery() {
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {shops.map((shop) => (
-              <Card
-                key={shop.id}
-                className="rounded-3xl border-slate-200/90 hover:border-emerald-300 hover:shadow-lg transition-all duration-200 flex flex-col justify-between group overflow-hidden bg-white"
-              >
-                <div className="p-6 space-y-4">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-mono text-xs font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200/60">
-                      {shop.shopId}
-                    </span>
+            {shops.map((shop) => {
+              const isShopSuspended = shop.isActive === false;
+              return (
+                <Card
+                  key={shop.id}
+                  className={`rounded-3xl transition-all duration-200 flex flex-col justify-between overflow-hidden bg-white ${
+                    isShopSuspended
+                      ? "border-rose-300 bg-rose-50/20 shadow-none opacity-90"
+                      : "border-slate-200/90 hover:border-emerald-300 hover:shadow-lg group"
+                  }`}
+                >
+                  <div className="p-6 space-y-4">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-mono text-xs font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200/60">
+                        {shop.shopId}
+                      </span>
 
-                    {shop.distanceKm !== null && shop.distanceKm !== undefined ? (
-                      <Badge variant="success" className="gap-1 font-bold text-[11px]">
-                        <MapPin className="w-3 h-3 text-emerald-600" />
-                        <span>{shop.distanceKm} km</span>
+                      {isShopSuspended ? (
+                        <Badge variant="destructive" className="font-bold text-[10px] gap-1 px-2 py-0.5 bg-rose-600 text-white uppercase tracking-wider">
+                          ⚠️ Suspended
+                        </Badge>
+                      ) : shop.distanceKm !== null && shop.distanceKm !== undefined ? (
+                        <Badge variant="success" className="gap-1 font-bold text-[11px]">
+                          <MapPin className="w-3 h-3 text-emerald-600" />
+                          <span>{shop.distanceKm} km</span>
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary" className="text-[10px]">
+                          Verified
+                        </Badge>
+                      )}
+                    </div>
+
+                    <div>
+                      <h3
+                        className={`text-xl font-black tracking-tight ${
+                          isShopSuspended
+                            ? "text-slate-700"
+                            : "text-slate-900 group-hover:text-emerald-700 transition"
+                        }`}
+                      >
+                        {shop.shopName}
+                      </h3>
+                      <p className="text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed">
+                        {shop.address || "Local neighborhood store"}
+                      </p>
+                      {isShopSuspended && (
+                        <p className="text-[11px] font-bold text-rose-700 mt-2 bg-rose-50 border border-rose-200 px-2.5 py-1.5 rounded-xl">
+                          ⚠️ Suspended until further action is taken by administration.
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                      <span className="flex items-center gap-1.5 text-slate-600 font-mono text-[11px]">
+                        <Phone className="w-3.5 h-3.5 text-slate-400" />
+                        <span>{shop.contactNumber || "N/A"}</span>
+                      </span>
+                      <Badge variant="outline" className="font-bold text-[11px] bg-slate-50">
+                        {shop._count?.products || 0} items
                       </Badge>
-                    ) : (
-                      <Badge variant="secondary" className="text-[10px]">
-                        Verified
-                      </Badge>
-                    )}
+                    </div>
                   </div>
 
-                  <div>
-                    <h3 className="text-xl font-black text-slate-900 group-hover:text-emerald-700 transition tracking-tight">
-                      {shop.shopName}
-                    </h3>
-                    <p className="text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed">
-                      {shop.address || "Local neighborhood store"}
-                    </p>
+                  <div className="p-4 bg-slate-50/50 border-t border-slate-100">
+                    <Button
+                      onClick={() => navigate(`/shops/${shop.shopId}`)}
+                      disabled={isShopSuspended || customer?.isActive === false}
+                      className={`w-full font-bold h-10 rounded-xl gap-2 shadow-sm transition ${
+                        isShopSuspended
+                          ? "bg-rose-100 text-rose-800 border border-rose-300 cursor-not-allowed hover:bg-rose-100"
+                          : customer?.isActive === false
+                          ? "bg-slate-200 text-slate-500 cursor-not-allowed"
+                          : "bg-slate-900 hover:bg-emerald-600 text-white"
+                      }`}
+                    >
+                      <span>
+                        {isShopSuspended
+                          ? "Suspended (Action Pending)"
+                          : customer?.isActive === false
+                          ? "Browsing Disabled"
+                          : "Visit Storefront"}
+                      </span>
+                      {!isShopSuspended && customer?.isActive !== false && <ArrowRight className="w-4 h-4" />}
+                    </Button>
                   </div>
-
-                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-                    <span className="flex items-center gap-1.5 text-slate-600 font-mono text-[11px]">
-                      <Phone className="w-3.5 h-3.5 text-slate-400" />
-                      <span>{shop.contactNumber || "N/A"}</span>
-                    </span>
-                    <Badge variant="outline" className="font-bold text-[11px] bg-slate-50">
-                      {shop._count?.products || 0} items
-                    </Badge>
-                  </div>
-                </div>
-
-                <div className="p-4 bg-slate-50/50 border-t border-slate-100">
-                  <Button
-                    onClick={() => navigate(`/shops/${shop.shopId}`)}
-                    className="w-full bg-slate-900 hover:bg-emerald-600 text-white font-bold h-10 rounded-xl gap-2 shadow-sm transition"
-                  >
-                    <span>Visit Storefront</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </Button>
-                </div>
-              </Card>
-            ))}
+                </Card>
+              );
+            })}
           </div>
         )}
       </main>

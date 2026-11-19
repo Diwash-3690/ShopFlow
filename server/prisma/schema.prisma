@@ -86,6 +86,7 @@ model Customer {
   mobile          String   @unique
   passwordHash    String
   mobileVerified  Boolean  @default(false)
+  isActive        Boolean  @default(true)
   email           String?  @unique
   emailVerified   Boolean  @default(false)
   createdAt       DateTime @default(now())

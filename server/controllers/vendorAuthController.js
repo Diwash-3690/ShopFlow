@@ -871,6 +871,62 @@ const verifyMobileVerificationOtp = async (req, res) => {
     }
 };
 
+// @desc    Change vendor password while logged in
+// @route   PUT /api/auth/vendor/change-password
+const changePassword = async (req, res) => {
+    try {
+        const { currentPassword, newPassword } = req.body;
+        if (!currentPassword || !newPassword) {
+            return res.status(400).json({
+                success: false,
+                message: "Current password and new password are required",
+            });
+        }
+        if (newPassword.length < 6) {
+            return res.status(400).json({
+                success: false,
+                message: "New password must be at least 6 characters long",
+            });
+        }
+
+        const vendor = await prisma.vendor.findUnique({
+            where: { id: req.vendor.id },
+        });
+
+        if (!vendor) {
+            return res.status(404).json({
+                success: false,
+                message: "Vendor account not found",
+            });
+        }
+
+        const isMatch = await bcrypt.compare(currentPassword, vendor.passwordHash);
+        if (!isMatch) {
+            return res.status(400).json({
+                success: false,
+                message: "Current password is incorrect",
+            });
+        }
+
+        const passwordHash = await bcrypt.hash(newPassword, 10);
+        await prisma.vendor.update({
+            where: { id: vendor.id },
+            data: { passwordHash },
+        });
+
+        return res.status(200).json({
+            success: true,
+            message: "Password changed successfully",
+        });
+    } catch (error) {
+        console.error("vendor changePassword error:", error);
+        return res.status(500).json({
+            success: false,
+            message: error.message || "Failed to change password",
+        });
+    }
+};
+
 module.exports = {
     sendOtp,
     verifyOtp,
@@ -880,6 +936,7 @@ module.exports = {
     getMe,
     updateProfile,
     deleteAccount,
+    changePassword,
     sendEmailVerificationOtp,
     verifyEmailOtp,
     sendPhoneChangeOtp,

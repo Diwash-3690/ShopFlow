@@ -30,6 +30,7 @@ import {
   vendorGetMe,
   vendorUpdateProfile,
   vendorDeleteAccount,
+  vendorChangePassword,
   vendorSendEmailOtp,
   vendorVerifyEmailOtp,
   vendorSendPhoneOtp,
@@ -101,6 +102,51 @@ function VendorDashboard() {
   const [phoneOtpDevCode, setPhoneOtpDevCode] = useState("");
   const [sendingPhoneOtp, setSendingPhoneOtp] = useState(false);
   const [verifyingPhoneOtp, setVerifyingPhoneOtp] = useState(false);
+
+  // Vendor Password Change State
+  const [showVendorPassword, setShowVendorPassword] = useState(false);
+  const [vendorPasswords, setVendorPasswords] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
+  const [vendorPasswordMsg, setVendorPasswordMsg] = useState({ type: "", text: "" });
+  const [changingVendorPassword, setChangingVendorPassword] = useState(false);
+
+  const handleChangeVendorPassword = async (e) => {
+    e.preventDefault();
+    setVendorPasswordMsg({ type: "", text: "" });
+
+    if (!vendorPasswords.currentPassword || !vendorPasswords.newPassword) {
+      setVendorPasswordMsg({ type: "error", text: "Please enter both current and new password." });
+      return;
+    }
+    if (vendorPasswords.newPassword.length < 6) {
+      setVendorPasswordMsg({ type: "error", text: "New password must be at least 6 characters." });
+      return;
+    }
+    if (vendorPasswords.newPassword !== vendorPasswords.confirmPassword) {
+      setVendorPasswordMsg({ type: "error", text: "New passwords do not match." });
+      return;
+    }
+
+    try {
+      setChangingVendorPassword(true);
+      const res = await vendorChangePassword({
+        currentPassword: vendorPasswords.currentPassword,
+        newPassword: vendorPasswords.newPassword,
+      });
+      setVendorPasswordMsg({ type: "success", text: res.message || "Password changed successfully!" });
+      setVendorPasswords({ currentPassword: "", newPassword: "", confirmPassword: "" });
+      setTimeout(() => {
+        setShowVendorPassword(false);
+        setVendorPasswordMsg({ type: "", text: "" });
+      }, 2000);
+    } catch (err) {
+      setVendorPasswordMsg({
+        type: "error",
+        text: err.response?.data?.message || err.message || "Failed to change password",
+      });
+    } finally {
+      setChangingVendorPassword(false);
+    }
+  };
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -538,6 +584,28 @@ function VendorDashboard() {
 
       {/* Main Container */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full space-y-8">
+        {/* Account & Shop Suspended Notice */}
+        {(shop?.isActive === false || vendorData?.isActive === false) && (
+          <div className="bg-rose-50 border-2 border-rose-300 text-rose-950 rounded-3xl p-5 sm:p-6 shadow-sm space-y-2">
+            <div className="flex items-start gap-3.5">
+              <div className="w-10 h-10 rounded-2xl bg-rose-600 text-white flex items-center justify-center font-bold text-lg shrink-0 shadow-sm">
+                🚨
+              </div>
+              <div>
+                <Badge variant="destructive" className="text-[10px] uppercase tracking-wider font-bold mb-1">
+                  Administrative Action
+                </Badge>
+                <h3 className="text-base sm:text-lg font-black text-rose-950">
+                  Shop & Vendor Account Suspended
+                </h3>
+                <p className="text-xs sm:text-sm text-rose-800 leading-relaxed mt-1">
+                  Your shop has been suspended by platform administration until further action is taken. Your store is currently marked as suspended on customer discovery, and customer ordering is paused. Please contact platform administration to review your shop status.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Out of stock alert banner if any */}
         {inventory.outOfStockProducts > 0 && (
           <div className="bg-rose-50 border border-rose-200 text-rose-800 rounded-2xl p-4 flex items-center justify-between gap-4">
@@ -795,6 +863,90 @@ function VendorDashboard() {
                         )}
                       </div>
                     </div>
+                  </div>
+
+                  {/* Security & Password Section */}
+                  <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Security & Password</p>
+                        <h4 className="text-xs font-bold text-slate-800">Change Account Password</h4>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setShowVendorPassword(!showVendorPassword);
+                          setVendorPasswordMsg({ type: "", text: "" });
+                        }}
+                        className="h-7 text-xs font-bold text-blue-700 hover:text-blue-800 hover:bg-blue-50 px-2.5"
+                      >
+                        {showVendorPassword ? "Hide" : "Change Password"}
+                      </Button>
+                    </div>
+
+                    {showVendorPassword && (
+                      <div className="space-y-3 pt-2">
+                        {vendorPasswordMsg.text && (
+                          <div
+                            className={`p-2.5 rounded-xl text-xs font-semibold ${
+                              vendorPasswordMsg.type === "error"
+                                ? "bg-rose-50 text-rose-700 border border-rose-200"
+                                : "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                            }`}
+                          >
+                            {vendorPasswordMsg.text}
+                          </div>
+                        )}
+
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold uppercase text-slate-600">Current Password</label>
+                          <Input
+                            type="password"
+                            placeholder="••••••••"
+                            value={vendorPasswords.currentPassword}
+                            onChange={(e) => setVendorPasswords({ ...vendorPasswords, currentPassword: e.target.value })}
+                            className="text-xs bg-white h-9"
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-bold uppercase text-slate-600">New Password</label>
+                            <Input
+                              type="password"
+                              placeholder="At least 6 characters"
+                              value={vendorPasswords.newPassword}
+                              onChange={(e) => setVendorPasswords({ ...vendorPasswords, newPassword: e.target.value })}
+                              className="text-xs bg-white h-9"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-bold uppercase text-slate-600">Confirm New Password</label>
+                            <Input
+                              type="password"
+                              placeholder="Re-enter new password"
+                              value={vendorPasswords.confirmPassword}
+                              onChange={(e) => setVendorPasswords({ ...vendorPasswords, confirmPassword: e.target.value })}
+                              className="text-xs bg-white h-9"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="flex justify-end pt-1">
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={handleChangeVendorPassword}
+                            disabled={changingVendorPassword}
+                            className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs h-8 px-4 rounded-xl"
+                          >
+                            {changingVendorPassword ? "Updating..." : "Update Password"}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex justify-end gap-2 pt-2">
@@ -1207,6 +1359,90 @@ function VendorDashboard() {
                       />
                     </div>
                   </div>
+                </div>
+
+                {/* Section C: Security & Password */}
+                <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">3. Security & Password</p>
+                      <h4 className="text-xs font-bold text-slate-800">Change Account Password</h4>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setShowVendorPassword(!showVendorPassword);
+                        setVendorPasswordMsg({ type: "", text: "" });
+                      }}
+                      className="h-7 text-xs font-bold text-blue-700 hover:text-blue-800 hover:bg-blue-50 px-2.5"
+                    >
+                      {showVendorPassword ? "Hide" : "Change Password"}
+                    </Button>
+                  </div>
+
+                  {showVendorPassword && (
+                    <div className="space-y-3 pt-2">
+                      {vendorPasswordMsg.text && (
+                        <div
+                          className={`p-2.5 rounded-xl text-xs font-semibold ${
+                            vendorPasswordMsg.type === "error"
+                              ? "bg-rose-50 text-rose-700 border border-rose-200"
+                              : "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                          }`}
+                        >
+                          {vendorPasswordMsg.text}
+                        </div>
+                      )}
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold uppercase text-slate-600">Current Password</label>
+                        <Input
+                          type="password"
+                          placeholder="••••••••"
+                          value={vendorPasswords.currentPassword}
+                          onChange={(e) => setVendorPasswords({ ...vendorPasswords, currentPassword: e.target.value })}
+                          className="text-xs bg-white h-9"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold uppercase text-slate-600">New Password</label>
+                          <Input
+                            type="password"
+                            placeholder="At least 6 characters"
+                            value={vendorPasswords.newPassword}
+                            onChange={(e) => setVendorPasswords({ ...vendorPasswords, newPassword: e.target.value })}
+                            className="text-xs bg-white h-9"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold uppercase text-slate-600">Confirm New Password</label>
+                          <Input
+                            type="password"
+                            placeholder="Re-enter new password"
+                            value={vendorPasswords.confirmPassword}
+                            onChange={(e) => setVendorPasswords({ ...vendorPasswords, confirmPassword: e.target.value })}
+                            className="text-xs bg-white h-9"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end pt-1">
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={handleChangeVendorPassword}
+                          disabled={changingVendorPassword}
+                          className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs h-8 px-4 rounded-xl"
+                        >
+                          {changingVendorPassword ? "Updating..." : "Update Password"}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex justify-end gap-2 pt-2">

@@ -43,6 +43,11 @@ export const vendorDeleteAccount = async () => {
   return response.data;
 };
 
+export const vendorChangePassword = async ({ currentPassword, newPassword }) => {
+  const response = await api.put("/auth/vendor/change-password", { currentPassword, newPassword });
+  return response.data;
+};
+
 export const vendorSendEmailOtp = async ({ email }) => {
   const response = await api.post("/auth/vendor/send-email-otp", { email });
   return response.data;
@@ -113,6 +118,11 @@ export const customerUpdateProfile = async (profileData) => {
 
 export const customerDeleteAccount = async () => {
   const response = await api.delete("/auth/customer/profile");
+  return response.data;
+};
+
+export const customerChangePassword = async ({ currentPassword, newPassword }) => {
+  const response = await api.put("/auth/customer/change-password", { currentPassword, newPassword });
   return response.data;
 };
 

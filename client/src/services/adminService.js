@@ -38,7 +38,12 @@ export const adminLogout = () => {
 
 export const getAdminUser = () => {
   const user = localStorage.getItem("adminUser");
-  return user ? JSON.parse(user) : null;
+  if (!user || user === "undefined" || user === "null") return null;
+  try {
+    return JSON.parse(user);
+  } catch {
+    return null;
+  }
 };
 
 export const isAdminAuthenticated = () => {

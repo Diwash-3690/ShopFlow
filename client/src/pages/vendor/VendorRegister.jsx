@@ -121,7 +121,9 @@ function VendorRegister() {
 
       localStorage.setItem("token", res.token);
       localStorage.setItem("role", "VENDOR");
-      localStorage.setItem("user", JSON.stringify(res.vendor));
+      if (res?.vendor) {
+        localStorage.setItem("user", JSON.stringify(res.vendor));
+      }
 
       navigate("/vendor/dashboard");
     } catch (err) {

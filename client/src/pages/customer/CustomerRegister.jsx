@@ -115,7 +115,9 @@ function CustomerRegister() {
 
       localStorage.setItem("token", res.token);
       localStorage.setItem("role", "CUSTOMER");
-      localStorage.setItem("user", JSON.stringify(res.customer));
+      if (res?.customer) {
+        localStorage.setItem("user", JSON.stringify(res.customer));
+      }
 
       navigate("/customer/dashboard");
     } catch (err) {

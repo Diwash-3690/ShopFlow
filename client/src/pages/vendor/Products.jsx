@@ -42,6 +42,26 @@ import {
 import { Alert, AlertDescription } from "../../components/ui/alert";
 import ShopFlowRoleLogo from "../../components/ShopFlowRoleLogo";
 
+export const STANDARD_UNITS = [
+  { value: "piece", label: "Piece (pc / item)" },
+  { value: "kg", label: "Kilogram (kg)" },
+  { value: "g", label: "Gram (g)" },
+  { value: "litre", label: "Litre (L)" },
+  { value: "ml", label: "Millilitre (ml)" },
+  { value: "packet", label: "Packet (pkt)" },
+  { value: "box", label: "Box" },
+  { value: "dozen", label: "Dozen (12 pcs)" },
+  { value: "bottle", label: "Bottle" },
+  { value: "can", label: "Can" },
+  { value: "strip", label: "Strip (Tablets)" },
+  { value: "meter", label: "Meter (m)" },
+  { value: "bundle", label: "Bundle" },
+  { value: "pair", label: "Pair" },
+  { value: "roll", label: "Roll" },
+  { value: "set", label: "Set" },
+  { value: "bag", label: "Bag / Sack" },
+];
+
 function Products() {
   const navigate = useNavigate();
   const [products, setProducts] = useState([]);
@@ -56,6 +76,7 @@ function Products() {
   // Add / Edit Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
+  const [isCustomUnit, setIsCustomUnit] = useState(false);
   const [form, setForm] = useState({
     name: "",
     categoryId: "",
@@ -102,6 +123,7 @@ function Products() {
 
   const handleOpenAdd = () => {
     setEditingProduct(null);
+    setIsCustomUnit(false);
     setForm({
       name: "",
       categoryId: categories[0]?.id || "",
@@ -118,6 +140,9 @@ function Products() {
 
   const handleOpenEdit = (p) => {
     setEditingProduct(p);
+    const unitVal = p.unit || "piece";
+    const isStandard = STANDARD_UNITS.some((u) => u.value.toLowerCase() === unitVal.toLowerCase());
+    setIsCustomUnit(!isStandard);
     setForm({
       name: p.name,
       categoryId: p.categoryId || "",
@@ -126,7 +151,7 @@ function Products() {
       costPrice: p.costPrice !== undefined ? p.costPrice.toString() : "",
       sellingPrice: p.sellingPrice !== undefined ? p.sellingPrice.toString() : "",
       stockQuantity: p.stockQuantity !== undefined ? p.stockQuantity.toString() : "0",
-      unit: p.unit || "piece",
+      unit: unitVal,
     });
     setModalError("");
     setIsModalOpen(true);
@@ -556,15 +581,48 @@ function Products() {
 
               <div className="space-y-1">
                 <label className="text-xs font-bold text-slate-700">
-                  Unit of Measurement
+                  Unit of Measurement <span className="text-rose-500">*</span>
                 </label>
-                <Input
-                  type="text"
-                  placeholder="piece, kg, liter, pack, box"
-                  value={form.unit}
-                  onChange={(e) => setForm({ ...form, unit: e.target.value })}
-                  className="text-xs"
-                />
+                <select
+                  value={
+                    isCustomUnit
+                      ? "__CUSTOM__"
+                      : STANDARD_UNITS.some((u) => u.value.toLowerCase() === (form.unit || "").toLowerCase())
+                      ? form.unit.toLowerCase()
+                      : "__CUSTOM__"
+                  }
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === "__CUSTOM__") {
+                      setIsCustomUnit(true);
+                      setForm({ ...form, unit: "" });
+                    } else {
+                      setIsCustomUnit(false);
+                      setForm({ ...form, unit: val });
+                    }
+                  }}
+                  className="w-full text-xs h-9 rounded-xl border border-slate-200 bg-white px-3 font-medium text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                >
+                  <optgroup label="Standard Packaging Units">
+                    {STANDARD_UNITS.map((u) => (
+                      <option key={u.value} value={u.value}>
+                        {u.label}
+                      </option>
+                    ))}
+                  </optgroup>
+                  <option value="__CUSTOM__">+ Custom Unit (Type Below)...</option>
+                </select>
+
+                {(isCustomUnit || !STANDARD_UNITS.some((u) => u.value.toLowerCase() === (form.unit || "").toLowerCase())) && (
+                  <Input
+                    type="text"
+                    placeholder="Enter custom unit (e.g. quintal, crate, bundle)"
+                    value={form.unit}
+                    onChange={(e) => setForm({ ...form, unit: e.target.value })}
+                    className="text-xs mt-1.5"
+                    autoFocus
+                  />
+                )}
               </div>
             </div>
 

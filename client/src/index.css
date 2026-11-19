@@ -74,6 +74,15 @@ body {
     z-index: 99999 !important;
   }
 
+  #printable-bill svg {
+    width: 10px !important;
+    height: 10px !important;
+    max-width: 10px !important;
+    max-height: 10px !important;
+    display: inline-block !important;
+    vertical-align: middle !important;
+  }
+
   @page {
     size: auto;
     margin: 8mm;

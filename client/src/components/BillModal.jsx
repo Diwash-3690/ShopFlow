@@ -53,6 +53,15 @@ function BillModal({ bill, onClose }) {
               line-height: 1.4;
             }
             * { box-sizing: border-box; }
+            svg {
+              width: 10px !important;
+              height: 10px !important;
+              max-width: 10px !important;
+              max-height: 10px !important;
+              display: inline-block;
+              vertical-align: middle;
+              margin-right: 3px;
+            }
             .header { text-align: center; border-bottom: 2px dashed #cbd5e1; padding-bottom: 10px; margin-bottom: 10px; }
             .store-name { font-size: 16px; font-weight: 900; margin: 0 0 2px 0; color: #0f172a; }
             .meta { color: #64748b; font-size: 10px; margin: 2px 0; }
@@ -130,8 +139,16 @@ function BillModal({ bill, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-150">
-      <div className="bg-white rounded-2xl max-w-sm sm:max-w-md w-full shadow-2xl border border-slate-200 overflow-hidden my-4">
+    <div
+      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-150"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div
+        className="bg-white rounded-2xl max-w-sm sm:max-w-md w-full shadow-2xl border border-slate-200 overflow-hidden my-4"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Modal Top Control Bar (Hidden on Print) */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50 print:hidden">
           <div className="flex items-center gap-2">
@@ -196,16 +213,16 @@ function BillModal({ bill, onClose }) {
 
             <div className="mt-1.5 text-[11px] text-slate-600 space-y-0.5">
               <p className="flex items-center justify-center gap-1 text-center">
-                <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
+                <MapPin width={11} height={11} className="w-3 h-3 text-slate-400 shrink-0 inline-block" />
                 <span>{bill.shop?.address || "Neighborhood Retail Merchant"}</span>
               </p>
               <p className="flex items-center justify-center gap-1">
-                <Phone className="w-3 h-3 text-slate-400 shrink-0" />
+                <Phone width={11} height={11} className="w-3 h-3 text-slate-400 shrink-0 inline-block" />
                 <span>Ph: {bill.shop?.contactNumber || "N/A"}</span>
               </p>
               {bill.shop?.upiId && (
                 <p className="flex items-center justify-center gap-1 font-mono text-[10px] text-purple-700">
-                  <CreditCard className="w-3 h-3 text-purple-500 shrink-0" />
+                  <CreditCard width={11} height={11} className="w-3 h-3 text-purple-500 shrink-0 inline-block" />
                   <span>UPI: {bill.shop.upiId}</span>
                 </p>
               )}
@@ -299,7 +316,7 @@ function BillModal({ bill, onClose }) {
           <div className="utr-box bg-slate-50 border border-slate-200 p-2 rounded-xl text-[10px] space-y-1">
             <div className="flex items-center justify-between">
               <span className="font-bold text-slate-700 flex items-center gap-1">
-                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                <CheckCircle2 width={11} height={11} className="w-3 h-3 text-emerald-600 inline-block" />
                 Status: {bill.payment?.status || "VERIFIED"} ({bill.payment?.method || "UPI"})
               </span>
               {bill.payment?.paidAt && (

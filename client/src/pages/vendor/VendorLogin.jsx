@@ -60,7 +60,9 @@ function VendorLogin() {
       });
       localStorage.setItem("token", response.token);
       localStorage.setItem("role", "VENDOR");
-      localStorage.setItem("user", JSON.stringify(response.vendor));
+      if (response?.vendor) {
+        localStorage.setItem("user", JSON.stringify(response.vendor));
+      }
       if (response.shop) {
         localStorage.setItem("shop", JSON.stringify(response.shop));
       } else {
@@ -94,7 +96,9 @@ function VendorLogin() {
 
       localStorage.setItem("token", response.token);
       localStorage.setItem("role", "VENDOR");
-      localStorage.setItem("user", JSON.stringify(response.vendor));
+      if (response?.vendor) {
+        localStorage.setItem("user", JSON.stringify(response.vendor));
+      }
       if (response.shop) {
         localStorage.setItem("shop", JSON.stringify(response.shop));
       } else {

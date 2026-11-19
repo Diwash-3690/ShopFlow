@@ -35,17 +35,28 @@ const getVendorDashboardSummary = async (req, res) => {
       include: {
         payment: true,
         bill: true,
-        items: true,
+        items: {
+          include: {
+            product: { select: { costPrice: true, sellingPrice: true } },
+          },
+        },
         customer: { select: { mobile: true } },
       },
       orderBy: { createdAt: "desc" },
     });
 
     let todaySales = 0;
+    let todayProfit = 0;
     let todayOrdersCount = 0;
+
     let weeklySales = 0;
+    let weeklyProfit = 0;
+
     let monthlySales = 0;
+    let monthlyProfit = 0;
+
     let totalSales = 0;
+    let totalProfit = 0;
 
     let onlineOrdersCount = 0;
     let onlineSalesAmount = 0;
@@ -59,17 +70,37 @@ const getVendorDashboardSummary = async (req, res) => {
       const amount = parseFloat(o.totalAmount);
       totalSales += amount;
 
+      // Calculate profit from order items
+      let orderCost = 0;
+      let orderRevenue = 0;
+      if (Array.isArray(o.items) && o.items.length > 0) {
+        for (const it of o.items) {
+          const qty = it.quantity || 1;
+          const unitSelling = parseFloat(it.unitPrice || 0);
+          const unitCost = it.product?.costPrice != null ? parseFloat(it.product.costPrice) : 0;
+          orderRevenue += unitSelling * qty;
+          orderCost += unitCost * qty;
+        }
+      } else {
+        orderRevenue = amount;
+      }
+      const orderProfit = Math.max(0, orderRevenue - orderCost);
+      totalProfit += orderProfit;
+
       if (o.createdAt >= startOfToday) {
         todaySales += amount;
+        todayProfit += orderProfit;
         todayOrdersCount++;
       }
 
       if (o.createdAt >= sevenDaysAgo) {
         weeklySales += amount;
+        weeklyProfit += orderProfit;
       }
 
       if (o.createdAt >= thirtyDaysAgo) {
         monthlySales += amount;
+        monthlyProfit += orderProfit;
       }
 
       if (o.orderType === "ONLINE") {
@@ -127,9 +158,13 @@ const getVendorDashboardSummary = async (req, res) => {
         sales: {
           today: parseFloat(todaySales.toFixed(2)),
           todayOrdersCount,
+          todayProfit: parseFloat(todayProfit.toFixed(2)),
           weekly: parseFloat(weeklySales.toFixed(2)),
+          weeklyProfit: parseFloat(weeklyProfit.toFixed(2)),
           monthly: parseFloat(monthlySales.toFixed(2)),
+          monthlyProfit: parseFloat(monthlyProfit.toFixed(2)),
           total: parseFloat(totalSales.toFixed(2)),
+          totalProfit: parseFloat(totalProfit.toFixed(2)),
         },
         channels: {
           onlineCount: onlineOrdersCount,

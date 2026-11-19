@@ -150,7 +150,13 @@ function CustomerDashboard() {
         setCustomer(meRes.customer);
       } else {
         const cachedUser = localStorage.getItem("user");
-        if (cachedUser) setCustomer(JSON.parse(cachedUser));
+        if (cachedUser && cachedUser !== "undefined" && cachedUser !== "null") {
+          try {
+            setCustomer(JSON.parse(cachedUser));
+          } catch {
+            // ignore
+          }
+        }
       }
 
       setOrders(ordersRes?.orders || []);
@@ -199,8 +205,10 @@ function CustomerDashboard() {
       setSavingProfile(true);
       setProfileMsg({ type: "", text: "" });
       const res = await customerUpdateProfile({ email: profileForm.email });
-      setCustomer(res.customer);
-      localStorage.setItem("user", JSON.stringify(res.customer));
+      if (res?.customer) {
+        setCustomer(res.customer);
+        localStorage.setItem("user", JSON.stringify(res.customer));
+      }
       setProfileMsg({ type: "success", text: "Profile updated successfully!" });
       setTimeout(() => setShowProfileModal(false), 1200);
     } catch (err) {
@@ -313,8 +321,10 @@ function CustomerDashboard() {
         newMobile: newMobile.trim(),
         code: phoneOtpCode.trim(),
       });
-      setCustomer(res.customer);
-      localStorage.setItem("user", JSON.stringify(res.customer));
+      if (res?.customer) {
+        setCustomer(res.customer);
+        localStorage.setItem("user", JSON.stringify(res.customer));
+      }
       setEditingPhone(false);
       setPhoneOtpSent(false);
       setPhoneOtpCode("");

@@ -60,7 +60,9 @@ function CustomerLogin() {
       });
       localStorage.setItem("token", response.token);
       localStorage.setItem("role", "CUSTOMER");
-      localStorage.setItem("user", JSON.stringify(response.customer));
+      if (response?.customer) {
+        localStorage.setItem("user", JSON.stringify(response.customer));
+      }
       navigate("/customer/dashboard");
     } catch (err) {
       setErrorMsg(err.response?.data?.message || "Failed to verify mobile number.");
@@ -89,7 +91,9 @@ function CustomerLogin() {
 
       localStorage.setItem("token", response.token);
       localStorage.setItem("role", "CUSTOMER");
-      localStorage.setItem("user", JSON.stringify(response.customer));
+      if (response?.customer) {
+        localStorage.setItem("user", JSON.stringify(response.customer));
+      }
 
       navigate("/customer/dashboard");
     } catch (err) {

@@ -40,7 +40,7 @@ function ShopDiscovery() {
       })
       .catch(() => {
         const cached = localStorage.getItem("user");
-        if (cached) {
+        if (cached && cached !== "undefined" && cached !== "null") {
           try { setCustomer(JSON.parse(cached)); } catch (e) {}
         }
       });

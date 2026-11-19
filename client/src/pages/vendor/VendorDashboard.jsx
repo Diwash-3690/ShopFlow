@@ -182,11 +182,24 @@ function VendorDashboard() {
             ? profRes.shop.longitude.toString()
             : "",
       });
-    } catch {
-      const cachedUser = localStorage.getItem("user");
-      const cachedShop = localStorage.getItem("shop");
-      if (cachedUser) setVendorData(JSON.parse(cachedUser));
-      if (cachedShop) setShop(JSON.parse(cachedShop));
+    } catch (err) {
+      if (err?.response?.status === 401) {
+        logout();
+        navigate("/vendor/login");
+        return;
+      }
+      try {
+        const cachedUser = localStorage.getItem("user");
+        const cachedShop = localStorage.getItem("shop");
+        if (cachedUser && cachedUser !== "undefined" && cachedUser !== "null") {
+          setVendorData(JSON.parse(cachedUser));
+        }
+        if (cachedShop && cachedShop !== "undefined" && cachedShop !== "null") {
+          setShop(JSON.parse(cachedShop));
+        }
+      } catch (parseErr) {
+        console.warn("Cached data parse error:", parseErr);
+      }
     } finally {
       setLoading(false);
     }
@@ -244,10 +257,12 @@ function VendorDashboard() {
       };
 
       const res = await vendorUpdateProfile(payload);
-      setVendorData(res.vendor);
-      setShop(res.shop);
-      localStorage.setItem("user", JSON.stringify(res.vendor));
-      if (res.shop) {
+      if (res?.vendor) {
+        setVendorData(res.vendor);
+        localStorage.setItem("user", JSON.stringify(res.vendor));
+      }
+      if (res?.shop) {
+        setShop(res.shop);
         localStorage.setItem("shop", JSON.stringify(res.shop));
       }
       setIsEditing(false);
@@ -296,12 +311,14 @@ function VendorDashboard() {
         email: targetEmail,
         code: emailOtpCode.trim(),
       });
-      setVendorData(res.vendor);
+      if (res?.vendor) {
+        setVendorData(res.vendor);
+        localStorage.setItem("user", JSON.stringify(res.vendor));
+      }
       setEditForm((prev) => ({
         ...prev,
-        email: res.vendor.email || "",
+        email: res?.vendor?.email || "",
       }));
-      localStorage.setItem("user", JSON.stringify(res.vendor));
       setEmailOtpSent(false);
       setEmailOtpCode("");
       setEmailOtpDevCode("");
@@ -351,12 +368,14 @@ function VendorDashboard() {
         newMobile: newMobile.trim(),
         code: phoneOtpCode.trim(),
       });
-      setVendorData(res.vendor);
+      if (res?.vendor) {
+        setVendorData(res.vendor);
+        localStorage.setItem("user", JSON.stringify(res.vendor));
+      }
       setEditForm((prev) => ({
         ...prev,
-        contactNumber: prev.contactNumber === vendorData?.mobile || !prev.contactNumber ? res.vendor.mobile : prev.contactNumber,
+        contactNumber: prev.contactNumber === vendorData?.mobile || !prev.contactNumber ? res?.vendor?.mobile : prev.contactNumber,
       }));
-      localStorage.setItem("user", JSON.stringify(res.vendor));
       setEditingPhone(false);
       setPhoneOtpSent(false);
       setPhoneOtpCode("");
@@ -438,6 +457,21 @@ function VendorDashboard() {
     }
   };
 
+  const handleNotificationClick = (n) => {
+    if (!n.isRead) {
+      handleMarkAsRead(n.id);
+    }
+    setShowNotifDropdown(false);
+
+    if (n.type === "NEW_ORDER" || n.orderId) {
+      navigate("/vendor/orders");
+    } else if (n.type === "OUT_OF_STOCK" || n.productId) {
+      navigate("/vendor/products");
+    } else if (n.title?.toLowerCase().includes("suspend") || n.message?.toLowerCase().includes("suspend")) {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
@@ -449,7 +483,17 @@ function VendorDashboard() {
     );
   }
 
-  const sales = dashboardSummary?.sales || { today: 0, todayOrdersCount: 0, weekly: 0, monthly: 0, total: 0 };
+  const sales = dashboardSummary?.sales || {
+    today: 0,
+    todayOrdersCount: 0,
+    todayProfit: 0,
+    weekly: 0,
+    weeklyProfit: 0,
+    monthly: 0,
+    monthlyProfit: 0,
+    total: 0,
+    totalProfit: 0,
+  };
   const channels = dashboardSummary?.channels || { onlineCount: 0, onlineAmount: 0, walkInCount: 0, walkInAmount: 0 };
   const orderStatus = dashboardSummary?.orderStatus || { pendingPaymentCount: 0, awaitingPickupCount: 0, completedOrdersCount: 0, totalVerifiedOrders: 0 };
   const inventory = dashboardSummary?.inventory || { totalProducts: 0, outOfStockProducts: 0, lowStockProducts: 0, totalCategories: 0 };
@@ -491,57 +535,67 @@ function VendorDashboard() {
 
             {/* Notification Dropdown Menu */}
             {showNotifDropdown && (
-              <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-xl border border-slate-200 z-50 overflow-hidden animate-fadeIn">
-                <div className="p-3.5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-                  <h4 className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
-                    <Bell className="w-3.5 h-3.5 text-blue-600" />
-                    <span>Alerts & Notifications</span>
-                  </h4>
-                  {unreadCount > 0 && (
-                    <button
-                      onClick={handleMarkAllAsRead}
-                      className="text-[11px] text-blue-600 hover:underline cursor-pointer font-semibold"
-                    >
-                      Mark all as read
-                    </button>
-                  )}
-                </div>
-
-                <div className="max-h-80 overflow-y-auto divide-y divide-slate-100">
-                  {notifications.length === 0 ? (
-                    <div className="p-6 text-center text-xs text-slate-400">
-                      No notifications yet.
-                    </div>
-                  ) : (
-                    notifications.map((n) => (
-                      <div
-                        key={n.id}
-                        onClick={() => !n.isRead && handleMarkAsRead(n.id)}
-                        className={`p-3.5 text-xs transition cursor-pointer ${
-                          n.isRead ? "bg-white text-slate-600" : "bg-blue-50/70 text-slate-900 font-medium"
-                        }`}
+              <>
+                {/* Backdrop to close notification menu on outside click */}
+                <div
+                  className="fixed inset-0 z-40 bg-transparent"
+                  onClick={() => setShowNotifDropdown(false)}
+                />
+                <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-xl border border-slate-200 z-50 overflow-hidden animate-fadeIn">
+                  <div className="p-3.5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+                    <h4 className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
+                      <Bell className="w-3.5 h-3.5 text-blue-600" />
+                      <span>Alerts & Notifications</span>
+                    </h4>
+                    {unreadCount > 0 && (
+                      <button
+                        onClick={handleMarkAllAsRead}
+                        className="text-[11px] text-blue-600 hover:underline cursor-pointer font-semibold"
                       >
-                        <div className="flex items-center justify-between">
-                          <span
-                            className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${
-                              n.type === "OUT_OF_STOCK"
-                                ? "bg-rose-100 text-rose-700"
-                                : "bg-emerald-100 text-emerald-800"
-                            }`}
-                          >
-                            {n.type === "OUT_OF_STOCK" ? "Stock Alert" : "Incoming Order"}
-                          </span>
-                          <span className="text-[10px] text-slate-400">
-                            {new Date(n.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        Mark all as read
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="max-h-80 overflow-y-auto divide-y divide-slate-100">
+                    {notifications.length === 0 ? (
+                      <div className="p-6 text-center text-xs text-slate-400">
+                        No notifications yet.
+                      </div>
+                    ) : (
+                      notifications.map((n) => (
+                        <div
+                          key={n.id}
+                          onClick={() => handleNotificationClick(n)}
+                          className={`p-3.5 text-xs transition cursor-pointer hover:bg-slate-50 ${
+                            n.isRead ? "bg-white text-slate-600" : "bg-blue-50/70 text-slate-900 font-medium"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span
+                              className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${
+                                n.type === "OUT_OF_STOCK"
+                                  ? "bg-rose-100 text-rose-700"
+                                  : "bg-emerald-100 text-emerald-800"
+                              }`}
+                            >
+                              {n.type === "OUT_OF_STOCK" ? "Stock Alert" : "Incoming Order"}
+                            </span>
+                            <span className="text-[10px] text-slate-400">
+                              {new Date(n.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                            </span>
+                          </div>
+                          <p className="font-bold mt-1 text-slate-800">{n.title}</p>
+                          <p className="text-[11px] text-slate-600 mt-0.5 leading-relaxed">{n.message}</p>
+                          <span className="text-[10px] text-blue-600 font-semibold mt-1 inline-block">
+                            Click to view details →
                           </span>
                         </div>
-                        <p className="font-bold mt-1 text-slate-800">{n.title}</p>
-                        <p className="text-[11px] text-slate-600 mt-0.5 leading-relaxed">{n.message}</p>
-                      </div>
-                    ))
-                  )}
+                      ))
+                    )}
+                  </div>
                 </div>
-              </div>
+              </>
             )}
           </div>
 
@@ -1538,7 +1592,13 @@ function VendorDashboard() {
                   <h2 className="text-2xl font-black text-slate-900 mt-2 tracking-tight">
                     ₹{parseFloat(sales.today || 0).toFixed(2)}
                   </h2>
-                  <p className="text-[11px] text-slate-500 mt-1">
+                  <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
+                    <span className="text-slate-500 font-medium">Profit:</span>
+                    <span className="font-bold text-emerald-600 font-mono">
+                      +₹{parseFloat(sales.todayProfit || 0).toFixed(2)}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-400 mt-1">
                     {sales.todayOrdersCount} verified order{sales.todayOrdersCount === 1 ? "" : "s"} today
                   </p>
                 </CardContent>
@@ -1553,7 +1613,13 @@ function VendorDashboard() {
                   <h2 className="text-2xl font-black text-slate-900 mt-2 tracking-tight">
                     ₹{parseFloat(sales.weekly || 0).toFixed(2)}
                   </h2>
-                  <p className="text-[11px] text-slate-500 mt-1">Last 7 rolling days</p>
+                  <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
+                    <span className="text-slate-500 font-medium">Profit:</span>
+                    <span className="font-bold text-emerald-600 font-mono">
+                      +₹{parseFloat(sales.weeklyProfit || 0).toFixed(2)}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-400 mt-1">Last 7 rolling days</p>
                 </CardContent>
               </Card>
 
@@ -1566,7 +1632,13 @@ function VendorDashboard() {
                   <h2 className="text-2xl font-black text-slate-900 mt-2 tracking-tight">
                     ₹{parseFloat(sales.monthly || 0).toFixed(2)}
                   </h2>
-                  <p className="text-[11px] text-slate-500 mt-1">Last 30 rolling days</p>
+                  <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
+                    <span className="text-slate-500 font-medium">Profit:</span>
+                    <span className="font-bold text-emerald-600 font-mono">
+                      +₹{parseFloat(sales.monthlyProfit || 0).toFixed(2)}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-400 mt-1">Last 30 rolling days</p>
                 </CardContent>
               </Card>
 
@@ -1579,7 +1651,13 @@ function VendorDashboard() {
                   <h2 className="text-2xl font-black text-slate-900 mt-2 tracking-tight">
                     ₹{parseFloat(sales.total || 0).toFixed(2)}
                   </h2>
-                  <p className="text-[11px] text-slate-500 mt-1">
+                  <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
+                    <span className="text-slate-500 font-medium">Total Profit:</span>
+                    <span className="font-bold text-emerald-600 font-mono">
+                      +₹{parseFloat(sales.totalProfit || 0).toFixed(2)}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-400 mt-1">
                     {orderStatus.totalVerifiedOrders} lifetime completed sale{orderStatus.totalVerifiedOrders === 1 ? "" : "s"}
                   </p>
                 </CardContent>

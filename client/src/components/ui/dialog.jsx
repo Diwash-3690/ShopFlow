@@ -6,13 +6,23 @@ const Dialog = ({ open, onOpenChange, children }) => {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
+    <div
+      className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onOpenChange?.(false);
+      }}
+    >
       <div
         className="fixed inset-0"
         onClick={() => onOpenChange?.(false)}
         aria-hidden="true"
       />
-      <div className="relative z-10 w-full max-w-lg">{children}</div>
+      <div
+        className="relative z-10 w-full max-w-lg"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {children}
+      </div>
     </div>
   );
 };

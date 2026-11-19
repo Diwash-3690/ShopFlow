@@ -6,7 +6,7 @@ export const CartProvider = ({ children }) => {
   const [activeShop, setActiveShop] = useState(() => {
     try {
       const s = localStorage.getItem("shopflow_active_shop");
-      return s ? JSON.parse(s) : null;
+      return s && s !== "undefined" && s !== "null" ? JSON.parse(s) : null;
     } catch {
       return null;
     }
@@ -15,7 +15,7 @@ export const CartProvider = ({ children }) => {
   const [cartItems, setCartItems] = useState(() => {
     try {
       const items = localStorage.getItem("shopflow_cart");
-      return items ? JSON.parse(items) : [];
+      return items && items !== "undefined" && items !== "null" ? JSON.parse(items) : [];
     } catch {
       return [];
     }

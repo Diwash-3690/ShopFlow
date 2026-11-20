@@ -51,7 +51,14 @@ function Home() {
           ) : (
             <Link
               to="/"
+              onClick={(e) => {
+                if (window.location.pathname === "/") {
+                  e.preventDefault();
+                  window.location.reload();
+                }
+              }}
               className="flex items-center space-x-2.5"
+              title="ShopFlow Home"
             >
               <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center font-black text-xl shadow-md shadow-blue-500/20">
                 🛒

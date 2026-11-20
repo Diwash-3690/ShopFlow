@@ -1,12 +1,14 @@
 import React from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Badge } from "./ui/badge";
 
 /**
  * ShopFlowRoleLogo
  * Renders the brand logo with the signed-in role badge (Customer, Vendor, or Admin).
- * When clicked, navigates to the landing page of that role (/customer/dashboard, /vendor/dashboard, /admin/dashboard).
- * If isDirty is true (unsaved changes or task in progress), it prompts the user first to ask if they want to save or leave.
+ * When clicked:
+ * - If already on the role's home page (/customer/dashboard, /vendor/dashboard, /admin/dashboard), it reloads the page.
+ * - If on any other page, it navigates directly to that role's home page.
+ * - If isDirty is true (unsaved changes or task in progress), it prompts the user first to ask if they want to save or leave.
  */
 function ShopFlowRoleLogo({
   role = "CUSTOMER",
@@ -17,6 +19,30 @@ function ShopFlowRoleLogo({
   variant = "light",
 }) {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const getEffectiveRole = () => {
+    if (role) return role.toUpperCase();
+    try {
+      const adminToken = localStorage.getItem("adminToken");
+      if (adminToken) return "ADMIN";
+      const storedRole = localStorage.getItem("role");
+      if (storedRole) return storedRole.toUpperCase();
+    } catch {
+      // ignore storage access errors
+    }
+    return "CUSTOMER";
+  };
+
+  const effectiveRole = getEffectiveRole();
+  let targetPath = "/customer/dashboard";
+  if (effectiveRole === "ADMIN") {
+    targetPath = "/admin/dashboard";
+  } else if (effectiveRole === "VENDOR") {
+    targetPath = "/vendor/dashboard";
+  }
+
+  const isCurrentHomePage = location.pathname === targetPath;
 
   const handleClick = (e) => {
     e.preventDefault();
@@ -35,29 +61,35 @@ function ShopFlowRoleLogo({
       onNavigate();
     }
 
-    if (role === "ADMIN") {
-      navigate("/admin/dashboard");
-    } else if (role === "VENDOR") {
-      navigate("/vendor/dashboard");
+    if (isCurrentHomePage) {
+      if (location.search || location.hash) {
+        window.location.href = targetPath;
+      } else {
+        window.location.reload();
+      }
     } else {
-      navigate("/customer/dashboard");
+      navigate(targetPath);
     }
   };
 
-  const isDark = variant === "dark" || role === "ADMIN";
+  const isDark = variant === "dark" || effectiveRole === "ADMIN";
 
   return (
     <button
       type="button"
       onClick={handleClick}
       className={`inline-flex items-center gap-2 group text-left cursor-pointer transition select-none hover:opacity-90 ${className}`}
-      title={`Go to ${role.charAt(0) + role.slice(1).toLowerCase()} Dashboard`}
+      title={
+        isCurrentHomePage
+          ? `Reload ${effectiveRole.charAt(0) + effectiveRole.slice(1).toLowerCase()} Home Page`
+          : `Go to ${effectiveRole.charAt(0) + effectiveRole.slice(1).toLowerCase()} Home Page`
+      }
     >
-      {role === "ADMIN" ? (
+      {effectiveRole === "ADMIN" ? (
         <span className="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center text-sm font-black shadow-xs group-hover:scale-105 transition">
           🛡️
         </span>
-      ) : role === "VENDOR" ? (
+      ) : effectiveRole === "VENDOR" ? (
         <span className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center text-sm font-black shadow-xs group-hover:scale-105 transition">
           🛒
         </span>
@@ -75,11 +107,11 @@ function ShopFlowRoleLogo({
         ShopFlow
       </span>
 
-      {role === "ADMIN" ? (
+      {effectiveRole === "ADMIN" ? (
         <Badge className="bg-indigo-600 text-white font-extrabold text-[10px] uppercase tracking-wider py-0.5 px-2 border-0">
           Admin
         </Badge>
-      ) : role === "VENDOR" ? (
+      ) : effectiveRole === "VENDOR" ? (
         <Badge
           variant="secondary"
           className="text-[10px] font-bold uppercase tracking-wider py-0.5 px-2 bg-blue-50 text-blue-700 border-blue-200"

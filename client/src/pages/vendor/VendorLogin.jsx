@@ -220,19 +220,13 @@ function VendorLogin() {
         </Link>
       </div>
 
-      <div className="mt-4 pt-4 border-t border-gray-200 flex items-center justify-between text-xs text-gray-500">
+      <div className="mt-4 pt-4 border-t border-gray-200 text-center text-xs text-gray-500">
         <span>
           Are you a customer?{" "}
           <Link to="/customer/login" className="text-emerald-600 font-medium hover:underline">
             Customer Sign In
           </Link>
         </span>
-        <Link
-          to="/admin/login"
-          className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 border border-slate-200 px-2.5 py-1 rounded-lg transition"
-        >
-          <span>🛡️ Admin</span>
-        </Link>
       </div>
     </AuthLayout>
   );

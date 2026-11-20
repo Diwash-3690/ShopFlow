@@ -341,6 +341,18 @@ const searchNearbyShops = async (req, res) => {
             });
         }
 
+        // If neither GPS nor search query is provided, do NOT return all registered shops!
+        // Prevents showing far-away shops from other cities.
+        if (!query || !query.trim()) {
+            return res.status(200).json({
+                success: true,
+                count: 0,
+                shops: [],
+                requiresLocation: true,
+                message: "GPS location is required to discover nearby shops within 2 km range",
+            });
+        }
+
         return res.status(200).json({
             success: true,
             count: shops.length,

@@ -46,7 +46,46 @@ function ShopDiscovery() {
       });
   }, []);
 
+  const handleDetectLocation = useCallback(() => {
+    if (!navigator.geolocation) {
+      setGpsError("Geolocation is not supported by your browser. Please allow location permissions.");
+      return;
+    }
+
+    setDetectingGps(true);
+    setGpsError("");
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setUserCoords({
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+        });
+        setDetectingGps(false);
+      },
+      (err) => {
+        setDetectingGps(false);
+        setGpsError(err.message || "Unable to acquire GPS location. Please ensure location services are enabled.");
+      },
+      { timeout: 10000, enableHighAccuracy: true }
+    );
+  }, []);
+
+  // Automatically attempt location detection on page mount so nearby shops are shown directly
+  useEffect(() => {
+    if (navigator.geolocation && !userCoords) {
+      handleDetectLocation();
+    }
+  }, [handleDetectLocation]);
+
   const loadShops = useCallback(async () => {
+    // If no coordinates and no search query, do NOT load far-away shops!
+    if (!userCoords && !searchQuery.trim()) {
+      setShops([]);
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       const params = {};
@@ -54,7 +93,7 @@ function ShopDiscovery() {
       if (userCoords) {
         params.lat = userCoords.lat;
         params.lng = userCoords.lng;
-        params.radius = 2; // Strict 2 km radius requested by user
+        params.radius = 2; // Strict 2 km radius as requested
       }
 
       const res = await searchNearbyShops(params);
@@ -79,31 +118,6 @@ function ShopDiscovery() {
       window.removeEventListener("pageshow", handleFocus);
     };
   }, [loadShops, location.key]);
-
-  const handleDetectLocation = () => {
-    if (!navigator.geolocation) {
-      setGpsError("Geolocation is not supported by your browser.");
-      return;
-    }
-
-    setDetectingGps(true);
-    setGpsError("");
-
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setUserCoords({
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-        });
-        setDetectingGps(false);
-      },
-      (err) => {
-        setDetectingGps(false);
-        setGpsError(err.message || "Failed to retrieve location.");
-      },
-      { timeout: 10000, enableHighAccuracy: true }
-    );
-  };
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
@@ -203,22 +217,28 @@ function ShopDiscovery() {
         )}
 
         {userCoords && (
-          <div className="flex items-center justify-between bg-emerald-50/80 border border-emerald-200 text-emerald-900 text-xs px-4 py-2.5 rounded-2xl">
+          <div className="flex items-center justify-between bg-emerald-50/90 border border-emerald-200 text-emerald-950 text-xs px-4 py-3 rounded-2xl shadow-2xs">
             <span className="flex items-center gap-2 font-medium">
               <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>Displaying stores ordered by proximity to your live location.</span>
+              <span>
+                <strong>GPS Active:</strong> Displaying verified stores strictly in range of <strong>2 km</strong> from your live coordinates.
+              </span>
             </span>
-            <button
-              onClick={() => setUserCoords(null)}
-              className="text-emerald-700 font-bold hover:underline cursor-pointer ml-3 text-xs"
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleDetectLocation}
+              disabled={detectingGps}
+              className="text-emerald-800 border-emerald-300 hover:bg-emerald-100 font-bold text-xs h-8 px-3 rounded-xl gap-1.5"
             >
-              Reset Filter
-            </button>
+              <Navigation className={`w-3.5 h-3.5 ${detectingGps ? "animate-spin text-emerald-600" : ""}`} />
+              <span>{detectingGps ? "Locating..." : "Refresh GPS"}</span>
+            </Button>
           </div>
         )}
 
         {/* Shops Grid */}
-        {loading ? (
+        {loading || detectingGps ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {[1, 2, 3, 4, 5, 6].map((idx) => (
               <Card key={idx} className="p-6 rounded-3xl border-slate-200/80 space-y-4 animate-pulse">
@@ -232,8 +252,38 @@ function ShopDiscovery() {
               </Card>
             ))}
           </div>
+        ) : !userCoords && !searchQuery.trim() ? (
+          <Card className="py-14 text-center rounded-3xl border-slate-200/90 shadow-sm bg-white overflow-hidden">
+            <CardContent className="space-y-4 max-w-lg mx-auto px-6">
+              <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-3xl border border-emerald-200/80 flex items-center justify-center mx-auto shadow-sm">
+                <Navigation className="w-8 h-8 text-emerald-600" />
+              </div>
+              <Badge variant="outline" className="text-xs px-3 py-1 font-bold bg-emerald-50 text-emerald-800 border-emerald-300">
+                📍 2 km Proximity Boundary
+              </Badge>
+              <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                Detect Location to Locate Nearby Shops
+              </h3>
+              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                To prevent locating stores that are too far away for counter pickup, ShopFlow strictly displays stores within a 2 km range. Click below to detect your live GPS location.
+              </p>
+              <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+                <Button
+                  onClick={handleDetectLocation}
+                  disabled={detectingGps}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-11 px-6 rounded-2xl gap-2 text-xs sm:text-sm shadow-md shadow-emerald-600/20 w-full sm:w-auto cursor-pointer"
+                >
+                  <Navigation className={`w-4 h-4 ${detectingGps ? "animate-spin" : ""}`} />
+                  <span>{detectingGps ? "Detecting Coordinates..." : "Detect Nearby Shops (GPS)"}</span>
+                </Button>
+              </div>
+              <p className="text-[11px] text-slate-400">
+                Or type a specific Shop ID or store name in the search bar above.
+              </p>
+            </CardContent>
+          </Card>
         ) : shops.length === 0 ? (
-          <Card className="py-16 text-center text-slate-500 rounded-3xl border-slate-200/90 shadow-xs bg-white">
+          <Card className="py-14 text-center text-slate-500 rounded-3xl border-slate-200/90 shadow-xs bg-white">
             <CardContent className="space-y-4 px-6">
               <div className="w-16 h-16 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto text-2xl">
                 <Store className="w-8 h-8 text-slate-400" />
@@ -241,46 +291,39 @@ function ShopDiscovery() {
               {userCoords ? (
                 <>
                   <Badge variant="warning" className="text-xs px-3 py-1 font-bold">
-                    Nearby Filter (2 km)
+                    Nearby Range: 2 km
                   </Badge>
                   <h3 className="text-lg sm:text-xl font-bold text-slate-900">
                     No nearby shop found in range of 2 km.
                   </h3>
                   <p className="text-xs sm:text-sm text-slate-500 max-w-md mx-auto leading-relaxed">
-                    We could not find any active verified store within 2 km of your current coordinates. You can reset your location to browse all stores or search by name.
+                    We could not find any active verified store within 2 km of your current coordinates. If any shop is near lesser than 2 km, it will be displayed here automatically.
                   </p>
-                  <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
-                    <Button
-                      variant="outline"
-                      onClick={() => setUserCoords(null)}
-                      className="rounded-xl text-xs font-bold h-9"
-                    >
-                      View All Shops
-                    </Button>
+                  <div className="pt-2 flex justify-center">
                     <Button
                       variant="success"
                       onClick={handleDetectLocation}
-                      className="rounded-xl text-xs font-bold h-9"
+                      disabled={detectingGps}
+                      className="rounded-xl text-xs font-bold h-9 px-4 gap-1.5"
                     >
-                      Retry GPS
+                      <Navigation className={`w-3.5 h-3.5 ${detectingGps ? "animate-spin" : ""}`} />
+                      <span>{detectingGps ? "Detecting..." : "Refresh GPS Location"}</span>
                     </Button>
                   </div>
                 </>
               ) : (
                 <>
-                  <h3 className="text-lg font-bold text-slate-900">No Stores Found</h3>
+                  <h3 className="text-lg font-bold text-slate-900">No Stores Matching Search</h3>
                   <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                    No shops match your query. Try searching with a different keyword or check back later.
+                    No shops match "{searchQuery}". Please check the shop name or Shop ID.
                   </p>
-                  {searchQuery && (
-                    <Button
-                      variant="outline"
-                      onClick={() => setSearchQuery("")}
-                      className="rounded-xl text-xs font-bold h-9 mt-2"
-                    >
-                      Clear Search
-                    </Button>
-                  )}
+                  <Button
+                    variant="outline"
+                    onClick={() => setSearchQuery("")}
+                    className="rounded-xl text-xs font-bold h-9 mt-2"
+                  >
+                    Clear Search
+                  </Button>
                 </>
               )}
             </CardContent>
@@ -309,9 +352,9 @@ function ShopDiscovery() {
                           ⚠️ Suspended
                         </Badge>
                       ) : shop.distanceKm !== null && shop.distanceKm !== undefined ? (
-                        <Badge variant="success" className="gap-1 font-bold text-[11px]">
-                          <MapPin className="w-3 h-3 text-emerald-600" />
-                          <span>{shop.distanceKm} km</span>
+                        <Badge variant="success" className="gap-1.5 font-bold text-xs py-1 px-2.5 bg-emerald-50 text-emerald-800 border border-emerald-300 shadow-2xs">
+                          <MapPin className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                          <span>{shop.distanceKm} km away</span>
                         </Badge>
                       ) : (
                         <Badge variant="secondary" className="text-[10px]">

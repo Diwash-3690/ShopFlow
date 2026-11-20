@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo } from "react";
+import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -81,6 +81,16 @@ function ShopStorefront() {
   const [verifiedCheckout, setVerifiedCheckout] = useState(null);
   const [calculating, setCalculating] = useState(false);
   const [checkoutError, setCheckoutError] = useState("");
+  const [stockAlert, setStockAlert] = useState("");
+  const alertTimeoutRef = useRef(null);
+
+  const showStockNotification = (msg) => {
+    setStockAlert(msg);
+    if (alertTimeoutRef.current) clearTimeout(alertTimeoutRef.current);
+    alertTimeoutRef.current = setTimeout(() => {
+      setStockAlert("");
+    }, 2800);
+  };
 
   // Payment & Order Confirmation Modals
   const [placingOrder, setPlacingOrder] = useState(false);
@@ -153,13 +163,51 @@ function ShopStorefront() {
       alert("This shop is suspended by administration. Ordering is disabled.");
       return;
     }
+
+    const availableStock =
+      product.stockQuantity !== undefined && product.stockQuantity !== null
+        ? Math.max(0, parseInt(product.stockQuantity, 10) || 0)
+        : 999999;
+
+    if (availableStock <= 0 || product.isAvailable === false) {
+      showStockNotification(`"${product.name}" is currently out of stock.`);
+      return;
+    }
+
+    const itemInCart = cartItems.find((ci) => ci.productId === product.id);
+    const qtyInCart = itemInCart ? itemInCart.quantity : 0;
+    if (qtyInCart >= availableStock) {
+      showStockNotification(`Cannot add more. Current available stock is ${availableStock} ${product.unit || "unit"}(s).`);
+      return;
+    }
+
     const res = addToCart(product, shop);
     if (res?.conflict) {
       setConflictModal({
         currentShop: res.currentShop,
         newShop: res.newShop,
-        pendingProduct: res.pendingProduct,
+        pendingProduct: res.pendingProduct || product,
       });
+      return;
+    }
+    if (res?.stockLimitReached) {
+      showStockNotification(res.message || `Maximum stock limit of ${res.maxStock} reached.`);
+      return;
+    }
+    if (res?.outOfStock) {
+      showStockNotification(res.message || `"${product.name}" is out of stock.`);
+      return;
+    }
+  };
+
+  const handleUpdateQuantity = (productId, newQty, maxStock, productName) => {
+    if (maxStock !== undefined && maxStock !== null && newQty > maxStock) {
+      showStockNotification(`Cannot add more. Current available stock for "${productName}" is ${maxStock}.`);
+      return;
+    }
+    const res = updateQuantity(productId, newQty);
+    if (res?.stockLimitReached) {
+      showStockNotification(res.message || `Maximum stock limit of ${res.maxStock} reached.`);
     }
   };
 
@@ -691,7 +739,12 @@ function ShopStorefront() {
             {filteredProducts.map((p) => {
               const itemInCart = cartItems.find((ci) => ci.productId === p.id);
               const qtyInCart = itemInCart ? itemInCart.quantity : 0;
-              const isOutOfStock = !p.isAvailable;
+              const availableStock =
+                p.stockQuantity !== undefined && p.stockQuantity !== null
+                  ? Math.max(0, parseInt(p.stockQuantity, 10) || 0)
+                  : (itemInCart?.stockQuantity ?? 999999);
+              const isOutOfStock = !p.isAvailable || availableStock <= 0;
+              const isMaxStockReached = qtyInCart >= availableStock;
 
               return (
                 <motion.div
@@ -733,17 +786,33 @@ function ShopStorefront() {
                         </span>
                       )}
 
-                      {/* Availability Tag */}
+                      {/* Stock Availability Tag */}
                       <span className="absolute top-2.5 right-2.5 z-10">
                         <span
                           className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider py-0.5 px-2 rounded-full shadow-xs ${
-                            p.isAvailable
-                              ? "bg-emerald-50 text-emerald-800 border border-emerald-200/90"
-                              : "bg-rose-50 text-rose-800 border border-rose-200/90"
+                            isOutOfStock
+                              ? "bg-rose-50 text-rose-800 border border-rose-200/90"
+                              : availableStock <= 5
+                              ? "bg-amber-50 text-amber-900 border border-amber-300 shadow-xs"
+                              : "bg-emerald-50 text-emerald-800 border border-emerald-200/90"
                           }`}
                         >
-                          <span className={`w-1.5 h-1.5 rounded-full ${p.isAvailable ? "bg-emerald-500 animate-pulse" : "bg-rose-500"}`} />
-                          <span>{p.availability === "OUT_OF_STOCK" || !p.isAvailable ? "Out of Stock" : "In Stock"}</span>
+                          <span
+                            className={`w-1.5 h-1.5 rounded-full ${
+                              isOutOfStock
+                                ? "bg-rose-500"
+                                : availableStock <= 5
+                                ? "bg-amber-500 animate-pulse"
+                                : "bg-emerald-500 animate-pulse"
+                            }`}
+                          />
+                          <span>
+                            {isOutOfStock
+                              ? "Out of Stock"
+                              : availableStock <= 5
+                              ? `Only ${availableStock} Left`
+                              : `In Stock (${availableStock})`}
+                          </span>
                         </span>
                       </span>
                     </div>
@@ -794,36 +863,49 @@ function ShopStorefront() {
                       <Button
                         disabled
                         variant="secondary"
-                        className="w-full h-9 rounded-xl text-xs font-bold text-slate-400 cursor-not-allowed"
+                        className="w-full h-9 rounded-xl text-xs font-bold text-slate-400 bg-slate-100 border border-slate-200 cursor-not-allowed"
                       >
                         Out of Stock
                       </Button>
                     ) : qtyInCart > 0 ? (
-                      <div className="flex items-center justify-between border border-emerald-400/80 rounded-xl bg-emerald-50/60 p-1">
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          onClick={() => updateQuantity(p.id, qtyInCart - 1)}
-                          className="w-7 h-7 rounded-lg bg-white border-emerald-200 text-emerald-800 font-bold hover:bg-emerald-100 shadow-2xs"
-                        >
-                          <Minus className="w-3.5 h-3.5" />
-                        </Button>
-                        <span className="text-xs font-bold text-emerald-950 px-2">
-                          {qtyInCart} in cart
-                        </span>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          onClick={() => updateQuantity(p.id, qtyInCart + 1)}
-                          className="w-7 h-7 rounded-lg bg-white border-emerald-200 text-emerald-800 font-bold hover:bg-emerald-100 shadow-2xs"
-                        >
-                          <Plus className="w-3.5 h-3.5" />
-                        </Button>
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between border border-emerald-400/80 rounded-xl bg-emerald-50/60 p-1">
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => handleUpdateQuantity(p.id, qtyInCart - 1, availableStock, p.name)}
+                            className="w-7 h-7 rounded-lg bg-white border-emerald-200 text-emerald-800 font-bold hover:bg-emerald-100 shadow-2xs cursor-pointer active:scale-95"
+                          >
+                            <Minus className="w-3.5 h-3.5" />
+                          </Button>
+                          <span className="text-xs font-bold text-emerald-950 px-2 font-mono tabular-nums">
+                            {qtyInCart} in cart
+                          </span>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            disabled={isMaxStockReached}
+                            onClick={() => handleUpdateQuantity(p.id, qtyInCart + 1, availableStock, p.name)}
+                            className={`w-7 h-7 rounded-lg font-bold shadow-2xs transition ${
+                              isMaxStockReached
+                                ? "opacity-35 cursor-not-allowed bg-slate-100 text-slate-400 border-slate-200"
+                                : "bg-white border-emerald-200 text-emerald-800 hover:bg-emerald-100 shadow-2xs cursor-pointer active:scale-95"
+                            }`}
+                            title={isMaxStockReached ? `Maximum stock reached (${availableStock} ${p.unit})` : "Add one more"}
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                        {isMaxStockReached && (
+                          <p className="text-[10px] font-bold text-amber-700 text-center bg-amber-50 border border-amber-200/80 rounded-md py-0.5">
+                            Max stock reached ({availableStock} max)
+                          </p>
+                        )}
                       </div>
                     ) : (
                       <Button
                         onClick={() => handleAddToCart(p)}
-                        className="w-full bg-slate-900 hover:bg-emerald-600 text-white font-bold h-9 rounded-xl text-xs gap-1.5 shadow-xs"
+                        className="w-full bg-slate-900 hover:bg-emerald-600 text-white font-bold h-9 rounded-xl text-xs gap-1.5 shadow-xs cursor-pointer active:scale-[0.98] transition"
                       >
                         <ShoppingBag className="w-3.5 h-3.5" />
                         <span>Add to Cart</span>
@@ -868,51 +950,70 @@ function ShopStorefront() {
                   <p className="text-xs text-slate-400">Add fresh items from this store to proceed.</p>
                 </div>
               ) : (
-                cartItems.map((item) => (
-                  <div
-                    key={item.productId}
-                    className="flex items-center justify-between p-3.5 rounded-2xl border border-slate-200/80 bg-slate-50/60"
-                  >
-                    <div>
-                      <p className="font-bold text-slate-800 text-sm">{item.productName}</p>
-                      <p className="text-xs text-slate-500">
-                        Registered Price: ₹{parseFloat(item.sellingPrice || 0).toFixed(2)} / {item.unit}
-                      </p>
-                    </div>
+                cartItems.map((item) => {
+                  const itemMaxStock =
+                    item.stockQuantity !== undefined && item.stockQuantity !== null
+                      ? item.stockQuantity
+                      : 999999;
+                  const isItemMaxReached = item.quantity >= itemMaxStock;
 
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center bg-white border border-slate-200 rounded-lg p-0.5 shadow-2xs">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => updateQuantity(item.productId, item.quantity - 1)}
-                          className="w-6 h-6 rounded text-xs font-bold text-slate-600 hover:bg-slate-100"
-                        >
-                          <Minus className="w-3 h-3" />
-                        </Button>
-                        <span className="text-xs font-bold px-2">{item.quantity}</span>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => updateQuantity(item.productId, item.quantity + 1)}
-                          className="w-6 h-6 rounded text-xs font-bold text-slate-600 hover:bg-slate-100"
-                        >
-                          <Plus className="w-3 h-3" />
-                        </Button>
+                  return (
+                    <div
+                      key={item.productId}
+                      className="flex items-center justify-between p-3.5 rounded-2xl border border-slate-200/80 bg-slate-50/60"
+                    >
+                      <div className="flex-1 pr-3">
+                        <p className="font-bold text-slate-800 text-sm">{item.productName}</p>
+                        <p className="text-xs text-slate-500">
+                          Registered Price: ₹{parseFloat(item.sellingPrice || 0).toFixed(2)} / {item.unit}
+                        </p>
+                        {isItemMaxReached && (
+                          <span className="inline-block mt-1 text-[9px] font-bold text-amber-800 bg-amber-100/70 border border-amber-300 px-1.5 py-0.5 rounded">
+                            Max stock reached ({itemMaxStock} {item.unit})
+                          </span>
+                        )}
                       </div>
 
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => removeFromCart(item.productId)}
-                        className="h-8 w-8 text-slate-400 hover:text-rose-600 rounded-lg"
-                        title="Remove"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                      <div className="flex items-center gap-2.5 shrink-0">
+                        <div className="flex items-center bg-white border border-slate-200 rounded-lg p-0.5 shadow-2xs">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleUpdateQuantity(item.productId, item.quantity - 1, itemMaxStock, item.productName)}
+                            className="w-6 h-6 rounded text-xs font-bold text-slate-600 hover:bg-slate-100 cursor-pointer active:scale-95"
+                          >
+                            <Minus className="w-3 h-3" />
+                          </Button>
+                          <span className="text-xs font-bold px-2 font-mono tabular-nums">{item.quantity}</span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            disabled={isItemMaxReached}
+                            onClick={() => handleUpdateQuantity(item.productId, item.quantity + 1, itemMaxStock, item.productName)}
+                            className={`w-6 h-6 rounded text-xs font-bold transition ${
+                              isItemMaxReached
+                                ? "opacity-30 cursor-not-allowed text-slate-300"
+                                : "text-slate-600 hover:bg-slate-100 cursor-pointer active:scale-95"
+                            }`}
+                            title={isItemMaxReached ? `Maximum stock reached (${itemMaxStock})` : "Add one more"}
+                          >
+                            <Plus className="w-3 h-3" />
+                          </Button>
+                        </div>
+
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeFromCart(item.productId)}
+                          className="h-8 w-8 text-slate-400 hover:text-rose-600 rounded-lg cursor-pointer"
+                          title="Remove"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
 
@@ -1259,6 +1360,22 @@ function ShopStorefront() {
         shopId={shop?.id}
         shopName={shop?.shopName}
       />
+
+      {/* Floating Stock Notification Pill */}
+      <AnimatePresence>
+        {stockAlert && (
+          <motion.div
+            initial={{ opacity: 0, y: 16, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 16, scale: 0.95 }}
+            transition={{ duration: 0.2 }}
+            className="fixed bottom-6 right-6 z-50 bg-slate-950/95 text-white backdrop-blur-md px-4 py-3 rounded-2xl shadow-2xl border border-amber-400/40 flex items-center gap-2.5 text-xs font-semibold max-w-sm"
+          >
+            <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+            <span>{stockAlert}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

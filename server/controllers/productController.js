@@ -580,6 +580,7 @@ const getPublicShopProducts = async (req, res) => {
                 categoryId: resolvedCategoryId,
                 categoryName: resolvedCategoryName,
                 sellingPrice: parseFloat(p.sellingPrice) || 0,
+                stockQuantity: Math.max(0, parseInt(stockQuantity, 10) || 0),
                 availability: stockQuantity > 0 ? "AVAILABLE" : "OUT_OF_STOCK",
                 isAvailable: stockQuantity > 0,
                 totalSold,

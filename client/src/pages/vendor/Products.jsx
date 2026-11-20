@@ -538,7 +538,21 @@ function Products() {
                 type="text"
                 placeholder="e.g. Amul Milk 500ml, Basmati Rice 1kg"
                 value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  const newForm = { ...form, name: val };
+                  if (!form.categoryId && val.trim()) {
+                    const match = categories.find(
+                      (c) =>
+                        c.name.toLowerCase().trim() === val.toLowerCase().trim() ||
+                        val.toLowerCase().trim().includes(c.name.toLowerCase().trim())
+                    );
+                    if (match) {
+                      newForm.categoryId = match.id;
+                    }
+                  }
+                  setForm(newForm);
+                }}
                 className="text-xs"
               />
             </div>

@@ -72,11 +72,13 @@ const createProduct = async (req, res) => {
             });
         }
 
+        let finalCategoryId = categoryId && categoryId.trim() ? categoryId.trim() : null;
+
         // Strict category validation: category must belong to vendor's shop
-        if (categoryId && categoryId.trim()) {
+        if (finalCategoryId) {
             const categoryExists = await prisma.category.findFirst({
                 where: {
-                    id: categoryId.trim(),
+                    id: finalCategoryId,
                     shopId: req.shop.id,
                 },
             });
@@ -87,6 +89,17 @@ const createProduct = async (req, res) => {
                     message: "The selected category does not belong to your shop",
                 });
             }
+        } else {
+            // Auto-link: if vendor did not choose a category, check if shop has a category matching the product name
+            const matchingCategory = await prisma.category.findFirst({
+                where: {
+                    shopId: req.shop.id,
+                    name: { equals: name.trim(), mode: "insensitive" },
+                },
+            });
+            if (matchingCategory) {
+                finalCategoryId = matchingCategory.id;
+            }
         }
 
         const stock = parseInt(stockQuantity, 10) || 0;
@@ -95,7 +108,7 @@ const createProduct = async (req, res) => {
             data: {
                 shopId: req.shop.id,
                 name: name.trim(),
-                categoryId: categoryId && categoryId.trim() ? categoryId.trim() : null,
+                categoryId: finalCategoryId,
                 description: description ? description.trim() : null,
                 imageUrl: imageUrl ? imageUrl.trim() : null,
                 costPrice: parseFloat(costPrice),
@@ -152,7 +165,18 @@ const getProducts = async (req, res) => {
         }
 
         if (categoryId && categoryId !== "ALL") {
-            where.categoryId = categoryId;
+            const catObj = await prisma.category.findFirst({
+                where: { id: categoryId, shopId: req.shop.id },
+                select: { id: true, name: true },
+            });
+            if (catObj) {
+                where.OR = [
+                    { categoryId: catObj.id },
+                    { name: { contains: catObj.name, mode: "insensitive" } },
+                ];
+            } else {
+                where.categoryId = categoryId;
+            }
         }
 
         if (status === "OUT_OF_STOCK") {
@@ -467,35 +491,52 @@ const getPublicShopProducts = async (req, res) => {
         };
 
         if (categoryId && categoryId !== "ALL") {
-            where.categoryId = categoryId;
+            const catObj = await prisma.category.findFirst({
+                where: { id: categoryId, shopId: shop.id },
+                select: { id: true, name: true },
+            });
+            if (catObj) {
+                where.OR = [
+                    { categoryId: catObj.id },
+                    { name: { contains: catObj.name, mode: "insensitive" } },
+                ];
+            } else {
+                where.categoryId = categoryId;
+            }
         }
 
         if (search && search.trim()) {
             where.name = { contains: search.trim(), mode: "insensitive" };
         }
 
-        const products = await prisma.product.findMany({
-            where,
-            select: {
-                id: true,
-                name: true,
-                description: true,
-                imageUrl: true,
-                sellingPrice: true,
-                unit: true,
-                stockQuantity: true,
-                categoryId: true,
-                category: {
-                    select: { id: true, name: true },
+        const [products, shopCategories] = await Promise.all([
+            prisma.product.findMany({
+                where,
+                select: {
+                    id: true,
+                    name: true,
+                    description: true,
+                    imageUrl: true,
+                    sellingPrice: true,
+                    unit: true,
+                    stockQuantity: true,
+                    categoryId: true,
+                    category: {
+                        select: { id: true, name: true },
+                    },
+                    orderItems: {
+                        select: { quantity: true },
+                    },
                 },
-                orderItems: {
-                    select: { quantity: true },
+                orderBy: {
+                    name: "asc",
                 },
-            },
-            orderBy: {
-                name: "asc",
-            },
-        });
+            }),
+            prisma.category.findMany({
+                where: { shopId: shop.id },
+                select: { id: true, name: true },
+            }),
+        ]);
 
         // Compute total units sold for each product
         let maxSold = 0;
@@ -514,8 +555,26 @@ const getPublicShopProducts = async (req, res) => {
         const safeProducts = productsWithSales.map((p) => {
             const { stockQuantity, orderItems, totalSold, ...rest } = p;
             const isMostSelling = totalSold > 0 && totalSold === maxSold;
-            const resolvedCategoryId = p.categoryId || p.category?.id || null;
-            const resolvedCategoryName = p.category?.name || "General";
+            let resolvedCategoryId = p.categoryId || p.category?.id || null;
+            let resolvedCategoryName = p.category?.name || null;
+
+            // Auto-resolve category if product was created uncategorized but a matching shop category exists
+            if (!resolvedCategoryId) {
+                const match = shopCategories.find(
+                    (c) =>
+                        c.name.toLowerCase().trim() === p.name.toLowerCase().trim() ||
+                        p.name.toLowerCase().trim().includes(c.name.toLowerCase().trim())
+                );
+                if (match) {
+                    resolvedCategoryId = match.id;
+                    resolvedCategoryName = match.name;
+                }
+            }
+
+            if (!resolvedCategoryName) {
+                resolvedCategoryName = "General";
+            }
+
             return {
                 ...rest,
                 categoryId: resolvedCategoryId,

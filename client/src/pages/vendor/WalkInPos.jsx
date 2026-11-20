@@ -176,24 +176,91 @@ function WalkInPos() {
     }
   };
 
-  const filteredProducts = products.filter((p) => {
+  // Ensure that if any product is General or uncategorized, General category is included
+  const displayCategories = useMemo(() => {
+    const list = [...categories];
+    const hasGeneralProducts = products.some((p) => {
+      const catId = p.categoryId || p.category?.id;
+      const catName = (p.categoryName || p.category?.name || "").toLowerCase().trim();
+      return !catId || catName === "general" || catName === "uncategorized";
+    });
+
+    const alreadyHasGeneral = list.some(
+      (c) => c.name?.toLowerCase().trim() === "general" || c.id === "__uncategorized__"
+    );
+
+    if (hasGeneralProducts && !alreadyHasGeneral) {
+      list.push({ id: "__uncategorized__", name: "General" });
+    }
+    return list;
+  }, [categories, products]);
+
+  // Resilient category matching
+  const productMatchesCategory = useCallback((p, targetCatIdOrName) => {
+    if (!targetCatIdOrName || targetCatIdOrName === "ALL") return true;
+
     const prodCatId = p.categoryId || p.category?.id || null;
     const prodCatName = (p.categoryName || p.category?.name || "").toLowerCase().trim();
-    const sel = (selectedCategory || "").toLowerCase().trim();
+    const prodName = (p.name || "").toLowerCase().trim();
+    const query = (targetCatIdOrName || "").toLowerCase().trim();
 
-    const matchesCat =
-      selectedCategory === "ALL" ||
-      prodCatId === selectedCategory ||
-      prodCatName === sel;
+    if (prodCatId && prodCatId === targetCatIdOrName) return true;
+    if (prodCatName && prodCatName === query) return true;
+
+    if (query === "__uncategorized__" || query === "general" || query === "uncategorized") {
+      if (!prodCatId || prodCatName === "general" || prodCatName === "uncategorized") {
+        return true;
+      }
+    }
+
+    const catObj = displayCategories.find(
+      (c) => c.id === targetCatIdOrName || c.name?.toLowerCase().trim() === query
+    );
+
+    if (catObj) {
+      const targetCatId = catObj.id;
+      const targetCatName = (catObj.name || "").toLowerCase().trim();
+
+      if (prodCatId && prodCatId === targetCatId) return true;
+      if (prodCatName && prodCatName === targetCatName) return true;
+
+      if (
+        prodName === targetCatName ||
+        prodName.includes(targetCatName) ||
+        targetCatName.includes(prodName)
+      ) {
+        return true;
+      }
+
+      if (targetCatId === "__uncategorized__" || targetCatName === "general") {
+        if (!prodCatId || prodCatName === "general" || prodCatName === "uncategorized") {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  }, [displayCategories]);
+
+  const filteredProducts = products.filter((p) => {
+    const matchesCat = productMatchesCategory(p, selectedCategory);
 
     const matchesSearch =
       !searchQuery.trim() ||
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (p.description && p.description.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      prodCatName.includes(searchQuery.toLowerCase());
+      (p.categoryName && p.categoryName.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (p.category?.name && p.category.name.toLowerCase().includes(searchQuery.toLowerCase()));
 
     return matchesCat && matchesSearch;
   });
+
+  const getCategoryCount = useCallback(
+    (cat) => {
+      return products.filter((p) => productMatchesCategory(p, cat.id || cat.name)).length;
+    },
+    [products, productMatchesCategory]
+  );
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
@@ -258,8 +325,8 @@ function WalkInPos() {
                   className="w-full text-xs font-semibold text-slate-700 bg-slate-50 border border-slate-200 rounded-xl h-9 px-3 focus:outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer"
                 >
                   <option value="ALL">All Categories ({products.length})</option>
-                  {categories.map((c) => {
-                    const count = products.filter((p) => p.categoryId === c.id).length;
+                  {displayCategories.map((c) => {
+                    const count = getCategoryCount(c);
                     return (
                       <option key={c.id} value={c.id}>
                         {c.name} ({count})
@@ -276,7 +343,7 @@ function WalkInPos() {
                 variant={selectedCategory === "ALL" ? "default" : "secondary"}
                 size="sm"
                 onClick={() => setSelectedCategory("ALL")}
-                className={`rounded-xl text-xs font-bold whitespace-nowrap h-7 px-3 ${
+                className={`rounded-xl text-xs font-bold whitespace-nowrap h-7 px-3 transition-all duration-150 active:scale-[0.98] ${
                   selectedCategory === "ALL"
                     ? "bg-purple-700 text-white"
                     : "bg-slate-100 text-slate-600 hover:bg-slate-200"
@@ -284,21 +351,26 @@ function WalkInPos() {
               >
                 All Products ({products.length})
               </Button>
-              {categories.map((c) => (
-                <Button
-                  key={c.id}
-                  variant={selectedCategory === c.id ? "default" : "secondary"}
-                  size="sm"
-                  onClick={() => setSelectedCategory(c.id)}
-                  className={`rounded-xl text-xs font-bold whitespace-nowrap h-7 px-3 ${
-                    selectedCategory === c.id
-                      ? "bg-purple-700 text-white"
-                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                  }`}
-                >
-                  {c.name}
-                </Button>
-              ))}
+              {displayCategories.map((c) => {
+                const count = getCategoryCount(c);
+                const isSelected = selectedCategory === c.id || selectedCategory?.toLowerCase().trim() === c.name?.toLowerCase().trim();
+                return (
+                  <Button
+                    key={c.id}
+                    variant={isSelected ? "default" : "secondary"}
+                    size="sm"
+                    onClick={() => setSelectedCategory(c.id)}
+                    className={`rounded-xl text-xs font-bold whitespace-nowrap h-7 px-3 transition-all duration-150 active:scale-[0.98] ${
+                      isSelected
+                        ? "bg-purple-700 text-white"
+                        : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                    }`}
+                  >
+                    <span>{c.name}</span>
+                    <span className="ml-1 text-[10px] opacity-75 font-mono tabular-nums">({count})</span>
+                  </Button>
+                );
+              })}
             </div>
           </Card>
 

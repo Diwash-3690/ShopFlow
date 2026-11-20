@@ -275,27 +275,81 @@ function ShopStorefront() {
     setTimeout(() => setCopiedPickupId(false), 2000);
   };
 
-  // Filter products by category & search
-  const filteredProducts = products.filter((p) => {
-    let matchesCategory = selectedCategory === "ALL";
-    if (!matchesCategory) {
-      const prodCatId = p.categoryId || p.category?.id || null;
-      const prodCatName = (p.categoryName || p.category?.name || "").toLowerCase().trim();
-      const sel = (selectedCategory || "").toLowerCase().trim();
+  // Ensure that if any product is General or uncategorized, a General category is available in pills & dropdown
+  const displayCategories = useMemo(() => {
+    const list = [...categories];
+    const hasGeneralProducts = products.some((p) => {
+      const catId = p.categoryId || p.category?.id;
+      const catName = (p.categoryName || p.category?.name || "").toLowerCase().trim();
+      return !catId || catName === "general" || catName === "uncategorized";
+    });
 
-      matchesCategory =
-        prodCatId === selectedCategory ||
-        prodCatName === sel;
+    const alreadyHasGeneral = list.some(
+      (c) => c.name?.toLowerCase().trim() === "general" || c.id === "__uncategorized__"
+    );
 
-      if (!matchesCategory) {
-        const catObj = categories.find((c) => c.id === selectedCategory || c.name.toLowerCase().trim() === sel);
-        if (catObj) {
-          matchesCategory =
-            prodCatId === catObj.id ||
-            prodCatName === catObj.name.toLowerCase().trim();
+    if (hasGeneralProducts && !alreadyHasGeneral) {
+      list.push({ id: "__uncategorized__", name: "General" });
+    }
+    return list;
+  }, [categories, products]);
+
+  // Unified resilient matcher for products and categories
+  const productMatchesCategory = useCallback((p, targetCatIdOrName) => {
+    if (!targetCatIdOrName || targetCatIdOrName === "ALL") return true;
+
+    const prodCatId = p.categoryId || p.category?.id || null;
+    const prodCatName = (p.categoryName || p.category?.name || "").toLowerCase().trim();
+    const prodName = (p.name || "").toLowerCase().trim();
+    const query = (targetCatIdOrName || "").toLowerCase().trim();
+
+    // 1. Direct ID match
+    if (prodCatId && prodCatId === targetCatIdOrName) return true;
+
+    // 2. Direct Name match
+    if (prodCatName && prodCatName === query) return true;
+
+    // 3. Uncategorized / General match
+    if (query === "__uncategorized__" || query === "general" || query === "uncategorized") {
+      if (!prodCatId || prodCatName === "general" || prodCatName === "uncategorized") {
+        return true;
+      }
+    }
+
+    // 4. Match against displayCategories objects
+    const catObj = displayCategories.find(
+      (c) => c.id === targetCatIdOrName || c.name?.toLowerCase().trim() === query
+    );
+
+    if (catObj) {
+      const targetCatId = catObj.id;
+      const targetCatName = (catObj.name || "").toLowerCase().trim();
+
+      if (prodCatId && prodCatId === targetCatId) return true;
+      if (prodCatName && prodCatName === targetCatName) return true;
+
+      // Product name matches category name or vice versa (e.g. category "Weed", product "Weed")
+      if (
+        prodName === targetCatName ||
+        prodName.includes(targetCatName) ||
+        targetCatName.includes(prodName)
+      ) {
+        return true;
+      }
+
+      if (targetCatId === "__uncategorized__" || targetCatName === "general") {
+        if (!prodCatId || prodCatName === "general" || prodCatName === "uncategorized") {
+          return true;
         }
       }
     }
+
+    return false;
+  }, [displayCategories]);
+
+  // Filter products by category & search
+  const filteredProducts = products.filter((p) => {
+    const matchesCategory = productMatchesCategory(p, selectedCategory);
 
     const matchesSearch =
       !searchQuery.trim() ||
@@ -306,6 +360,13 @@ function ShopStorefront() {
 
     return matchesCategory && matchesSearch;
   });
+
+  const getCategoryCount = useCallback(
+    (cat) => {
+      return products.filter((p) => productMatchesCategory(p, cat.id || cat.name)).length;
+    },
+    [products, productMatchesCategory]
+  );
 
   if (loading) {
     return (
@@ -490,15 +551,11 @@ function ShopStorefront() {
               <select
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
-                className="w-full text-xs font-bold text-slate-800 bg-white border border-slate-200/90 rounded-xl h-9 px-3 shadow-2xs focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                className="w-full text-xs font-bold text-slate-800 bg-white border border-slate-200/90 rounded-xl h-9 px-3 shadow-2xs focus:outline-none focus:ring-2 focus:ring-slate-900 cursor-pointer"
               >
                 <option value="ALL">All Categories ({products.length})</option>
-                {categories.map((c) => {
-                  const count = products.filter((p) => {
-                    const prodCatId = p.categoryId || p.category?.id;
-                    const prodCatName = (p.categoryName || p.category?.name || "").toLowerCase().trim();
-                    return prodCatId === c.id || prodCatName === c.name.toLowerCase().trim();
-                  }).length;
+                {displayCategories.map((c) => {
+                  const count = getCategoryCount(c);
                   return (
                     <option key={c.id} value={c.id}>
                       {c.name} ({count})
@@ -514,23 +571,28 @@ function ShopStorefront() {
                 variant={selectedCategory === "ALL" ? "default" : "outline"}
                 size="sm"
                 onClick={() => setSelectedCategory("ALL")}
-                className={`rounded-xl text-xs font-bold whitespace-nowrap h-8 px-3 ${
+                className={`rounded-xl text-xs font-bold whitespace-nowrap h-8 px-3 transition-all duration-150 active:scale-[0.98] ${
                   selectedCategory === "ALL"
-                    ? "bg-slate-900 text-white"
+                    ? "bg-slate-900 text-white shadow-xs"
                     : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
                 }`}
               >
-                All
+                <span>All</span>
+                <span
+                  className={`ml-1.5 text-[10px] px-1.5 py-0.2 rounded-full font-semibold font-mono tabular-nums ${
+                    selectedCategory === "ALL"
+                      ? "bg-slate-700 text-white"
+                      : "bg-slate-100 text-slate-500"
+                  }`}
+                >
+                  {products.length}
+                </span>
               </Button>
-              {categories.map((c) => {
+              {displayCategories.map((c) => {
                 const isSelected =
                   selectedCategory === c.id ||
                   selectedCategory?.toLowerCase().trim() === c.name?.toLowerCase().trim();
-                const count = products.filter((p) => {
-                  const prodCatId = p.categoryId || p.category?.id;
-                  const prodCatName = (p.categoryName || p.category?.name || "").toLowerCase().trim();
-                  return prodCatId === c.id || prodCatName === c.name.toLowerCase().trim();
-                }).length;
+                const count = getCategoryCount(c);
 
                 return (
                   <Button
@@ -538,15 +600,15 @@ function ShopStorefront() {
                     variant={isSelected ? "default" : "outline"}
                     size="sm"
                     onClick={() => setSelectedCategory(c.id)}
-                    className={`rounded-xl text-xs font-bold whitespace-nowrap h-8 px-3 ${
+                    className={`rounded-xl text-xs font-bold whitespace-nowrap h-8 px-3 transition-all duration-150 active:scale-[0.98] ${
                       isSelected
-                        ? "bg-slate-900 text-white"
+                        ? "bg-slate-900 text-white shadow-xs"
                         : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
                     }`}
                   >
                     <span>{c.name}</span>
                     <span
-                      className={`ml-1.5 text-[10px] px-1.5 py-0.2 rounded-full font-semibold ${
+                      className={`ml-1.5 text-[10px] px-1.5 py-0.2 rounded-full font-semibold font-mono tabular-nums ${
                         isSelected
                           ? "bg-slate-700 text-white"
                           : "bg-slate-100 text-slate-500"
@@ -568,7 +630,7 @@ function ShopStorefront() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search products..."
-              className="pl-9 text-xs bg-white border-slate-200 rounded-xl h-9 shadow-2xs"
+              className="pl-9 text-xs bg-white border-slate-200 rounded-xl h-9 shadow-2xs focus-visible:ring-2 focus-visible:ring-slate-900"
             />
           </div>
         </div>
@@ -599,12 +661,23 @@ function ShopStorefront() {
 
         {/* Product Grid */}
         {filteredProducts.length === 0 ? (
-          <Card className="rounded-3xl border-slate-200 p-12 text-center text-slate-500 space-y-3 bg-white">
-            <Package className="w-10 h-10 text-slate-300 mx-auto" />
-            <p className="font-bold text-slate-800 text-sm">No products match your criteria</p>
-            <p className="text-xs text-slate-400">
-              Try selecting a different category or clearing your search query.
+          <Card className="rounded-3xl border-slate-200 p-8 sm:p-12 text-center text-slate-500 space-y-3 bg-white shadow-2xs">
+            <Package className="w-12 h-12 text-slate-300 mx-auto" />
+            <h4 className="font-bold text-slate-800 text-base">No products match your criteria</h4>
+            <p className="text-xs text-slate-500 max-w-sm mx-auto">
+              There are currently no items matching the selected category or search filter.
             </p>
+            <div className="pt-2">
+              <Button
+                onClick={() => {
+                  setSelectedCategory("ALL");
+                  setSearchQuery("");
+                }}
+                className="bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold px-4 h-9 shadow-xs"
+              >
+                View All Products ({products.length})
+              </Button>
+            </div>
           </Card>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">

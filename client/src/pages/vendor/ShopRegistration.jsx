@@ -32,6 +32,7 @@ function ShopRegistration() {
   const [locating, setLocating] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [locSuccess, setLocSuccess] = useState(false);
+  const [addressDetected, setAddressDetected] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -82,33 +83,44 @@ function ShopRegistration() {
 
     setLocating(true);
     setErrorMsg("");
+    setLocSuccess(false);
+    setAddressDetected(false);
 
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         const lat = pos.coords.latitude.toFixed(6);
         const lng = pos.coords.longitude.toFixed(6);
 
+        // Immediately update coordinates in form state
         setFormData((prev) => ({
           ...prev,
           latitude: lat,
           longitude: lng,
         }));
+        setLocSuccess(true);
 
         try {
           // Reverse geocode to auto-fill physical address according to detected location
           const detectedAddress = await reverseGeocode(pos.coords.latitude, pos.coords.longitude);
-          if (detectedAddress) {
+          if (detectedAddress && detectedAddress.trim()) {
             setFormData((prev) => ({
               ...prev,
-              address: detectedAddress,
+              address: detectedAddress.trim(),
             }));
+            setAddressDetected(true);
+          } else {
+            // Fallback so address is not left completely empty
+            setFormData((prev) => ({
+              ...prev,
+              address: prev.address || `Location near GPS (${lat}, ${lng})`,
+            }));
+            setAddressDetected(true);
           }
         } catch (e) {
           console.warn("Reverse geocode failed:", e);
+        } finally {
+          setLocating(false);
         }
-
-        setLocSuccess(true);
-        setLocating(false);
       },
       (err) => {
         setLocating(false);
@@ -116,7 +128,7 @@ function ShopRegistration() {
           "Could not detect location: " + (err.message || "Permission denied. You can enter coordinates and address manually.")
         );
       },
-      { enableHighAccuracy: true, timeout: 10000 }
+      { enableHighAccuracy: true, timeout: 12000 }
     );
   };
 
@@ -263,22 +275,31 @@ function ShopRegistration() {
                   Physical Shop Address <span className="text-rose-500">*</span>
                 </label>
                 {locating && (
-                  <span className="text-[11px] font-semibold text-blue-600 flex items-center gap-1 animate-pulse">
-                    <MapPin className="w-3 h-3" /> Auto-detecting physical address...
+                  <span className="text-[11px] font-bold text-blue-600 flex items-center gap-1.5 animate-pulse bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
+                    <MapPin className="w-3.5 h-3.5 animate-bounce" />
+                    <span>Detecting GPS & resolving address...</span>
+                  </span>
+                )}
+                {addressDetected && !locating && (
+                  <span className="text-[11px] font-bold text-emerald-700 flex items-center gap-1 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Auto-filled from GPS (Editable)</span>
                   </span>
                 )}
               </div>
               <textarea
                 name="address"
                 rows={3}
-                placeholder="Street address, landmark, area, city, pincode (Auto-filled on GPS detect, or enter manually)"
+                placeholder="Street address, landmark, area, city, pincode (Auto-filled on GPS detect or enter manually)"
                 value={formData.address}
                 onChange={handleChange}
-                className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                className={`w-full border rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
+                  addressDetected ? "bg-emerald-50/20 border-emerald-300" : "bg-white border-slate-300"
+                }`}
                 required
               />
-              <p className="text-[10px] text-slate-400">
-                You can freely edit or refine this physical address (add shop number, floor, landmark) after GPS detection.
+              <p className="text-[11px] text-slate-500">
+                ✏️ <strong>Editable:</strong> The physical address auto-populates when GPS is detected. You can freely edit, refine, or add shop number/floor/landmark.
               </p>
             </div>
 
@@ -300,20 +321,23 @@ function ShopRegistration() {
                   size="sm"
                   onClick={handleDetectLocation}
                   disabled={locating}
-                  className="h-8 text-xs font-bold text-slate-700 rounded-xl gap-1.5 cursor-pointer hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300"
+                  className="h-9 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 border-0 rounded-xl gap-2 shadow-sm cursor-pointer"
                 >
-                  <MapPin className="w-3.5 h-3.5 text-blue-600" />
+                  <MapPin className="w-4 h-4" />
                   <span>{locating ? "Detecting Location & Address..." : "Detect Current GPS & Address"}</span>
                 </Button>
               </div>
 
               {locSuccess && (
-                <div className="flex items-start gap-2 text-xs text-emerald-800 font-semibold bg-emerald-50 border border-emerald-200 px-3 py-2 rounded-xl">
+                <div className="flex items-start gap-2 text-xs text-emerald-800 font-semibold bg-emerald-50 border border-emerald-200 p-3 rounded-xl">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-bold">GPS coordinates & physical address detected!</p>
-                    <p className="text-[11px] text-emerald-700 font-normal mt-0.5">
-                      The physical address above has been automatically filled. You can refine or add landmark/shop details anytime.
+                  <div className="space-y-0.5">
+                    <p className="font-bold">GPS Coordinates & Physical Address Captured!</p>
+                    <p className="text-[11px] text-emerald-700 font-normal">
+                      Latitude: <strong className="font-mono">{formData.latitude}</strong>, Longitude: <strong className="font-mono">{formData.longitude}</strong>.
+                    </p>
+                    <p className="text-[11px] text-emerald-800 font-medium">
+                      Your physical address has been automatically populated in the box above. You can freely edit or append details anytime.
                     </p>
                   </div>
                 </div>

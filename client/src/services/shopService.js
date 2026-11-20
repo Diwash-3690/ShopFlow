@@ -38,23 +38,76 @@ export const searchNearbyShops = async (params = {}) => {
 
 // Reverse geocode GPS coordinates to human-readable physical address
 export const reverseGeocode = async (lat, lng) => {
-  // 1. Try backend proxy
+  const latitude = parseFloat(lat);
+  const longitude = parseFloat(lng);
+  if (isNaN(latitude) || isNaN(longitude)) return "";
+
+  // 1. First Priority: Direct OpenStreetMap Nominatim (High accuracy, street level, ~300ms)
   try {
-    const response = await api.get("/shops/reverse-geocode", {
-      params: { lat, lng },
-      timeout: 5000,
-    });
-    if (response.data?.success && response.data?.address) {
-      return response.data.address;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 2500);
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}`,
+      { signal: controller.signal }
+    );
+    clearTimeout(timeout);
+    if (res.ok) {
+      const data = await res.json();
+      if (data?.display_name && data.display_name.trim()) {
+        return data.display_name.trim();
+      }
     }
   } catch (e) {
-    // Fallback to direct client reverse geocoding
+    // try next
   }
 
-  // 2. Fallback: BigDataCloud client API
+  // 2. Second Priority: Photon Komoot (Global OpenStreetMap reverse geocoder, sub-200ms)
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 2000);
+    const res = await fetch(
+      `https://photon.komoot.io/reverse?lat=${latitude}&lon=${longitude}`,
+      { signal: controller.signal }
+    );
+    clearTimeout(timeout);
+    if (res.ok) {
+      const data = await res.json();
+      const props = data?.features?.[0]?.properties;
+      if (props) {
+        const parts = [
+          props.name || props.street,
+          props.locality || props.district,
+          props.city || props.town,
+          props.state,
+          props.postcode,
+          props.country,
+        ].filter(Boolean);
+        if (parts.length > 0) {
+          return parts.join(", ");
+        }
+      }
+    }
+  } catch (e) {
+    // try next
+  }
+
+  // 3. Third Priority: Backend Proxy endpoint (/api/shops/reverse-geocode)
+  try {
+    const response = await api.get("/shops/reverse-geocode", {
+      params: { lat: latitude, lng: longitude },
+      timeout: 3000,
+    });
+    if (response.data?.success && response.data?.address && response.data.address.trim()) {
+      return response.data.address.trim();
+    }
+  } catch (e) {
+    // try next
+  }
+
+  // 4. Fourth Priority: BigDataCloud API
   try {
     const bdcRes = await fetch(
-      `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`
+      `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
     );
     if (bdcRes.ok) {
       const bdcData = await bdcRes.json();

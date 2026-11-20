@@ -277,12 +277,33 @@ function ShopStorefront() {
 
   // Filter products by category & search
   const filteredProducts = products.filter((p) => {
-    const matchesCategory =
-      selectedCategory === "ALL" || p.categoryId === selectedCategory;
+    let matchesCategory = selectedCategory === "ALL";
+    if (!matchesCategory) {
+      const prodCatId = p.categoryId || p.category?.id || null;
+      const prodCatName = (p.categoryName || p.category?.name || "").toLowerCase().trim();
+      const sel = (selectedCategory || "").toLowerCase().trim();
+
+      matchesCategory =
+        prodCatId === selectedCategory ||
+        prodCatName === sel;
+
+      if (!matchesCategory) {
+        const catObj = categories.find((c) => c.id === selectedCategory || c.name.toLowerCase().trim() === sel);
+        if (catObj) {
+          matchesCategory =
+            prodCatId === catObj.id ||
+            prodCatName === catObj.name.toLowerCase().trim();
+        }
+      }
+    }
+
     const matchesSearch =
       !searchQuery.trim() ||
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (p.description && p.description.toLowerCase().includes(searchQuery.toLowerCase()));
+      (p.description && p.description.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (p.categoryName && p.categoryName.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (p.category?.name && p.category.name.toLowerCase().includes(searchQuery.toLowerCase()));
+
     return matchesCategory && matchesSearch;
   });
 
@@ -473,7 +494,11 @@ function ShopStorefront() {
               >
                 <option value="ALL">All Categories ({products.length})</option>
                 {categories.map((c) => {
-                  const count = products.filter((p) => p.categoryId === c.id).length;
+                  const count = products.filter((p) => {
+                    const prodCatId = p.categoryId || p.category?.id;
+                    const prodCatName = (p.categoryName || p.category?.name || "").toLowerCase().trim();
+                    return prodCatId === c.id || prodCatName === c.name.toLowerCase().trim();
+                  }).length;
                   return (
                     <option key={c.id} value={c.id}>
                       {c.name} ({count})
@@ -497,21 +522,41 @@ function ShopStorefront() {
               >
                 All
               </Button>
-              {categories.map((c) => (
-                <Button
-                  key={c.id}
-                  variant={selectedCategory === c.id ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setSelectedCategory(c.id)}
-                  className={`rounded-xl text-xs font-bold whitespace-nowrap h-8 px-3 ${
-                    selectedCategory === c.id
-                      ? "bg-slate-900 text-white"
-                      : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
-                  }`}
-                >
-                  {c.name}
-                </Button>
-              ))}
+              {categories.map((c) => {
+                const isSelected =
+                  selectedCategory === c.id ||
+                  selectedCategory?.toLowerCase().trim() === c.name?.toLowerCase().trim();
+                const count = products.filter((p) => {
+                  const prodCatId = p.categoryId || p.category?.id;
+                  const prodCatName = (p.categoryName || p.category?.name || "").toLowerCase().trim();
+                  return prodCatId === c.id || prodCatName === c.name.toLowerCase().trim();
+                }).length;
+
+                return (
+                  <Button
+                    key={c.id}
+                    variant={isSelected ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setSelectedCategory(c.id)}
+                    className={`rounded-xl text-xs font-bold whitespace-nowrap h-8 px-3 ${
+                      isSelected
+                        ? "bg-slate-900 text-white"
+                        : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                    }`}
+                  >
+                    <span>{c.name}</span>
+                    <span
+                      className={`ml-1.5 text-[10px] px-1.5 py-0.2 rounded-full font-semibold ${
+                        isSelected
+                          ? "bg-slate-700 text-white"
+                          : "bg-slate-100 text-slate-500"
+                      }`}
+                    >
+                      {count}
+                    </span>
+                  </Button>
+                );
+              })}
             </div>
           </div>
 
@@ -615,7 +660,7 @@ function ShopStorefront() {
                   <CardContent className="p-4 flex-1 flex flex-col justify-between space-y-3">
                     <div>
                       <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
-                        {p.categoryName || "General"}
+                        {p.categoryName || p.category?.name || "General"}
                       </p>
                       <h3 className="font-bold text-slate-900 text-sm line-clamp-1 mt-0.5">
                         {p.name}

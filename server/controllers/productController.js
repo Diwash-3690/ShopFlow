@@ -484,6 +484,7 @@ const getPublicShopProducts = async (req, res) => {
                 sellingPrice: true,
                 unit: true,
                 stockQuantity: true,
+                categoryId: true,
                 category: {
                     select: { id: true, name: true },
                 },
@@ -513,8 +514,12 @@ const getPublicShopProducts = async (req, res) => {
         const safeProducts = productsWithSales.map((p) => {
             const { stockQuantity, orderItems, totalSold, ...rest } = p;
             const isMostSelling = totalSold > 0 && totalSold === maxSold;
+            const resolvedCategoryId = p.categoryId || p.category?.id || null;
+            const resolvedCategoryName = p.category?.name || "General";
             return {
                 ...rest,
+                categoryId: resolvedCategoryId,
+                categoryName: resolvedCategoryName,
                 sellingPrice: parseFloat(p.sellingPrice) || 0,
                 availability: stockQuantity > 0 ? "AVAILABLE" : "OUT_OF_STOCK",
                 isAvailable: stockQuantity > 0,

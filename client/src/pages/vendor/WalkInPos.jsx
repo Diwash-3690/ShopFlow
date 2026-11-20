@@ -177,11 +177,21 @@ function WalkInPos() {
   };
 
   const filteredProducts = products.filter((p) => {
+    const prodCatId = p.categoryId || p.category?.id || null;
+    const prodCatName = (p.categoryName || p.category?.name || "").toLowerCase().trim();
+    const sel = (selectedCategory || "").toLowerCase().trim();
+
     const matchesCat =
-      selectedCategory === "ALL" || p.categoryId === selectedCategory;
+      selectedCategory === "ALL" ||
+      prodCatId === selectedCategory ||
+      prodCatName === sel;
+
     const matchesSearch =
       !searchQuery.trim() ||
-      p.name.toLowerCase().includes(searchQuery.toLowerCase());
+      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (p.description && p.description.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      prodCatName.includes(searchQuery.toLowerCase());
+
     return matchesCat && matchesSearch;
   });
 

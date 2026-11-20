@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import {
   LogOut,
@@ -69,6 +69,34 @@ function VendorDashboard() {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showNotifDropdown, setShowNotifDropdown] = useState(false);
+  const notifRef = useRef(null);
+
+  // Close notification dropdown when clicking anywhere in the background / outside
+  useEffect(() => {
+    if (!showNotifDropdown) return;
+
+    const handleClickOutside = (event) => {
+      if (notifRef.current && !notifRef.current.contains(event.target)) {
+        setShowNotifDropdown(false);
+      }
+    };
+
+    const handleEscape = (event) => {
+      if (event.key === "Escape") {
+        setShowNotifDropdown(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside, true);
+    document.addEventListener("touchstart", handleClickOutside, true);
+    document.addEventListener("keydown", handleEscape, true);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside, true);
+      document.removeEventListener("touchstart", handleClickOutside, true);
+      document.removeEventListener("keydown", handleEscape, true);
+    };
+  }, [showNotifDropdown]);
 
   // Active Bill Modal state
   const [activeBill, setActiveBill] = useState(null);
@@ -513,11 +541,11 @@ function VendorDashboard() {
 
         <div className="flex items-center space-x-2 sm:space-x-3">
           {/* Notification Bell with Dropdown */}
-          <div className="relative">
+          <div className="relative" ref={notifRef}>
             <Button
               variant="outline"
               size="icon"
-              onClick={() => setShowNotifDropdown(!showNotifDropdown)}
+              onClick={() => setShowNotifDropdown((prev) => !prev)}
               className="relative h-9 w-9 rounded-xl border-slate-200 text-slate-600 hover:text-slate-900"
               title="Notifications"
             >
@@ -531,67 +559,60 @@ function VendorDashboard() {
 
             {/* Notification Dropdown Menu */}
             {showNotifDropdown && (
-              <>
-                {/* Backdrop to close notification menu on outside click */}
-                <div
-                  className="fixed inset-0 z-40 bg-transparent"
-                  onClick={() => setShowNotifDropdown(false)}
-                />
-                <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-xl border border-slate-200 z-50 overflow-hidden animate-fadeIn">
-                  <div className="p-3.5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-                    <h4 className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
-                      <Bell className="w-3.5 h-3.5 text-blue-600" />
-                      <span>Alerts & Notifications</span>
-                    </h4>
-                    {unreadCount > 0 && (
-                      <button
-                        onClick={handleMarkAllAsRead}
-                        className="text-[11px] text-blue-600 hover:underline cursor-pointer font-semibold"
-                      >
-                        Mark all as read
-                      </button>
-                    )}
-                  </div>
+              <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-xl border border-slate-200 z-50 overflow-hidden animate-fadeIn">
+                <div className="p-3.5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+                  <h4 className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
+                    <Bell className="w-3.5 h-3.5 text-blue-600" />
+                    <span>Alerts & Notifications</span>
+                  </h4>
+                  {unreadCount > 0 && (
+                    <button
+                      onClick={handleMarkAllAsRead}
+                      className="text-[11px] text-blue-600 hover:underline cursor-pointer font-semibold"
+                    >
+                      Mark all as read
+                    </button>
+                  )}
+                </div>
 
-                  <div className="max-h-80 overflow-y-auto divide-y divide-slate-100">
-                    {notifications.length === 0 ? (
-                      <div className="p-6 text-center text-xs text-slate-400">
-                        No notifications yet.
-                      </div>
-                    ) : (
-                      notifications.map((n) => (
-                        <div
-                          key={n.id}
-                          onClick={() => handleNotificationClick(n)}
-                          className={`p-3.5 text-xs transition cursor-pointer hover:bg-slate-50 ${
-                            n.isRead ? "bg-white text-slate-600" : "bg-blue-50/70 text-slate-900 font-medium"
-                          }`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <span
-                              className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${
-                                n.type === "OUT_OF_STOCK"
-                                  ? "bg-rose-100 text-rose-700"
-                                  : "bg-emerald-100 text-emerald-800"
-                              }`}
-                            >
-                              {n.type === "OUT_OF_STOCK" ? "Stock Alert" : "Incoming Order"}
-                            </span>
-                            <span className="text-[10px] text-slate-400">
-                              {new Date(n.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                            </span>
-                          </div>
-                          <p className="font-bold mt-1 text-slate-800">{n.title}</p>
-                          <p className="text-[11px] text-slate-600 mt-0.5 leading-relaxed">{n.message}</p>
-                          <span className="text-[10px] text-blue-600 font-semibold mt-1 inline-block">
-                            Click to view details →
+                <div className="max-h-80 overflow-y-auto divide-y divide-slate-100">
+                  {notifications.length === 0 ? (
+                    <div className="p-6 text-center text-xs text-slate-400">
+                      No notifications yet.
+                    </div>
+                  ) : (
+                    notifications.map((n) => (
+                      <div
+                        key={n.id}
+                        onClick={() => handleNotificationClick(n)}
+                        className={`p-3.5 text-xs transition cursor-pointer hover:bg-slate-50 ${
+                          n.isRead ? "bg-white text-slate-600" : "bg-blue-50/70 text-slate-900 font-medium"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span
+                            className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${
+                              n.type === "OUT_OF_STOCK"
+                                ? "bg-rose-100 text-rose-700"
+                                : "bg-emerald-100 text-emerald-800"
+                            }`}
+                          >
+                            {n.type === "OUT_OF_STOCK" ? "Stock Alert" : "Incoming Order"}
+                          </span>
+                          <span className="text-[10px] text-slate-400">
+                            {new Date(n.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                           </span>
                         </div>
-                      ))
-                    )}
-                  </div>
+                        <p className="font-bold mt-1 text-slate-800">{n.title}</p>
+                        <p className="text-[11px] text-slate-600 mt-0.5 leading-relaxed">{n.message}</p>
+                        <span className="text-[10px] text-blue-600 font-semibold mt-1 inline-block">
+                          Click to view details →
+                        </span>
+                      </div>
+                    ))
+                  )}
                 </div>
-              </>
+              </div>
             )}
           </div>
 

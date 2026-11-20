@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
+import { motion } from "framer-motion";
 import {
   LogOut,
   ShoppingBag,
@@ -526,45 +527,53 @@ function CustomerDashboard() {
         {/* Customer Shopping Summary Cards */}
         {summary && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <Card className="rounded-2xl border-slate-200/80 shadow-2xs bg-white hover:shadow-md transition-shadow">
-              <CardContent className="p-4 sm:p-5">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Total Spent</p>
-                <h3 className="text-2xl font-black text-slate-900 mt-1 tracking-tight font-mono tabular-nums">
-                  ₹{parseFloat(summary.totalSpent || 0).toFixed(2)}
-                </h3>
-                <p className="text-[11px] text-slate-500 mt-0.5">Across local stores</p>
-              </CardContent>
-            </Card>
+            <motion.div whileHover={{ y: -4 }} transition={{ duration: 0.2 }}>
+              <Card className="rounded-2xl border-slate-200/80 shadow-2xs bg-white hover:border-slate-300 hover:shadow-md transition">
+                <CardContent className="p-4 sm:p-5">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Total Spent</p>
+                  <h3 className="text-2xl font-black text-slate-900 mt-1 tracking-tight font-mono tabular-nums">
+                    ₹{parseFloat(summary.totalSpent || 0).toFixed(2)}
+                  </h3>
+                  <p className="text-[11px] text-slate-500 mt-0.5">Across local stores</p>
+                </CardContent>
+              </Card>
+            </motion.div>
 
-            <Card className="rounded-2xl border-amber-200/70 shadow-2xs bg-amber-50/30 hover:shadow-md transition-shadow">
-              <CardContent className="p-4 sm:p-5">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-amber-600">Active Pickups</p>
-                <h3 className="text-2xl font-black text-amber-700 mt-1 tracking-tight font-mono tabular-nums">
-                  {summary.activePickupsCount}
-                </h3>
-                <p className="text-[11px] text-amber-700/80 mt-0.5">Ready at counters</p>
-              </CardContent>
-            </Card>
+            <motion.div whileHover={{ y: -4 }} transition={{ duration: 0.2 }}>
+              <Card className="rounded-2xl border-amber-200/70 shadow-2xs bg-gradient-to-b from-amber-50/40 to-white hover:border-amber-300 hover:shadow-md transition">
+                <CardContent className="p-4 sm:p-5">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-amber-600">Active Pickups</p>
+                  <h3 className="text-2xl font-black text-amber-700 mt-1 tracking-tight font-mono tabular-nums">
+                    {summary.activePickupsCount}
+                  </h3>
+                  <p className="text-[11px] text-amber-700/80 mt-0.5">Ready at counters</p>
+                </CardContent>
+              </Card>
+            </motion.div>
 
-            <Card className="rounded-2xl border-emerald-200/70 shadow-2xs bg-emerald-50/30 hover:shadow-md transition-shadow">
-              <CardContent className="p-4 sm:p-5">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-600">Completed Orders</p>
-                <h3 className="text-2xl font-black text-emerald-700 mt-1 tracking-tight font-mono tabular-nums">
-                  {summary.completedCount}
-                </h3>
-                <p className="text-[11px] text-emerald-700/80 mt-0.5">Collected purchases</p>
-              </CardContent>
-            </Card>
+            <motion.div whileHover={{ y: -4 }} transition={{ duration: 0.2 }}>
+              <Card className="rounded-2xl border-emerald-200/70 shadow-2xs bg-gradient-to-b from-emerald-50/40 to-white hover:border-emerald-300 hover:shadow-md transition">
+                <CardContent className="p-4 sm:p-5">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-600">Completed Orders</p>
+                  <h3 className="text-2xl font-black text-emerald-700 mt-1 tracking-tight font-mono tabular-nums">
+                    {summary.completedCount}
+                  </h3>
+                  <p className="text-[11px] text-emerald-700/80 mt-0.5">Collected purchases</p>
+                </CardContent>
+              </Card>
+            </motion.div>
 
-            <Card className="rounded-2xl border-blue-200/70 shadow-2xs bg-blue-50/30 hover:shadow-md transition-shadow">
-              <CardContent className="p-4 sm:p-5">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-blue-600">Shops Visited</p>
-                <h3 className="text-2xl font-black text-blue-700 mt-1 tracking-tight font-mono tabular-nums">
-                  {summary.shopsCount}
-                </h3>
-                <p className="text-[11px] text-blue-700/80 mt-0.5">Supported vendors</p>
-              </CardContent>
-            </Card>
+            <motion.div whileHover={{ y: -4 }} transition={{ duration: 0.2 }}>
+              <Card className="rounded-2xl border-blue-200/70 shadow-2xs bg-gradient-to-b from-blue-50/40 to-white hover:border-blue-300 hover:shadow-md transition">
+                <CardContent className="p-4 sm:p-5">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-blue-600">Shops Visited</p>
+                  <h3 className="text-2xl font-black text-blue-700 mt-1 tracking-tight font-mono tabular-nums">
+                    {summary.shopsCount}
+                  </h3>
+                  <p className="text-[11px] text-blue-700/80 mt-0.5">Supported vendors</p>
+                </CardContent>
+              </Card>
+            </motion.div>
           </div>
         )}
 
@@ -599,7 +608,7 @@ function CustomerDashboard() {
                 </div>
                 <Button
                   onClick={() => navigate("/shops")}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold h-9 px-4 gap-1.5"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold h-9 px-4 gap-1.5 cursor-pointer btn-premium"
                 >
                   <Search className="w-3.5 h-3.5" />
                   <span>Browse Shops Now</span>
@@ -608,8 +617,10 @@ function CustomerDashboard() {
             ) : (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                 {activeOrders.map((o) => (
-                  <div
+                  <motion.div
                     key={o.id}
+                    whileHover={{ y: -4 }}
+                    transition={{ duration: 0.2 }}
                     className="border border-slate-200/90 rounded-2xl p-5 bg-gradient-to-b from-white to-slate-50/60 flex flex-col justify-between shadow-2xs space-y-4 hover:border-slate-300 transition"
                   >
                     <div>
@@ -631,12 +642,15 @@ function CustomerDashboard() {
 
                       {/* Pickup ID or Verification Notice */}
                       {o.pickupId ? (
-                        <div className="mt-4 p-4 rounded-2xl bg-slate-900 text-white flex items-center justify-between shadow-xs">
-                          <div>
-                            <p className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">
-                              Counter Pickup ID
-                            </p>
-                            <p className="text-2xl font-mono font-black text-emerald-400 tracking-wider mt-0.5">
+                        <div className="mt-4 p-4 rounded-2xl pickup-card-cyber text-white flex items-center justify-between shadow-lg">
+                          <div className="relative z-10">
+                            <div className="flex items-center gap-1.5">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                              <p className="text-[10px] uppercase tracking-wider text-emerald-400 font-mono font-bold">
+                                Counter Pickup ID
+                              </p>
+                            </div>
+                            <p className="text-2xl sm:text-3xl font-mono font-black text-emerald-300 tracking-widest mt-1">
                               {o.pickupId}
                             </p>
                           </div>
@@ -644,15 +658,15 @@ function CustomerDashboard() {
                             variant="secondary"
                             size="sm"
                             onClick={() => copyPickupId(o.pickupId)}
-                            className="bg-white/10 hover:bg-white/20 text-white text-xs h-8 px-3 rounded-lg border-0 gap-1.5"
+                            className="relative z-10 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 text-xs h-9 px-3 rounded-xl gap-1.5 active:scale-95 transition cursor-pointer"
                           >
                             {copiedId === o.pickupId ? (
                               <Check className="w-3.5 h-3.5 text-emerald-400" />
                             ) : (
                               <Copy className="w-3.5 h-3.5" />
                             )}
-                            <span className="font-semibold text-[11px]">
-                              {copiedId === o.pickupId ? "Copied" : "Copy"}
+                            <span className="font-bold text-[11px]">
+                              {copiedId === o.pickupId ? "Copied!" : "Copy"}
                             </span>
                           </Button>
                         </div>
@@ -733,7 +747,7 @@ function CustomerDashboard() {
                         )}
                       </div>
                     </div>
-                  </div>
+                  </motion.div>
                 ))}
               </div>
             )}

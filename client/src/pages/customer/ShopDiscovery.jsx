@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
   Search,
@@ -217,14 +218,19 @@ function ShopDiscovery() {
         )}
 
         {userCoords && (
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between bg-white border border-emerald-200/90 text-slate-800 text-xs px-4 py-3 rounded-2xl shadow-2xs gap-3">
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex flex-col sm:flex-row sm:items-center justify-between bg-white border border-emerald-200/90 text-slate-800 text-xs px-4 py-3 rounded-2xl shadow-2xs gap-3 relative overflow-hidden"
+          >
+            <div className="absolute right-0 top-0 bottom-0 w-32 bg-gradient-to-l from-emerald-500/5 to-transparent pointer-events-none" />
             <span className="flex items-center gap-2.5 font-medium">
-              <span className="relative flex h-3 w-3">
+              <span className="relative flex h-3.5 w-3.5 items-center justify-center">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500" />
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
               </span>
               <span>
-                <strong className="text-emerald-900 font-bold">GPS Proximity Active:</strong> Showing verified neighbourhood stores strictly within <strong>2 km</strong> of your coordinates.
+                <strong className="text-emerald-950 font-bold">Radar Filter Active:</strong> Showing verified stores strictly within <strong className="text-emerald-700 font-mono font-bold">2.0 km</strong> of your coordinates.
               </span>
             </span>
             <Button
@@ -232,19 +238,19 @@ function ShopDiscovery() {
               variant="outline"
               onClick={handleDetectLocation}
               disabled={detectingGps}
-              className="text-emerald-800 border-emerald-300 hover:bg-emerald-50 font-bold text-xs h-8 px-3 rounded-xl gap-1.5 shrink-0 self-end sm:self-auto"
+              className="text-emerald-800 border-emerald-300 hover:bg-emerald-50 font-bold text-xs h-8 px-3 rounded-xl gap-1.5 shrink-0 self-end sm:self-auto cursor-pointer"
             >
               <Navigation className={`w-3.5 h-3.5 ${detectingGps ? "animate-spin text-emerald-600" : ""}`} />
-              <span>{detectingGps ? "Locating..." : "Refresh GPS"}</span>
+              <span>{detectingGps ? "Pinging..." : "Refresh GPS"}</span>
             </Button>
-          </div>
+          </motion.div>
         )}
 
         {/* Shops Grid */}
         {loading || detectingGps ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {[1, 2, 3, 4, 5, 6].map((idx) => (
-              <Card key={idx} className="p-6 rounded-3xl border-slate-200/80 space-y-4 animate-pulse">
+              <Card key={idx} className="p-6 rounded-3xl border-slate-200/80 space-y-4 animate-pulse bg-white">
                 <div className="flex justify-between items-center">
                   <div className="w-20 h-5 bg-slate-200 rounded-lg" />
                   <div className="w-16 h-5 bg-slate-200 rounded-full" />
@@ -256,173 +262,205 @@ function ShopDiscovery() {
             ))}
           </div>
         ) : !userCoords && !searchQuery.trim() ? (
-          <Card className="py-14 text-center rounded-3xl border-slate-200/90 shadow-sm bg-white overflow-hidden">
-            <CardContent className="space-y-4 max-w-lg mx-auto px-6">
-              <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-3xl border border-emerald-200/80 flex items-center justify-center mx-auto shadow-sm">
-                <Navigation className="w-8 h-8 text-emerald-600" />
-              </div>
-              <Badge variant="outline" className="text-xs px-3 py-1 font-bold bg-emerald-50 text-emerald-800 border-emerald-300">
-                📍 2 km Proximity Boundary
-              </Badge>
-              <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-                Detect Location to Locate Nearby Shops
-              </h3>
-              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-                To prevent locating stores that are too far away for counter pickup, ShopFlow strictly displays stores within a 2 km range. Click below to detect your live GPS location.
-              </p>
-              <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
-                <Button
-                  onClick={handleDetectLocation}
-                  disabled={detectingGps}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-11 px-6 rounded-2xl gap-2 text-xs sm:text-sm shadow-md shadow-emerald-600/20 w-full sm:w-auto cursor-pointer"
-                >
-                  <Navigation className={`w-4 h-4 ${detectingGps ? "animate-spin" : ""}`} />
-                  <span>{detectingGps ? "Detecting Coordinates..." : "Detect Nearby Shops (GPS)"}</span>
-                </Button>
-              </div>
-              <p className="text-[11px] text-slate-400">
-                Or type a specific Shop ID or store name in the search bar above.
-              </p>
-            </CardContent>
-          </Card>
-        ) : shops.length === 0 ? (
-          <Card className="py-14 text-center text-slate-500 rounded-3xl border-slate-200/90 shadow-xs bg-white">
-            <CardContent className="space-y-4 px-6">
-              <div className="w-16 h-16 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto text-2xl">
-                <Store className="w-8 h-8 text-slate-400" />
-              </div>
-              {userCoords ? (
-                <>
-                  <Badge variant="warning" className="text-xs px-3 py-1 font-bold">
-                    Nearby Range: 2 km
-                  </Badge>
-                  <h3 className="text-lg sm:text-xl font-bold text-slate-900">
-                    No nearby shop found in range of 2 km.
-                  </h3>
-                  <p className="text-xs sm:text-sm text-slate-500 max-w-md mx-auto leading-relaxed">
-                    We could not find any active verified store within 2 km of your current coordinates. If any shop is near lesser than 2 km, it will be displayed here automatically.
-                  </p>
-                  <div className="pt-2 flex justify-center">
-                    <Button
-                      variant="success"
-                      onClick={handleDetectLocation}
-                      disabled={detectingGps}
-                      className="rounded-xl text-xs font-bold h-9 px-4 gap-1.5"
-                    >
-                      <Navigation className={`w-3.5 h-3.5 ${detectingGps ? "animate-spin" : ""}`} />
-                      <span>{detectingGps ? "Detecting..." : "Refresh GPS Location"}</span>
-                    </Button>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.3 }}
+          >
+            <Card className="py-14 text-center rounded-3xl border-slate-200/90 shadow-sm bg-white overflow-hidden relative">
+              <div className="absolute inset-0 bg-dot-subtle pointer-events-none opacity-50" />
+              <CardContent className="space-y-4 max-w-lg mx-auto px-6 relative z-10">
+                <div className="relative w-20 h-20 mx-auto flex items-center justify-center">
+                  <div className="radar-ring w-20 h-20" />
+                  <div className="radar-ring-2 w-20 h-20" />
+                  <div className="w-14 h-14 bg-gradient-to-tr from-emerald-600 to-teal-500 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/25 relative z-10">
+                    <Navigation className="w-7 h-7" />
                   </div>
-                </>
-              ) : (
-                <>
-                  <h3 className="text-lg font-bold text-slate-900">No Stores Matching Search</h3>
-                  <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                    No shops match "{searchQuery}". Please check the shop name or Shop ID.
-                  </p>
+                </div>
+                <Badge variant="outline" className="text-xs px-3 py-1 font-bold bg-emerald-50 text-emerald-800 border-emerald-300">
+                  📍 2.0 km Proximity Radius
+                </Badge>
+                <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                  Detect Location to Locate Nearby Shops
+                </h3>
+                <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                  To prevent locating stores that are too far away for counter pickup, ShopFlow strictly displays stores within a 2 km range. Click below to detect your live GPS location.
+                </p>
+                <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
                   <Button
-                    variant="outline"
-                    onClick={() => setSearchQuery("")}
-                    className="rounded-xl text-xs font-bold h-9 mt-2"
+                    onClick={handleDetectLocation}
+                    disabled={detectingGps}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-11 px-6 rounded-2xl gap-2 text-xs sm:text-sm shadow-md shadow-emerald-600/20 w-full sm:w-auto cursor-pointer btn-premium"
                   >
-                    Clear Search
+                    <Navigation className={`w-4 h-4 ${detectingGps ? "animate-spin" : ""}`} />
+                    <span>{detectingGps ? "Detecting Coordinates..." : "Detect Nearby Shops (GPS)"}</span>
                   </Button>
-                </>
-              )}
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {shops.map((shop) => {
-              const isShopSuspended = shop.isActive === false;
-              return (
-                <Card
-                  key={shop.id}
-                  className={`rounded-3xl transition-all duration-300 flex flex-col justify-between overflow-hidden bg-white ${
-                    isShopSuspended
-                      ? "border-rose-300 bg-rose-50/20 shadow-none opacity-90"
-                      : "border-slate-200/90 hover:border-slate-300 hover:shadow-xl hover:-translate-y-1 group"
-                  }`}
-                >
-                  <div className="p-6 space-y-4">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-mono text-xs font-bold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">
-                        {shop.shopId}
-                      </span>
-
-                      {isShopSuspended ? (
-                        <Badge variant="destructive" className="font-bold text-[10px] gap-1 px-2 py-0.5 bg-rose-600 text-white uppercase tracking-wider">
-                          ⚠️ Suspended
-                        </Badge>
-                      ) : shop.distanceKm !== null && shop.distanceKm !== undefined ? (
-                        <span className="inline-flex items-center gap-1.5 font-bold text-xs py-1 px-2.5 bg-emerald-50 text-emerald-800 border border-emerald-300/80 rounded-full shadow-2xs">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                          <span className="font-mono tabular-nums">{shop.distanceKm} km away</span>
-                        </span>
-                      ) : (
-                        <Badge variant="secondary" className="text-[10px] font-semibold">
-                          Verified Store
-                        </Badge>
-                      )}
-                    </div>
-
-                    <div>
-                      <h3
-                        className={`text-xl font-black tracking-tight ${
-                          isShopSuspended
-                            ? "text-slate-700"
-                            : "text-slate-900 group-hover:text-blue-600 transition-colors"
-                        }`}
+                </div>
+                <p className="text-[11px] text-slate-400">
+                  Or type a specific Shop ID or store name in the search bar above.
+                </p>
+              </CardContent>
+            </Card>
+          </motion.div>
+        ) : shops.length === 0 ? (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <Card className="py-14 text-center text-slate-500 rounded-3xl border-slate-200/90 shadow-xs bg-white relative overflow-hidden">
+              <div className="absolute inset-0 bg-dot-subtle pointer-events-none opacity-40" />
+              <CardContent className="space-y-4 px-6 relative z-10">
+                <div className="w-16 h-16 bg-slate-100 text-slate-400 rounded-2xl flex items-center justify-center mx-auto text-2xl">
+                  <Store className="w-8 h-8 text-slate-400" />
+                </div>
+                {userCoords ? (
+                  <>
+                    <Badge variant="warning" className="text-xs px-3 py-1 font-bold">
+                      Nearby Range: 2 km
+                    </Badge>
+                    <h3 className="text-lg sm:text-xl font-bold text-slate-900">
+                      No nearby shop found in range of 2 km.
+                    </h3>
+                    <p className="text-xs sm:text-sm text-slate-500 max-w-md mx-auto leading-relaxed">
+                      We could not find any active verified store within 2 km of your current coordinates. If any shop is near lesser than 2 km, it will be displayed here automatically.
+                    </p>
+                    <div className="pt-2 flex justify-center">
+                      <Button
+                        variant="success"
+                        onClick={handleDetectLocation}
+                        disabled={detectingGps}
+                        className="rounded-xl text-xs font-bold h-9 px-4 gap-1.5 cursor-pointer btn-premium"
                       >
-                        {shop.shopName}
-                      </h3>
-                      <p className="text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed">
-                        {shop.address || "Local neighborhood store"}
-                      </p>
-                      {isShopSuspended && (
-                        <p className="text-[11px] font-bold text-rose-700 mt-2 bg-rose-50 border border-rose-200 px-2.5 py-1.5 rounded-xl">
-                          ⚠️ Suspended until further action is taken by administration.
-                        </p>
-                      )}
+                        <Navigation className={`w-3.5 h-3.5 ${detectingGps ? "animate-spin" : ""}`} />
+                        <span>{detectingGps ? "Detecting..." : "Refresh GPS Location"}</span>
+                      </Button>
                     </div>
-
-                    <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-                      <span className="flex items-center gap-1.5 text-slate-600 font-mono text-[11px]">
-                        <Phone className="w-3.5 h-3.5 text-slate-400" />
-                        <span>{shop.contactNumber || "N/A"}</span>
-                      </span>
-                      <span className="font-bold text-[11px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md font-mono tabular-nums">
-                        {shop._count?.products || 0} items
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="p-4 bg-slate-50/50 border-t border-slate-100">
+                  </>
+                ) : (
+                  <>
+                    <h3 className="text-lg font-bold text-slate-900">No Stores Matching Search</h3>
+                    <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                      No shops match "{searchQuery}". Please check the shop name or Shop ID.
+                    </p>
                     <Button
-                      onClick={() => navigate(`/shops/${shop.shopId}`)}
-                      disabled={isShopSuspended || customer?.isActive === false}
-                      className={`w-full font-bold h-10 rounded-xl gap-2 shadow-sm transition active:scale-[0.98] ${
+                      variant="outline"
+                      onClick={() => setSearchQuery("")}
+                      className="rounded-xl text-xs font-bold h-9 mt-2 cursor-pointer"
+                    >
+                      Clear Search
+                    </Button>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </motion.div>
+        ) : (
+          <motion.div
+            layout
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"
+          >
+            <AnimatePresence>
+              {shops.map((shop) => {
+                const isShopSuspended = shop.isActive === false;
+                return (
+                  <motion.div
+                    key={shop.id}
+                    layout
+                    initial={{ opacity: 0, y: 15 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.96 }}
+                    transition={{ duration: 0.25 }}
+                    whileHover={{ y: -6 }}
+                    className="h-full"
+                  >
+                    <Card
+                      className={`h-full rounded-3xl transition-all duration-300 flex flex-col justify-between overflow-hidden bg-white ${
                         isShopSuspended
-                          ? "bg-rose-100 text-rose-800 border border-rose-300 cursor-not-allowed hover:bg-rose-100"
-                          : customer?.isActive === false
-                          ? "bg-slate-200 text-slate-500 cursor-not-allowed"
-                          : "bg-slate-900 hover:bg-blue-600 text-white"
+                          ? "border-rose-300 bg-rose-50/20 shadow-none opacity-90"
+                          : "border-slate-200/90 hover:border-blue-300 hover:shadow-xl group"
                       }`}
                     >
-                      <span>
-                        {isShopSuspended
-                          ? "Suspended (Action Pending)"
-                          : customer?.isActive === false
-                          ? "Browsing Disabled"
-                          : "Visit Storefront"}
-                      </span>
-                      {!isShopSuspended && customer?.isActive !== false && <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />}
-                    </Button>
-                  </div>
-                </Card>
-              );
-            })}
-          </div>
+                      <div className="p-6 space-y-4">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-mono text-xs font-bold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">
+                            {shop.shopId}
+                          </span>
+
+                          {isShopSuspended ? (
+                            <Badge variant="destructive" className="font-bold text-[10px] gap-1 px-2 py-0.5 bg-rose-600 text-white uppercase tracking-wider">
+                              ⚠️ Suspended
+                            </Badge>
+                          ) : shop.distanceKm !== null && shop.distanceKm !== undefined ? (
+                            <span className="inline-flex items-center gap-1.5 font-bold text-xs py-1 px-2.5 bg-emerald-50 text-emerald-800 border border-emerald-300/80 rounded-full shadow-2xs">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                              <span className="font-mono tabular-nums">{shop.distanceKm} km away</span>
+                            </span>
+                          ) : (
+                            <Badge variant="secondary" className="text-[10px] font-semibold">
+                              Verified Store
+                            </Badge>
+                          )}
+                        </div>
+
+                        <div>
+                          <h3
+                            className={`text-xl font-black tracking-tight ${
+                              isShopSuspended
+                                ? "text-slate-700"
+                                : "text-slate-900 group-hover:text-blue-600 transition-colors"
+                            }`}
+                          >
+                            {shop.shopName}
+                          </h3>
+                          <p className="text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed">
+                            {shop.address || "Local neighborhood store"}
+                          </p>
+                          {isShopSuspended && (
+                            <p className="text-[11px] font-bold text-rose-700 mt-2 bg-rose-50 border border-rose-200 px-2.5 py-1.5 rounded-xl">
+                              ⚠️ Suspended until further action is taken by administration.
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                          <span className="flex items-center gap-1.5 text-slate-600 font-mono text-[11px]">
+                            <Phone className="w-3.5 h-3.5 text-slate-400" />
+                            <span>{shop.contactNumber || "N/A"}</span>
+                          </span>
+                          <span className="font-bold text-[11px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md font-mono tabular-nums">
+                            {shop._count?.products || 0} items
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="p-4 bg-slate-50/50 border-t border-slate-100">
+                        <Button
+                          onClick={() => navigate(`/shops/${shop.shopId}`)}
+                          disabled={isShopSuspended || customer?.isActive === false}
+                          className={`w-full font-bold h-10 rounded-xl gap-2 shadow-sm transition active:scale-[0.98] ${
+                            isShopSuspended
+                              ? "bg-rose-100 text-rose-800 border border-rose-300 cursor-not-allowed hover:bg-rose-100"
+                              : customer?.isActive === false
+                              ? "bg-slate-200 text-slate-500 cursor-not-allowed"
+                              : "bg-slate-900 hover:bg-blue-600 text-white cursor-pointer"
+                          }`}
+                        >
+                          <span>
+                            {isShopSuspended
+                              ? "Suspended (Action Pending)"
+                              : customer?.isActive === false
+                              ? "Browsing Disabled"
+                              : "Visit Storefront"}
+                          </span>
+                          {!isShopSuspended && customer?.isActive !== false && <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />}
+                        </Button>
+                      </div>
+                    </Card>
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
+          </motion.div>
         )}
       </main>
     </div>

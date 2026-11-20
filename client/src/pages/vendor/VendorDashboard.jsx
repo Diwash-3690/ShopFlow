@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
+import { motion } from "framer-motion";
 import {
   LogOut,
   Briefcase,
@@ -1669,85 +1670,93 @@ function VendorDashboard() {
 
             {/* 4 Financial KPI Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Card className="rounded-2xl border-slate-200/90 shadow-2xs bg-white hover:shadow-md transition-shadow">
-                <CardContent className="p-5">
-                  <div className="flex items-center justify-between text-xs text-slate-400 font-bold uppercase">
-                    <span>Today's Sales</span>
-                    <DollarSign className="w-4 h-4 text-emerald-600" />
-                  </div>
-                  <h2 className="text-2xl font-black text-slate-900 mt-2 tracking-tight font-mono tabular-nums">
-                    ₹{parseFloat(sales.today || 0).toFixed(2)}
-                  </h2>
-                  <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
-                    <span className="text-slate-500 font-medium">Profit:</span>
-                    <span className="font-bold text-emerald-600 font-mono tabular-nums">
-                      +₹{parseFloat(sales.todayProfit || 0).toFixed(2)}
-                    </span>
-                  </div>
-                  <p className="text-[10px] text-slate-400 mt-1">
-                    {sales.todayOrdersCount} verified order{sales.todayOrdersCount === 1 ? "" : "s"} today
-                  </p>
-                </CardContent>
-              </Card>
+              <motion.div whileHover={{ y: -4 }} transition={{ duration: 0.2 }}>
+                <Card className="rounded-2xl border-slate-200/90 shadow-2xs bg-white hover:border-slate-300 hover:shadow-md transition">
+                  <CardContent className="p-5">
+                    <div className="flex items-center justify-between text-xs text-slate-400 font-bold uppercase">
+                      <span>Today's Sales</span>
+                      <DollarSign className="w-4 h-4 text-emerald-600" />
+                    </div>
+                    <h2 className="text-2xl font-black text-slate-900 mt-2 tracking-tight font-mono tabular-nums">
+                      ₹{parseFloat(sales.today || 0).toFixed(2)}
+                    </h2>
+                    <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
+                      <span className="text-slate-500 font-medium">Profit:</span>
+                      <span className="font-bold text-emerald-600 font-mono tabular-nums">
+                        +₹{parseFloat(sales.todayProfit || 0).toFixed(2)}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-slate-400 mt-1">
+                      {sales.todayOrdersCount} verified order{sales.todayOrdersCount === 1 ? "" : "s"} today
+                    </p>
+                  </CardContent>
+                </Card>
+              </motion.div>
 
-              <Card className="rounded-2xl border-slate-200/90 shadow-2xs bg-white hover:shadow-md transition-shadow">
-                <CardContent className="p-5">
-                  <div className="flex items-center justify-between text-xs text-slate-400 font-bold uppercase">
-                    <span>This Week</span>
-                    <Calendar className="w-4 h-4 text-blue-600" />
-                  </div>
-                  <h2 className="text-2xl font-black text-slate-900 mt-2 tracking-tight font-mono tabular-nums">
-                    ₹{parseFloat(sales.weekly || 0).toFixed(2)}
-                  </h2>
-                  <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
-                    <span className="text-slate-500 font-medium">Profit:</span>
-                    <span className="font-bold text-emerald-600 font-mono tabular-nums">
-                      +₹{parseFloat(sales.weeklyProfit || 0).toFixed(2)}
-                    </span>
-                  </div>
-                  <p className="text-[10px] text-slate-400 mt-1">Last 7 rolling days</p>
-                </CardContent>
-              </Card>
+              <motion.div whileHover={{ y: -4 }} transition={{ duration: 0.2 }}>
+                <Card className="rounded-2xl border-slate-200/90 shadow-2xs bg-white hover:border-blue-300 hover:shadow-md transition">
+                  <CardContent className="p-5">
+                    <div className="flex items-center justify-between text-xs text-slate-400 font-bold uppercase">
+                      <span>This Week</span>
+                      <Calendar className="w-4 h-4 text-blue-600" />
+                    </div>
+                    <h2 className="text-2xl font-black text-slate-900 mt-2 tracking-tight font-mono tabular-nums">
+                      ₹{parseFloat(sales.weekly || 0).toFixed(2)}
+                    </h2>
+                    <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
+                      <span className="text-slate-500 font-medium">Profit:</span>
+                      <span className="font-bold text-emerald-600 font-mono tabular-nums">
+                        +₹{parseFloat(sales.weeklyProfit || 0).toFixed(2)}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-slate-400 mt-1">Last 7 rolling days</p>
+                  </CardContent>
+                </Card>
+              </motion.div>
 
-              <Card className="rounded-2xl border-slate-200/90 shadow-2xs bg-white hover:shadow-md transition-shadow">
-                <CardContent className="p-5">
-                  <div className="flex items-center justify-between text-xs text-slate-400 font-bold uppercase">
-                    <span>This Month</span>
-                    <TrendingUp className="w-4 h-4 text-indigo-600" />
-                  </div>
-                  <h2 className="text-2xl font-black text-slate-900 mt-2 tracking-tight font-mono tabular-nums">
-                    ₹{parseFloat(sales.monthly || 0).toFixed(2)}
-                  </h2>
-                  <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
-                    <span className="text-slate-500 font-medium">Profit:</span>
-                    <span className="font-bold text-emerald-600 font-mono tabular-nums">
-                      +₹{parseFloat(sales.monthlyProfit || 0).toFixed(2)}
-                    </span>
-                  </div>
-                  <p className="text-[10px] text-slate-400 mt-1">Last 30 rolling days</p>
-                </CardContent>
-              </Card>
+              <motion.div whileHover={{ y: -4 }} transition={{ duration: 0.2 }}>
+                <Card className="rounded-2xl border-slate-200/90 shadow-2xs bg-white hover:border-indigo-300 hover:shadow-md transition">
+                  <CardContent className="p-5">
+                    <div className="flex items-center justify-between text-xs text-slate-400 font-bold uppercase">
+                      <span>This Month</span>
+                      <TrendingUp className="w-4 h-4 text-indigo-600" />
+                    </div>
+                    <h2 className="text-2xl font-black text-slate-900 mt-2 tracking-tight font-mono tabular-nums">
+                      ₹{parseFloat(sales.monthly || 0).toFixed(2)}
+                    </h2>
+                    <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
+                      <span className="text-slate-500 font-medium">Profit:</span>
+                      <span className="font-bold text-emerald-600 font-mono tabular-nums">
+                        +₹{parseFloat(sales.monthlyProfit || 0).toFixed(2)}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-slate-400 mt-1">Last 30 rolling days</p>
+                  </CardContent>
+                </Card>
+              </motion.div>
 
-              <Card className="rounded-2xl border-slate-200/90 shadow-2xs bg-white hover:shadow-md transition-shadow">
-                <CardContent className="p-5">
-                  <div className="flex items-center justify-between text-xs text-slate-400 font-bold uppercase">
-                    <span>Total Sales</span>
-                    <CheckCircle2 className="w-4 h-4 text-purple-600" />
-                  </div>
-                  <h2 className="text-2xl font-black text-slate-900 mt-2 tracking-tight font-mono tabular-nums">
-                    ₹{parseFloat(sales.total || 0).toFixed(2)}
-                  </h2>
-                  <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
-                    <span className="text-slate-500 font-medium">Total Profit:</span>
-                    <span className="font-bold text-emerald-600 font-mono tabular-nums">
-                      +₹{parseFloat(sales.totalProfit || 0).toFixed(2)}
-                    </span>
-                  </div>
-                  <p className="text-[10px] text-slate-400 mt-1">
-                    {orderStatus.totalVerifiedOrders} lifetime completed sale{orderStatus.totalVerifiedOrders === 1 ? "" : "s"}
-                  </p>
-                </CardContent>
-              </Card>
+              <motion.div whileHover={{ y: -4 }} transition={{ duration: 0.2 }}>
+                <Card className="rounded-2xl border-slate-200/90 shadow-2xs bg-white hover:border-purple-300 hover:shadow-md transition">
+                  <CardContent className="p-5">
+                    <div className="flex items-center justify-between text-xs text-slate-400 font-bold uppercase">
+                      <span>Total Sales</span>
+                      <CheckCircle2 className="w-4 h-4 text-purple-600" />
+                    </div>
+                    <h2 className="text-2xl font-black text-slate-900 mt-2 tracking-tight font-mono tabular-nums">
+                      ₹{parseFloat(sales.total || 0).toFixed(2)}
+                    </h2>
+                    <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
+                      <span className="text-slate-500 font-medium">Total Profit:</span>
+                      <span className="font-bold text-emerald-600 font-mono tabular-nums">
+                        +₹{parseFloat(sales.totalProfit || 0).toFixed(2)}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-slate-400 mt-1">
+                      {orderStatus.totalVerifiedOrders} lifetime completed sale{orderStatus.totalVerifiedOrders === 1 ? "" : "s"}
+                    </p>
+                  </CardContent>
+                </Card>
+              </motion.div>
             </div>
 
             {/* Sales Channel Ratio Bar */}
@@ -1782,28 +1791,30 @@ function VendorDashboard() {
             to="/vendor/products"
             className="group"
           >
-            <Card className="h-full rounded-2xl border-slate-200/90 hover:border-blue-400 hover:shadow-md transition flex flex-col justify-between p-5 bg-white">
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
-                    <Box className="w-5 h-5" />
+            <motion.div whileHover={{ y: -5 }} transition={{ duration: 0.2 }} className="h-full">
+              <Card className="h-full rounded-2xl border-slate-200/90 hover:border-blue-400 hover:shadow-lg transition flex flex-col justify-between p-5 bg-white">
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                      <Box className="w-5 h-5" />
+                    </div>
+                    <Badge variant="secondary" className="font-bold text-[11px] bg-blue-50 text-blue-700">
+                      {inventory.totalProducts} items
+                    </Badge>
                   </div>
-                  <Badge variant="secondary" className="font-bold text-[11px] bg-blue-50 text-blue-700">
-                    {inventory.totalProducts} items
-                  </Badge>
+                  <h4 className="font-bold text-slate-900 group-hover:text-blue-600 transition text-sm">
+                    Products & Inventory
+                  </h4>
+                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                    Add products, set cost/selling prices, and update stock counts.
+                  </p>
                 </div>
-                <h4 className="font-bold text-slate-900 group-hover:text-blue-600 transition text-sm">
-                  Products & Inventory
-                </h4>
-                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                  Add products, set cost/selling prices, and update stock counts.
-                </p>
-              </div>
-              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-blue-600">
-                <span>Manage Products</span>
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition" />
-              </div>
-            </Card>
+                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-blue-600">
+                  <span>Manage Products</span>
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition" />
+                </div>
+              </Card>
+            </motion.div>
           </Link>
 
           {/* Categories Card */}
@@ -1811,28 +1822,30 @@ function VendorDashboard() {
             to="/vendor/categories"
             className="group"
           >
-            <Card className="h-full rounded-2xl border-slate-200/90 hover:border-indigo-400 hover:shadow-md transition flex flex-col justify-between p-5 bg-white">
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
-                    <List className="w-5 h-5" />
+            <motion.div whileHover={{ y: -5 }} transition={{ duration: 0.2 }} className="h-full">
+              <Card className="h-full rounded-2xl border-slate-200/90 hover:border-indigo-400 hover:shadow-lg transition flex flex-col justify-between p-5 bg-white">
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                      <List className="w-5 h-5" />
+                    </div>
+                    <Badge variant="secondary" className="font-bold text-[11px] bg-indigo-50 text-indigo-700">
+                      {inventory.totalCategories} categories
+                    </Badge>
                   </div>
-                  <Badge variant="secondary" className="font-bold text-[11px] bg-indigo-50 text-indigo-700">
-                    {inventory.totalCategories} categories
-                  </Badge>
+                  <h4 className="font-bold text-slate-900 group-hover:text-indigo-600 transition text-sm">
+                    Categories
+                  </h4>
+                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                    Organize products into shop-specific categories.
+                  </p>
                 </div>
-                <h4 className="font-bold text-slate-900 group-hover:text-indigo-600 transition text-sm">
-                  Categories
-                </h4>
-                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                  Organize products into shop-specific categories.
-                </p>
-              </div>
-              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-indigo-600">
-                <span>Manage Categories</span>
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition" />
-              </div>
-            </Card>
+                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-indigo-600">
+                  <span>Manage Categories</span>
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition" />
+                </div>
+              </Card>
+            </motion.div>
           </Link>
 
           {/* Incoming Orders Card */}
@@ -1840,31 +1853,33 @@ function VendorDashboard() {
             to="/vendor/orders"
             className="group"
           >
-            <Card className="h-full rounded-2xl border-slate-200/90 hover:border-emerald-400 hover:shadow-md transition flex flex-col justify-between p-5 bg-white">
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                    <ShoppingBag className="w-5 h-5" />
+            <motion.div whileHover={{ y: -5 }} transition={{ duration: 0.2 }} className="h-full">
+              <Card className="h-full rounded-2xl border-slate-200/90 hover:border-emerald-400 hover:shadow-lg transition flex flex-col justify-between p-5 bg-white">
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                      <ShoppingBag className="w-5 h-5" />
+                    </div>
+                    <Badge
+                      variant={orderStatus.awaitingPickupCount > 0 ? "warning" : "success"}
+                      className="font-bold text-[11px]"
+                    >
+                      {orderStatus.awaitingPickupCount} ready for pickup
+                    </Badge>
                   </div>
-                  <Badge
-                    variant={orderStatus.awaitingPickupCount > 0 ? "warning" : "success"}
-                    className="font-bold text-[11px]"
-                  >
-                    {orderStatus.awaitingPickupCount} ready for pickup
-                  </Badge>
+                  <h4 className="font-bold text-slate-900 group-hover:text-emerald-600 transition text-sm">
+                    Incoming Orders & Pickups
+                  </h4>
+                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                    Verify customer direct UPI payments and match pickup IDs.
+                  </p>
                 </div>
-                <h4 className="font-bold text-slate-900 group-hover:text-emerald-600 transition text-sm">
-                  Incoming Orders & Pickups
-                </h4>
-                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                  Verify customer direct UPI payments and match pickup IDs.
-                </p>
-              </div>
-              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-emerald-600">
-                <span>View Order Queue</span>
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition" />
-              </div>
-            </Card>
+                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-emerald-600">
+                  <span>View Order Queue</span>
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition" />
+                </div>
+              </Card>
+            </motion.div>
           </Link>
 
           {/* Walk-in POS Billing Card */}
@@ -1872,28 +1887,30 @@ function VendorDashboard() {
             to="/vendor/pos"
             className="group"
           >
-            <Card className="h-full rounded-2xl border-slate-200/90 hover:border-purple-400 hover:shadow-md transition flex flex-col justify-between p-5 bg-white">
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center">
-                    <DollarSign className="w-5 h-5" />
+            <motion.div whileHover={{ y: -5 }} transition={{ duration: 0.2 }} className="h-full">
+              <Card className="h-full rounded-2xl border-slate-200/90 hover:border-purple-400 hover:shadow-lg transition flex flex-col justify-between p-5 bg-white">
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center">
+                      <DollarSign className="w-5 h-5" />
+                    </div>
+                    <Badge variant="purple" className="font-bold text-[11px]">
+                      Quick POS
+                    </Badge>
                   </div>
-                  <Badge variant="purple" className="font-bold text-[11px]">
-                    Quick POS
-                  </Badge>
+                  <h4 className="font-bold text-slate-900 group-hover:text-purple-600 transition text-sm">
+                    Walk-in POS Billing
+                  </h4>
+                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                    Point of sale counter terminal with instant receipt printing.
+                  </p>
                 </div>
-                <h4 className="font-bold text-slate-900 group-hover:text-purple-600 transition text-sm">
-                  Walk-in POS Billing
-                </h4>
-                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                  Point of sale counter terminal with instant receipt printing.
-                </p>
-              </div>
-              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-purple-600">
-                <span>Open POS Counter</span>
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition" />
-              </div>
-            </Card>
+                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-purple-600">
+                  <span>Open POS Counter</span>
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition" />
+                </div>
+              </Card>
+            </motion.div>
           </Link>
         </div>
 

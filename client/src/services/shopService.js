@@ -42,65 +42,56 @@ export const reverseGeocode = async (lat, lng) => {
   const longitude = parseFloat(lng);
   if (isNaN(latitude) || isNaN(longitude)) return "";
 
-  // 1. Primary Strategy: Backend Proxy (/api/shops/reverse-geocode)
-  // Backend has full Node.js network access, sets compliant User-Agent headers, and bypasses browser CORS limitations
-  try {
+  // Concurrently race Backend Proxy, BigDataCloud, and OSM Nominatim for instant (<600ms) resolution
+  const fetchBackend = async () => {
     const response = await api.get("/shops/reverse-geocode", {
       params: { lat: latitude, lng: longitude },
-      timeout: 6000,
+      timeout: 5000,
     });
-    if (response.data?.success && response.data?.address && response.data.address.trim()) {
+    if (response.data?.success && response.data?.address?.trim()) {
       return response.data.address.trim();
     }
-  } catch (e) {
-    // Proceed to direct browser fallback
-  }
+    throw new Error("Backend proxy empty");
+  };
 
-  // 2. Direct Browser Fallback: OpenStreetMap Nominatim
-  try {
+  const fetchBDC = async () => {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 3500);
+    const timeout = setTimeout(() => controller.abort(), 4000);
+    const res = await fetch(
+      `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`,
+      { signal: controller.signal }
+    );
+    clearTimeout(timeout);
+    if (!res.ok) throw new Error("BDC error");
+    const bdcData = await res.json();
+    const parts = [
+      bdcData.locality,
+      bdcData.city,
+      bdcData.principalSubdivision,
+      bdcData.postcode,
+      bdcData.countryName,
+    ].filter(Boolean);
+    if (parts.length > 0) return parts.join(", ");
+    throw new Error("BDC empty");
+  };
+
+  const fetchOSM = async () => {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 4000);
     const res = await fetch(
       `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`,
       { signal: controller.signal }
     );
     clearTimeout(timeout);
-    if (res.ok) {
-      const data = await res.json();
-      if (data?.display_name && data.display_name.trim()) {
-        return data.display_name.trim();
-      }
-    }
-  } catch (e) {
-    // Proceed to next fallback
-  }
+    if (!res.ok) throw new Error("OSM error");
+    const data = await res.json();
+    if (data?.display_name?.trim()) return data.display_name.trim();
+    throw new Error("OSM empty");
+  };
 
-  // 3. Fallback: BigDataCloud Client API (Designed for browser client-side use)
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 3000);
-    const bdcRes = await fetch(
-      `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`,
-      { signal: controller.signal }
-    );
-    clearTimeout(timeout);
-    if (bdcRes.ok) {
-      const bdcData = await bdcRes.json();
-      const parts = [
-        bdcData.locality,
-        bdcData.city,
-        bdcData.principalSubdivision,
-        bdcData.postcode,
-        bdcData.countryName,
-      ].filter(Boolean);
-      if (parts.length > 0) {
-        return parts.join(", ");
-      }
-    }
-  } catch (e) {
-    // Proceed to guaranteed fallback
+    return await Promise.any([fetchBackend(), fetchBDC(), fetchOSM()]);
+  } catch (err) {
+    return `Location near GPS (${latitude.toFixed(6)}, ${longitude.toFixed(6)})`;
   }
-
-  // 4. Guaranteed fallback so the address field is NEVER empty
-  return `Location near GPS (${latitude.toFixed(6)}, ${longitude.toFixed(6)})`;
 };

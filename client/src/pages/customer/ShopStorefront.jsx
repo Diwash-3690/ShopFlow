@@ -1,5 +1,6 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
   ShoppingBag,
@@ -673,65 +674,79 @@ function ShopStorefront() {
                   setSelectedCategory("ALL");
                   setSearchQuery("");
                 }}
-                className="bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold px-4 h-9 shadow-xs"
+                className="bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold px-4 h-9 shadow-xs cursor-pointer active:scale-[0.98]"
               >
                 View All Products ({products.length})
               </Button>
             </div>
           </Card>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
+          <motion.div
+            layout
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.3 }}
+            className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5"
+          >
             {filteredProducts.map((p) => {
               const itemInCart = cartItems.find((ci) => ci.productId === p.id);
               const qtyInCart = itemInCart ? itemInCart.quantity : 0;
               const isOutOfStock = !p.isAvailable;
 
               return (
-                <Card
+                <motion.div
                   key={p.id}
-                  className={`rounded-2xl overflow-hidden flex flex-col transition-all duration-300 bg-white group hover:-translate-y-1 ${
-                    p.isMostSelling
-                      ? "border-amber-300 shadow-md ring-2 ring-amber-400/20 hover:border-amber-400 hover:shadow-xl"
-                      : "border-slate-200/90 shadow-2xs hover:shadow-xl hover:border-slate-300"
-                  }`}
+                  layout
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  whileHover={{ y: -6, transition: { duration: 0.2 } }}
+                  className="h-full"
                 >
-                  {/* Product Image / Placeholder with subtle zoom on card hover */}
-                  <div className="h-36 sm:h-44 bg-slate-100 flex items-center justify-center overflow-hidden relative">
-                    {p.imageUrl ? (
-                      <img
-                        src={p.imageUrl}
-                        alt={p.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                    ) : (
-                      <div className="text-slate-300 flex flex-col items-center group-hover:scale-105 transition-transform duration-300">
-                        <Package className="w-10 h-10 text-slate-300" />
-                      </div>
-                    )}
-                    {/* Most Selling Badge */}
-                    {p.isMostSelling && (
-                      <span className="absolute top-2.5 left-2.5 z-10">
-                        <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white font-black text-[10px] uppercase tracking-wider py-0.5 px-2 shadow-xs border-0 flex items-center gap-1">
-                          <Flame className="w-3 h-3 text-white fill-white" />
-                          <span>Most Selling</span>
-                        </Badge>
-                      </span>
-                    )}
+                  <Card
+                    className={`h-full rounded-2xl overflow-hidden flex flex-col transition-shadow duration-300 bg-white group ${
+                      p.isMostSelling
+                        ? "border-amber-300 shadow-md ring-2 ring-amber-400/20 hover:border-amber-400 hover:shadow-xl"
+                        : "border-slate-200/90 shadow-2xs hover:shadow-xl hover:border-slate-300"
+                    }`}
+                  >
+                    {/* Product Image / Placeholder with subtle zoom on card hover */}
+                    <div className="h-36 sm:h-44 bg-slate-100 flex items-center justify-center overflow-hidden relative">
+                      {p.imageUrl ? (
+                        <img
+                          src={p.imageUrl}
+                          alt={p.name}
+                          className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-500 ease-out"
+                        />
+                      ) : (
+                        <div className="text-slate-300 flex flex-col items-center group-hover:scale-105 transition-transform duration-300">
+                          <Package className="w-10 h-10 text-slate-300" />
+                        </div>
+                      )}
+                      {/* Most Selling Badge */}
+                      {p.isMostSelling && (
+                        <span className="absolute top-2.5 left-2.5 z-10">
+                          <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white font-black text-[10px] uppercase tracking-wider py-0.5 px-2 shadow-xs border-0 flex items-center gap-1">
+                            <Flame className="w-3 h-3 text-white fill-white" />
+                            <span>Most Selling</span>
+                          </Badge>
+                        </span>
+                      )}
 
-                    {/* Availability Tag */}
-                    <span className="absolute top-2.5 right-2.5 z-10">
-                      <span
-                        className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider py-0.5 px-2 rounded-full shadow-xs ${
-                          p.isAvailable
-                            ? "bg-emerald-50 text-emerald-800 border border-emerald-200/90"
-                            : "bg-rose-50 text-rose-800 border border-rose-200/90"
-                        }`}
-                      >
-                        <span className={`w-1.5 h-1.5 rounded-full ${p.isAvailable ? "bg-emerald-500 animate-pulse" : "bg-rose-500"}`} />
-                        <span>{p.availability === "OUT_OF_STOCK" || !p.isAvailable ? "Out of Stock" : "In Stock"}</span>
+                      {/* Availability Tag */}
+                      <span className="absolute top-2.5 right-2.5 z-10">
+                        <span
+                          className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider py-0.5 px-2 rounded-full shadow-xs ${
+                            p.isAvailable
+                              ? "bg-emerald-50 text-emerald-800 border border-emerald-200/90"
+                              : "bg-rose-50 text-rose-800 border border-rose-200/90"
+                          }`}
+                        >
+                          <span className={`w-1.5 h-1.5 rounded-full ${p.isAvailable ? "bg-emerald-500 animate-pulse" : "bg-rose-500"}`} />
+                          <span>{p.availability === "OUT_OF_STOCK" || !p.isAvailable ? "Out of Stock" : "In Stock"}</span>
+                        </span>
                       </span>
-                    </span>
-                  </div>
+                    </div>
 
                   {/* Card Content Body */}
                   <CardContent className="p-4 flex-1 flex flex-col justify-between space-y-3">
@@ -816,9 +831,10 @@ function ShopStorefront() {
                     )}
                   </CardContent>
                 </Card>
-              );
-            })}
-          </div>
+              </motion.div>
+            );
+          })}
+        </motion.div>
         )}
       </main>
 

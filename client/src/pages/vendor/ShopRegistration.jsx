@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { motion } from "framer-motion";
 import {
   ArrowLeft,
   MapPin,
@@ -201,7 +202,12 @@ function ShopRegistration() {
         </div>
 
         {/* Registration Card */}
-        <Card className="rounded-3xl border-slate-200/90 shadow-sm p-6 sm:p-10 bg-white">
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          <Card className="rounded-3xl border-slate-200/90 shadow-sm p-6 sm:p-10 bg-white">
           <div className="mb-6 space-y-2">
             <Badge variant="secondary" className="text-[10px] font-bold uppercase tracking-wider py-0.5 px-2 bg-blue-50 text-blue-700 border-blue-200">
               Merchant Onboarding
@@ -400,12 +406,13 @@ function ShopRegistration() {
             <Button
               type="submit"
               disabled={loading}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold h-11 rounded-2xl text-xs shadow-sm mt-2"
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold h-11 rounded-2xl text-xs shadow-sm mt-2 btn-premium cursor-pointer"
             >
               {loading ? "Registering Shop..." : "Complete Shop Registration"}
             </Button>
           </form>
         </Card>
+        </motion.div>
       </div>
     </div>
   );

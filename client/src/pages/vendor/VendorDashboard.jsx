@@ -132,12 +132,9 @@ function VendorDashboard() {
         currentPassword: vendorPasswords.currentPassword,
         newPassword: vendorPasswords.newPassword,
       });
-      setVendorPasswordMsg({ type: "success", text: res.message || "Password changed successfully!" });
       setVendorPasswords({ currentPassword: "", newPassword: "", confirmPassword: "" });
-      setTimeout(() => {
-        setShowVendorPassword(false);
-        setVendorPasswordMsg({ type: "", text: "" });
-      }, 2000);
+      setShowVendorPassword(false);
+      setVendorPasswordMsg({ type: "", text: "" });
     } catch (err) {
       setVendorPasswordMsg({
         type: "error",
@@ -266,7 +263,6 @@ function VendorDashboard() {
         localStorage.setItem("shop", JSON.stringify(res.shop));
       }
       setIsEditing(false);
-      alert("Profile and shop information updated successfully!");
     } catch (err) {
       setEditError(err.response?.data?.message || err.message || "Failed to update profile & shop.");
     } finally {

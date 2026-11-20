@@ -115,10 +115,8 @@ function CustomerDashboard() {
       });
       setPasswordMsg({ type: "success", text: res.message || "Password changed successfully!" });
       setPasswords({ currentPassword: "", newPassword: "", confirmPassword: "" });
-      setTimeout(() => {
-        setShowPasswordSection(false);
-        setPasswordMsg({ type: "", text: "" });
-      }, 2000);
+      setShowPasswordSection(false);
+      setShowProfileModal(false);
     } catch (err) {
       setPasswordMsg({
         type: "error",
@@ -209,8 +207,7 @@ function CustomerDashboard() {
         setCustomer(res.customer);
         localStorage.setItem("user", JSON.stringify(res.customer));
       }
-      setProfileMsg({ type: "success", text: "Profile updated successfully!" });
-      setTimeout(() => setShowProfileModal(false), 1200);
+      setShowProfileModal(false);
     } catch (err) {
       setProfileMsg({
         type: "error",

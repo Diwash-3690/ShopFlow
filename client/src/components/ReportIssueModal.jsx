@@ -62,16 +62,13 @@ export default function ReportIssueModal({
         orderNumber: orderNum.trim() || undefined,
       });
 
-      setSuccess(true);
+      setSuccess(false);
+      setSubject("");
+      setDescription("");
       if (onReportSubmitted) {
         onReportSubmitted();
       }
-      setTimeout(() => {
-        setSuccess(false);
-        setSubject("");
-        setDescription("");
-        onClose();
-      }, 1800);
+      onClose();
     } catch (err) {
       setError(
         err.response?.data?.message ||

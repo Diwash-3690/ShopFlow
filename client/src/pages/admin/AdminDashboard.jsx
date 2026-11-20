@@ -183,7 +183,7 @@ export default function AdminDashboard() {
       });
       if (res.success) {
         showToast("Ticket status updated successfully");
-        setSelectedReport(res.data);
+        setSelectedReport(null);
         const updatedReports = await getAdminReports({
           status: reportFilter,
           search: reportSearch,
@@ -292,14 +292,12 @@ export default function AdminDashboard() {
     try {
       const res = await updateAdminPassword(currentPassword, newPassword);
       if (res.success) {
-        setPasswordMsg({ text: "Admin security password changed successfully!", type: "success" });
-        setTimeout(() => {
-          setShowPasswordModal(false);
-          setCurrentPassword("");
-          setNewPassword("");
-          setConfirmPassword("");
-          setPasswordMsg({ text: "", type: "" });
-        }, 1500);
+        showToast("Admin security password changed successfully!");
+        setShowPasswordModal(false);
+        setCurrentPassword("");
+        setNewPassword("");
+        setConfirmPassword("");
+        setPasswordMsg({ text: "", type: "" });
       }
     } catch (err) {
       setPasswordMsg({

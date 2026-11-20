@@ -8,7 +8,7 @@ import {
   Store,
   Navigation,
 } from "lucide-react";
-import { createShop, getMyShop } from "../../services/shopService";
+import { createShop, getMyShop, reverseGeocode } from "../../services/shopService";
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
 import { Card } from "../../components/ui/card";
@@ -73,7 +73,7 @@ function ShopRegistration() {
     }));
   };
 
-  // Detect GPS coordinates via browser Geolocation API
+  // Detect GPS coordinates via browser Geolocation API & auto-fill physical address
   const handleDetectLocation = () => {
     if (!navigator.geolocation) {
       setErrorMsg("Geolocation is not supported by your browser.");
@@ -84,19 +84,36 @@ function ShopRegistration() {
     setErrorMsg("");
 
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
+      async (pos) => {
+        const lat = pos.coords.latitude.toFixed(6);
+        const lng = pos.coords.longitude.toFixed(6);
+
         setFormData((prev) => ({
           ...prev,
-          latitude: pos.coords.latitude.toFixed(6),
-          longitude: pos.coords.longitude.toFixed(6),
+          latitude: lat,
+          longitude: lng,
         }));
+
+        try {
+          // Reverse geocode to auto-fill physical address according to detected location
+          const detectedAddress = await reverseGeocode(pos.coords.latitude, pos.coords.longitude);
+          if (detectedAddress) {
+            setFormData((prev) => ({
+              ...prev,
+              address: detectedAddress,
+            }));
+          }
+        } catch (e) {
+          console.warn("Reverse geocode failed:", e);
+        }
+
         setLocSuccess(true);
         setLocating(false);
       },
       (err) => {
         setLocating(false);
         setErrorMsg(
-          "Could not detect location: " + (err.message || "Permission denied. You can enter coordinates manually.")
+          "Could not detect location: " + (err.message || "Permission denied. You can enter coordinates and address manually.")
         );
       },
       { enableHighAccuracy: true, timeout: 10000 }
@@ -241,18 +258,28 @@ function ShopRegistration() {
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-700">
-                Physical Shop Address <span className="text-rose-500">*</span>
-              </label>
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-slate-700">
+                  Physical Shop Address <span className="text-rose-500">*</span>
+                </label>
+                {locating && (
+                  <span className="text-[11px] font-semibold text-blue-600 flex items-center gap-1 animate-pulse">
+                    <MapPin className="w-3 h-3" /> Auto-detecting physical address...
+                  </span>
+                )}
+              </div>
               <textarea
                 name="address"
                 rows={3}
-                placeholder="Street address, landmark, area, city, pincode"
+                placeholder="Street address, landmark, area, city, pincode (Auto-filled on GPS detect, or enter manually)"
                 value={formData.address}
                 onChange={handleChange}
-                className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                 required
               />
+              <p className="text-[10px] text-slate-400">
+                You can freely edit or refine this physical address (add shop number, floor, landmark) after GPS detection.
+              </p>
             </div>
 
             {/* GPS Location Section */}
@@ -261,10 +288,10 @@ function ShopRegistration() {
                 <div>
                   <h4 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                     <Navigation className="w-3.5 h-3.5 text-blue-600" />
-                    <span>GPS Location (For Local Discovery)</span>
+                    <span>GPS Location & Physical Address</span>
                   </h4>
                   <p className="text-[11px] text-slate-500 mt-0.5">
-                    Nearby customers use your coordinates to discover your store.
+                    Click detect to automatically capture your GPS coordinates and fill in your physical shop address.
                   </p>
                 </div>
                 <Button
@@ -273,17 +300,22 @@ function ShopRegistration() {
                   size="sm"
                   onClick={handleDetectLocation}
                   disabled={locating}
-                  className="h-8 text-xs font-bold text-slate-700 rounded-xl gap-1.5"
+                  className="h-8 text-xs font-bold text-slate-700 rounded-xl gap-1.5 cursor-pointer hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300"
                 >
-                  <MapPin className="w-3.5 h-3.5" />
-                  <span>{locating ? "Detecting..." : "Detect Current GPS"}</span>
+                  <MapPin className="w-3.5 h-3.5 text-blue-600" />
+                  <span>{locating ? "Detecting Location & Address..." : "Detect Current GPS & Address"}</span>
                 </Button>
               </div>
 
               {locSuccess && (
-                <div className="flex items-center gap-1.5 text-xs text-emerald-800 font-semibold bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>GPS coordinates captured successfully!</span>
+                <div className="flex items-start gap-2 text-xs text-emerald-800 font-semibold bg-emerald-50 border border-emerald-200 px-3 py-2 rounded-xl">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-bold">GPS coordinates & physical address detected!</p>
+                    <p className="text-[11px] text-emerald-700 font-normal mt-0.5">
+                      The physical address above has been automatically filled. You can refine or add landmark/shop details anytime.
+                    </p>
+                  </div>
                 </div>
               )}
 

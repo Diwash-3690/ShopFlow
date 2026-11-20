@@ -416,6 +416,83 @@ const deleteMyShop = async (req, res) => {
     }
 };
 
+// @desc    Reverse geocode latitude and longitude to physical street address
+// @route   GET /api/shops/reverse-geocode
+const reverseGeocodeLocation = async (req, res) => {
+    try {
+        const { lat, lng } = req.query;
+        if (!lat || !lng) {
+            return res.status(400).json({ success: false, message: "lat and lng are required" });
+        }
+
+        const latitude = parseFloat(lat);
+        const longitude = parseFloat(lng);
+        if (isNaN(latitude) || isNaN(longitude)) {
+            return res.status(400).json({ success: false, message: "Invalid latitude or longitude" });
+        }
+
+        // 1. Try OpenStreetMap Nominatim with 3.5s timeout
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 3500);
+            const osmRes = await fetch(
+                `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}`,
+                {
+                    headers: { "User-Agent": "ShopFlow/1.0" },
+                    signal: controller.signal,
+                }
+            );
+            clearTimeout(timeoutId);
+            if (osmRes.ok) {
+                const osmData = await osmRes.json();
+                if (osmData?.display_name) {
+                    return res.status(200).json({
+                        success: true,
+                        address: osmData.display_name,
+                        details: osmData.address,
+                    });
+                }
+            }
+        } catch (e) {
+            // fallback
+        }
+
+        // 2. Fallback to BigDataCloud client API
+        try {
+            const bdcRes = await fetch(
+                `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
+            );
+            if (bdcRes.ok) {
+                const bdcData = await bdcRes.json();
+                const parts = [
+                    bdcData.locality,
+                    bdcData.city,
+                    bdcData.principalSubdivision,
+                    bdcData.postcode,
+                    bdcData.countryName,
+                ].filter(Boolean);
+                if (parts.length > 0) {
+                    return res.status(200).json({
+                        success: true,
+                        address: parts.join(", "),
+                        details: bdcData,
+                    });
+                }
+            }
+        } catch (e) {
+            // fallback
+        }
+
+        return res.status(200).json({
+            success: true,
+            address: `Lat: ${latitude.toFixed(6)}, Lng: ${longitude.toFixed(6)}`,
+        });
+    } catch (error) {
+        console.error("reverseGeocodeLocation error:", error);
+        return res.status(500).json({ success: false, message: "Failed to reverse geocode" });
+    }
+};
+
 module.exports = {
     createShop,
     getMyShop,
@@ -423,4 +500,5 @@ module.exports = {
     deleteMyShop,
     getPublicShopById,
     searchNearbyShops,
+    reverseGeocodeLocation,
 };

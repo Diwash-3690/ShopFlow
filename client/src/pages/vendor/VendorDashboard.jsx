@@ -37,7 +37,7 @@ import {
   vendorVerifyPhoneOtp,
   logout,
 } from "../../services/authService";
-import { deleteMyShop } from "../../services/shopService";
+import { deleteMyShop, reverseGeocode } from "../../services/shopService";
 import { getNotifications, markAsRead, markAllAsRead } from "../../services/notificationService";
 import { getVendorDashboardSummary } from "../../services/dashboardService";
 import BillModal from "../../components/BillModal";
@@ -130,6 +130,51 @@ function VendorDashboard() {
   const [phoneOtpDevCode, setPhoneOtpDevCode] = useState("");
   const [sendingPhoneOtp, setSendingPhoneOtp] = useState(false);
   const [verifyingPhoneOtp, setVerifyingPhoneOtp] = useState(false);
+  const [detectingGps, setDetectingGps] = useState(false);
+  const [gpsSuccessMsg, setGpsSuccessMsg] = useState("");
+
+  const handleDetectShopLocation = () => {
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by your browser.");
+      return;
+    }
+
+    setDetectingGps(true);
+    setGpsSuccessMsg("");
+
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const lat = pos.coords.latitude.toFixed(6);
+        const lng = pos.coords.longitude.toFixed(6);
+
+        setEditForm((prev) => ({
+          ...prev,
+          latitude: lat,
+          longitude: lng,
+        }));
+
+        try {
+          const detectedAddress = await reverseGeocode(pos.coords.latitude, pos.coords.longitude);
+          if (detectedAddress) {
+            setEditForm((prev) => ({
+              ...prev,
+              address: detectedAddress,
+            }));
+          }
+        } catch (e) {
+          console.warn("Reverse geocode failed:", e);
+        }
+
+        setGpsSuccessMsg("GPS coordinates and address detected! Address is fully editable.");
+        setDetectingGps(false);
+      },
+      (err) => {
+        setDetectingGps(false);
+        alert("Could not detect location: " + (err.message || "Permission denied."));
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
 
   // Vendor Password Change State
   const [showVendorPassword, setShowVendorPassword] = useState(false);
@@ -1398,14 +1443,34 @@ function VendorDashboard() {
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-700">Store Address & Neighborhood</label>
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold text-slate-700">Store Address & Neighborhood</label>
+                      <button
+                        type="button"
+                        onClick={handleDetectShopLocation}
+                        disabled={detectingGps}
+                        className="text-[11px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 cursor-pointer"
+                      >
+                        <MapPin className="w-3.5 h-3.5" />
+                        <span>{detectingGps ? "Detecting GPS & Address..." : "Detect GPS & Auto-Fill Address"}</span>
+                      </button>
+                    </div>
                     <textarea
                       rows={2}
                       value={editForm.address}
                       onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
                       className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      placeholder="Street address, landmark, area, city, pincode"
                       required
                     />
+                    <p className="text-[10px] text-slate-400">
+                      Physical address is auto-filled when GPS is detected, and remains fully editable.
+                    </p>
+                    {gpsSuccessMsg && (
+                      <p className="text-[11px] text-emerald-700 font-semibold bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg">
+                        {gpsSuccessMsg}
+                      </p>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

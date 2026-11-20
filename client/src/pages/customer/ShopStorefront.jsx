@@ -689,22 +689,22 @@ function ShopStorefront() {
               return (
                 <Card
                   key={p.id}
-                  className={`rounded-2xl overflow-hidden flex flex-col transition-all duration-200 bg-white ${
+                  className={`rounded-2xl overflow-hidden flex flex-col transition-all duration-300 bg-white group hover:-translate-y-1 ${
                     p.isMostSelling
-                      ? "border-amber-300 shadow-md ring-2 ring-amber-400/20 hover:border-amber-400"
-                      : "border-slate-200/90 shadow-2xs hover:shadow-md hover:border-slate-300"
+                      ? "border-amber-300 shadow-md ring-2 ring-amber-400/20 hover:border-amber-400 hover:shadow-xl"
+                      : "border-slate-200/90 shadow-2xs hover:shadow-xl hover:border-slate-300"
                   }`}
                 >
-                  {/* Product Image / Placeholder */}
+                  {/* Product Image / Placeholder with subtle zoom on card hover */}
                   <div className="h-36 sm:h-44 bg-slate-100 flex items-center justify-center overflow-hidden relative">
                     {p.imageUrl ? (
                       <img
                         src={p.imageUrl}
                         alt={p.name}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       />
                     ) : (
-                      <div className="text-slate-300 flex flex-col items-center">
+                      <div className="text-slate-300 flex flex-col items-center group-hover:scale-105 transition-transform duration-300">
                         <Package className="w-10 h-10 text-slate-300" />
                       </div>
                     )}
@@ -713,19 +713,23 @@ function ShopStorefront() {
                       <span className="absolute top-2.5 left-2.5 z-10">
                         <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white font-black text-[10px] uppercase tracking-wider py-0.5 px-2 shadow-xs border-0 flex items-center gap-1">
                           <Flame className="w-3 h-3 text-white fill-white" />
-                          <span>Most Selling Item</span>
+                          <span>Most Selling</span>
                         </Badge>
                       </span>
                     )}
 
                     {/* Availability Tag */}
                     <span className="absolute top-2.5 right-2.5 z-10">
-                      <Badge
-                        variant={p.isAvailable ? "success" : "destructive"}
-                        className="text-[10px] font-bold uppercase tracking-wider py-0.5 px-2 shadow-xs"
+                      <span
+                        className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider py-0.5 px-2 rounded-full shadow-xs ${
+                          p.isAvailable
+                            ? "bg-emerald-50 text-emerald-800 border border-emerald-200/90"
+                            : "bg-rose-50 text-rose-800 border border-rose-200/90"
+                        }`}
                       >
-                        {p.availability === "OUT_OF_STOCK" || !p.isAvailable ? "Out of Stock" : "In Stock"}
-                      </Badge>
+                        <span className={`w-1.5 h-1.5 rounded-full ${p.isAvailable ? "bg-emerald-500 animate-pulse" : "bg-rose-500"}`} />
+                        <span>{p.availability === "OUT_OF_STOCK" || !p.isAvailable ? "Out of Stock" : "In Stock"}</span>
+                      </span>
                     </span>
                   </div>
 
@@ -735,7 +739,7 @@ function ShopStorefront() {
                       <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
                         {p.categoryName || p.category?.name || "General"}
                       </p>
-                      <h3 className="font-bold text-slate-900 text-sm line-clamp-1 mt-0.5">
+                      <h3 className="font-bold text-slate-900 text-sm line-clamp-1 mt-0.5 group-hover:text-blue-600 transition-colors">
                         {p.name}
                       </h3>
                       {p.description && (
@@ -755,7 +759,7 @@ function ShopStorefront() {
                         </Badge>
                       </div>
                       <div className="flex items-baseline gap-1">
-                        <span className="text-lg font-black text-slate-900">
+                        <span className="text-lg font-black text-slate-900 font-mono tabular-nums">
                           ₹{parseFloat(p.sellingPrice || 0).toFixed(2)}
                         </span>
                         <span className="text-xs text-slate-500 font-medium">/ {p.unit}</span>

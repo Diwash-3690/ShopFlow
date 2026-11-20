@@ -1669,18 +1669,18 @@ function VendorDashboard() {
 
             {/* 4 Financial KPI Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Card className="rounded-2xl border-slate-200/90 shadow-2xs bg-white">
+              <Card className="rounded-2xl border-slate-200/90 shadow-2xs bg-white hover:shadow-md transition-shadow">
                 <CardContent className="p-5">
                   <div className="flex items-center justify-between text-xs text-slate-400 font-bold uppercase">
                     <span>Today's Sales</span>
                     <DollarSign className="w-4 h-4 text-emerald-600" />
                   </div>
-                  <h2 className="text-2xl font-black text-slate-900 mt-2 tracking-tight">
+                  <h2 className="text-2xl font-black text-slate-900 mt-2 tracking-tight font-mono tabular-nums">
                     ₹{parseFloat(sales.today || 0).toFixed(2)}
                   </h2>
                   <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
                     <span className="text-slate-500 font-medium">Profit:</span>
-                    <span className="font-bold text-emerald-600 font-mono">
+                    <span className="font-bold text-emerald-600 font-mono tabular-nums">
                       +₹{parseFloat(sales.todayProfit || 0).toFixed(2)}
                     </span>
                   </div>
@@ -1690,18 +1690,18 @@ function VendorDashboard() {
                 </CardContent>
               </Card>
 
-              <Card className="rounded-2xl border-slate-200/90 shadow-2xs bg-white">
+              <Card className="rounded-2xl border-slate-200/90 shadow-2xs bg-white hover:shadow-md transition-shadow">
                 <CardContent className="p-5">
                   <div className="flex items-center justify-between text-xs text-slate-400 font-bold uppercase">
                     <span>This Week</span>
                     <Calendar className="w-4 h-4 text-blue-600" />
                   </div>
-                  <h2 className="text-2xl font-black text-slate-900 mt-2 tracking-tight">
+                  <h2 className="text-2xl font-black text-slate-900 mt-2 tracking-tight font-mono tabular-nums">
                     ₹{parseFloat(sales.weekly || 0).toFixed(2)}
                   </h2>
                   <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
                     <span className="text-slate-500 font-medium">Profit:</span>
-                    <span className="font-bold text-emerald-600 font-mono">
+                    <span className="font-bold text-emerald-600 font-mono tabular-nums">
                       +₹{parseFloat(sales.weeklyProfit || 0).toFixed(2)}
                     </span>
                   </div>
@@ -1709,18 +1709,18 @@ function VendorDashboard() {
                 </CardContent>
               </Card>
 
-              <Card className="rounded-2xl border-slate-200/90 shadow-2xs bg-white">
+              <Card className="rounded-2xl border-slate-200/90 shadow-2xs bg-white hover:shadow-md transition-shadow">
                 <CardContent className="p-5">
                   <div className="flex items-center justify-between text-xs text-slate-400 font-bold uppercase">
                     <span>This Month</span>
                     <TrendingUp className="w-4 h-4 text-indigo-600" />
                   </div>
-                  <h2 className="text-2xl font-black text-slate-900 mt-2 tracking-tight">
+                  <h2 className="text-2xl font-black text-slate-900 mt-2 tracking-tight font-mono tabular-nums">
                     ₹{parseFloat(sales.monthly || 0).toFixed(2)}
                   </h2>
                   <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
                     <span className="text-slate-500 font-medium">Profit:</span>
-                    <span className="font-bold text-emerald-600 font-mono">
+                    <span className="font-bold text-emerald-600 font-mono tabular-nums">
                       +₹{parseFloat(sales.monthlyProfit || 0).toFixed(2)}
                     </span>
                   </div>
@@ -1728,18 +1728,18 @@ function VendorDashboard() {
                 </CardContent>
               </Card>
 
-              <Card className="rounded-2xl border-slate-200/90 shadow-2xs bg-white">
+              <Card className="rounded-2xl border-slate-200/90 shadow-2xs bg-white hover:shadow-md transition-shadow">
                 <CardContent className="p-5">
                   <div className="flex items-center justify-between text-xs text-slate-400 font-bold uppercase">
                     <span>Total Sales</span>
                     <CheckCircle2 className="w-4 h-4 text-purple-600" />
                   </div>
-                  <h2 className="text-2xl font-black text-slate-900 mt-2 tracking-tight">
+                  <h2 className="text-2xl font-black text-slate-900 mt-2 tracking-tight font-mono tabular-nums">
                     ₹{parseFloat(sales.total || 0).toFixed(2)}
                   </h2>
                   <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
                     <span className="text-slate-500 font-medium">Total Profit:</span>
-                    <span className="font-bold text-emerald-600 font-mono">
+                    <span className="font-bold text-emerald-600 font-mono tabular-nums">
                       +₹{parseFloat(sales.totalProfit || 0).toFixed(2)}
                     </span>
                   </div>

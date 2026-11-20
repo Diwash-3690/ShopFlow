@@ -217,11 +217,14 @@ function ShopDiscovery() {
         )}
 
         {userCoords && (
-          <div className="flex items-center justify-between bg-emerald-50/90 border border-emerald-200 text-emerald-950 text-xs px-4 py-3 rounded-2xl shadow-2xs">
-            <span className="flex items-center gap-2 font-medium">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between bg-white border border-emerald-200/90 text-slate-800 text-xs px-4 py-3 rounded-2xl shadow-2xs gap-3">
+            <span className="flex items-center gap-2.5 font-medium">
+              <span className="relative flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500" />
+              </span>
               <span>
-                <strong>GPS Active:</strong> Displaying verified stores strictly in range of <strong>2 km</strong> from your live coordinates.
+                <strong className="text-emerald-900 font-bold">GPS Proximity Active:</strong> Showing verified neighbourhood stores strictly within <strong>2 km</strong> of your coordinates.
               </span>
             </span>
             <Button
@@ -229,7 +232,7 @@ function ShopDiscovery() {
               variant="outline"
               onClick={handleDetectLocation}
               disabled={detectingGps}
-              className="text-emerald-800 border-emerald-300 hover:bg-emerald-100 font-bold text-xs h-8 px-3 rounded-xl gap-1.5"
+              className="text-emerald-800 border-emerald-300 hover:bg-emerald-50 font-bold text-xs h-8 px-3 rounded-xl gap-1.5 shrink-0 self-end sm:self-auto"
             >
               <Navigation className={`w-3.5 h-3.5 ${detectingGps ? "animate-spin text-emerald-600" : ""}`} />
               <span>{detectingGps ? "Locating..." : "Refresh GPS"}</span>
@@ -335,15 +338,15 @@ function ShopDiscovery() {
               return (
                 <Card
                   key={shop.id}
-                  className={`rounded-3xl transition-all duration-200 flex flex-col justify-between overflow-hidden bg-white ${
+                  className={`rounded-3xl transition-all duration-300 flex flex-col justify-between overflow-hidden bg-white ${
                     isShopSuspended
                       ? "border-rose-300 bg-rose-50/20 shadow-none opacity-90"
-                      : "border-slate-200/90 hover:border-emerald-300 hover:shadow-lg group"
+                      : "border-slate-200/90 hover:border-slate-300 hover:shadow-xl hover:-translate-y-1 group"
                   }`}
                 >
                   <div className="p-6 space-y-4">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="font-mono text-xs font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200/60">
+                      <span className="font-mono text-xs font-bold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">
                         {shop.shopId}
                       </span>
 
@@ -352,13 +355,13 @@ function ShopDiscovery() {
                           ⚠️ Suspended
                         </Badge>
                       ) : shop.distanceKm !== null && shop.distanceKm !== undefined ? (
-                        <Badge variant="success" className="gap-1.5 font-bold text-xs py-1 px-2.5 bg-emerald-50 text-emerald-800 border border-emerald-300 shadow-2xs">
-                          <MapPin className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                          <span>{shop.distanceKm} km away</span>
-                        </Badge>
+                        <span className="inline-flex items-center gap-1.5 font-bold text-xs py-1 px-2.5 bg-emerald-50 text-emerald-800 border border-emerald-300/80 rounded-full shadow-2xs">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                          <span className="font-mono tabular-nums">{shop.distanceKm} km away</span>
+                        </span>
                       ) : (
-                        <Badge variant="secondary" className="text-[10px]">
-                          Verified
+                        <Badge variant="secondary" className="text-[10px] font-semibold">
+                          Verified Store
                         </Badge>
                       )}
                     </div>
@@ -368,7 +371,7 @@ function ShopDiscovery() {
                         className={`text-xl font-black tracking-tight ${
                           isShopSuspended
                             ? "text-slate-700"
-                            : "text-slate-900 group-hover:text-emerald-700 transition"
+                            : "text-slate-900 group-hover:text-blue-600 transition-colors"
                         }`}
                       >
                         {shop.shopName}
@@ -388,9 +391,9 @@ function ShopDiscovery() {
                         <Phone className="w-3.5 h-3.5 text-slate-400" />
                         <span>{shop.contactNumber || "N/A"}</span>
                       </span>
-                      <Badge variant="outline" className="font-bold text-[11px] bg-slate-50">
+                      <span className="font-bold text-[11px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md font-mono tabular-nums">
                         {shop._count?.products || 0} items
-                      </Badge>
+                      </span>
                     </div>
                   </div>
 
@@ -398,12 +401,12 @@ function ShopDiscovery() {
                     <Button
                       onClick={() => navigate(`/shops/${shop.shopId}`)}
                       disabled={isShopSuspended || customer?.isActive === false}
-                      className={`w-full font-bold h-10 rounded-xl gap-2 shadow-sm transition ${
+                      className={`w-full font-bold h-10 rounded-xl gap-2 shadow-sm transition active:scale-[0.98] ${
                         isShopSuspended
                           ? "bg-rose-100 text-rose-800 border border-rose-300 cursor-not-allowed hover:bg-rose-100"
                           : customer?.isActive === false
                           ? "bg-slate-200 text-slate-500 cursor-not-allowed"
-                          : "bg-slate-900 hover:bg-emerald-600 text-white"
+                          : "bg-slate-900 hover:bg-blue-600 text-white"
                       }`}
                     >
                       <span>
@@ -413,7 +416,7 @@ function ShopDiscovery() {
                           ? "Browsing Disabled"
                           : "Visit Storefront"}
                       </span>
-                      {!isShopSuspended && customer?.isActive !== false && <ArrowRight className="w-4 h-4" />}
+                      {!isShopSuspended && customer?.isActive !== false && <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />}
                     </Button>
                   </div>
                 </Card>

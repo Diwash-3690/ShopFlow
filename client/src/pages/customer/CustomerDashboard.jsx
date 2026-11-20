@@ -526,40 +526,40 @@ function CustomerDashboard() {
         {/* Customer Shopping Summary Cards */}
         {summary && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <Card className="rounded-2xl border-slate-200/80 shadow-2xs bg-white">
+            <Card className="rounded-2xl border-slate-200/80 shadow-2xs bg-white hover:shadow-md transition-shadow">
               <CardContent className="p-4 sm:p-5">
                 <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Total Spent</p>
-                <h3 className="text-2xl font-black text-slate-900 mt-1 tracking-tight">
+                <h3 className="text-2xl font-black text-slate-900 mt-1 tracking-tight font-mono tabular-nums">
                   ₹{parseFloat(summary.totalSpent || 0).toFixed(2)}
                 </h3>
                 <p className="text-[11px] text-slate-500 mt-0.5">Across local stores</p>
               </CardContent>
             </Card>
 
-            <Card className="rounded-2xl border-amber-200/70 shadow-2xs bg-amber-50/30">
+            <Card className="rounded-2xl border-amber-200/70 shadow-2xs bg-amber-50/30 hover:shadow-md transition-shadow">
               <CardContent className="p-4 sm:p-5">
                 <p className="text-[11px] font-bold uppercase tracking-wider text-amber-600">Active Pickups</p>
-                <h3 className="text-2xl font-black text-amber-700 mt-1 tracking-tight">
+                <h3 className="text-2xl font-black text-amber-700 mt-1 tracking-tight font-mono tabular-nums">
                   {summary.activePickupsCount}
                 </h3>
                 <p className="text-[11px] text-amber-700/80 mt-0.5">Ready at counters</p>
               </CardContent>
             </Card>
 
-            <Card className="rounded-2xl border-emerald-200/70 shadow-2xs bg-emerald-50/30">
+            <Card className="rounded-2xl border-emerald-200/70 shadow-2xs bg-emerald-50/30 hover:shadow-md transition-shadow">
               <CardContent className="p-4 sm:p-5">
                 <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-600">Completed Orders</p>
-                <h3 className="text-2xl font-black text-emerald-700 mt-1 tracking-tight">
+                <h3 className="text-2xl font-black text-emerald-700 mt-1 tracking-tight font-mono tabular-nums">
                   {summary.completedCount}
                 </h3>
                 <p className="text-[11px] text-emerald-700/80 mt-0.5">Collected purchases</p>
               </CardContent>
             </Card>
 
-            <Card className="rounded-2xl border-blue-200/70 shadow-2xs bg-blue-50/30">
+            <Card className="rounded-2xl border-blue-200/70 shadow-2xs bg-blue-50/30 hover:shadow-md transition-shadow">
               <CardContent className="p-4 sm:p-5">
                 <p className="text-[11px] font-bold uppercase tracking-wider text-blue-600">Shops Visited</p>
-                <h3 className="text-2xl font-black text-blue-700 mt-1 tracking-tight">
+                <h3 className="text-2xl font-black text-blue-700 mt-1 tracking-tight font-mono tabular-nums">
                   {summary.shopsCount}
                 </h3>
                 <p className="text-[11px] text-blue-700/80 mt-0.5">Supported vendors</p>

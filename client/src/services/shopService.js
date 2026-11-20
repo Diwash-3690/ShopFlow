@@ -42,12 +42,26 @@ export const reverseGeocode = async (lat, lng) => {
   const longitude = parseFloat(lng);
   if (isNaN(latitude) || isNaN(longitude)) return "";
 
-  // 1. First Priority: Direct OpenStreetMap Nominatim (High accuracy, street level, ~300ms)
+  // 1. Primary Strategy: Backend Proxy (/api/shops/reverse-geocode)
+  // Backend has full Node.js network access, sets compliant User-Agent headers, and bypasses browser CORS limitations
+  try {
+    const response = await api.get("/shops/reverse-geocode", {
+      params: { lat: latitude, lng: longitude },
+      timeout: 6000,
+    });
+    if (response.data?.success && response.data?.address && response.data.address.trim()) {
+      return response.data.address.trim();
+    }
+  } catch (e) {
+    // Proceed to direct browser fallback
+  }
+
+  // 2. Direct Browser Fallback: OpenStreetMap Nominatim
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 2500);
+    const timeout = setTimeout(() => controller.abort(), 3500);
     const res = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}`,
+      `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`,
       { signal: controller.signal }
     );
     clearTimeout(timeout);
@@ -58,57 +72,18 @@ export const reverseGeocode = async (lat, lng) => {
       }
     }
   } catch (e) {
-    // try next
+    // Proceed to next fallback
   }
 
-  // 2. Second Priority: Photon Komoot (Global OpenStreetMap reverse geocoder, sub-200ms)
+  // 3. Fallback: BigDataCloud Client API (Designed for browser client-side use)
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 2000);
-    const res = await fetch(
-      `https://photon.komoot.io/reverse?lat=${latitude}&lon=${longitude}`,
+    const timeout = setTimeout(() => controller.abort(), 3000);
+    const bdcRes = await fetch(
+      `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`,
       { signal: controller.signal }
     );
     clearTimeout(timeout);
-    if (res.ok) {
-      const data = await res.json();
-      const props = data?.features?.[0]?.properties;
-      if (props) {
-        const parts = [
-          props.name || props.street,
-          props.locality || props.district,
-          props.city || props.town,
-          props.state,
-          props.postcode,
-          props.country,
-        ].filter(Boolean);
-        if (parts.length > 0) {
-          return parts.join(", ");
-        }
-      }
-    }
-  } catch (e) {
-    // try next
-  }
-
-  // 3. Third Priority: Backend Proxy endpoint (/api/shops/reverse-geocode)
-  try {
-    const response = await api.get("/shops/reverse-geocode", {
-      params: { lat: latitude, lng: longitude },
-      timeout: 3000,
-    });
-    if (response.data?.success && response.data?.address && response.data.address.trim()) {
-      return response.data.address.trim();
-    }
-  } catch (e) {
-    // try next
-  }
-
-  // 4. Fourth Priority: BigDataCloud API
-  try {
-    const bdcRes = await fetch(
-      `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
-    );
     if (bdcRes.ok) {
       const bdcData = await bdcRes.json();
       const parts = [
@@ -123,8 +98,9 @@ export const reverseGeocode = async (lat, lng) => {
       }
     }
   } catch (e) {
-    // Ignore fallback errors
+    // Proceed to guaranteed fallback
   }
 
-  return "";
+  // 4. Guaranteed fallback so the address field is NEVER empty
+  return `Location near GPS (${latitude.toFixed(6)}, ${longitude.toFixed(6)})`;
 };

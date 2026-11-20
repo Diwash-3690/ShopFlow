@@ -431,14 +431,17 @@ const reverseGeocodeLocation = async (req, res) => {
             return res.status(400).json({ success: false, message: "Invalid latitude or longitude" });
         }
 
-        // 1. Try OpenStreetMap Nominatim with 3.5s timeout
+        // 1. Try OpenStreetMap Nominatim with 5s timeout & full compliant headers
         try {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 3500);
+            const timeoutId = setTimeout(() => controller.abort(), 5000);
             const osmRes = await fetch(
-                `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}`,
+                `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`,
                 {
-                    headers: { "User-Agent": "ShopFlow/1.0" },
+                    headers: {
+                        "User-Agent": "ShopFlow-Hyperlocal-App/1.0 (contact@shopflow.app)",
+                        "Accept": "application/json",
+                    },
                     signal: controller.signal,
                 }
             );

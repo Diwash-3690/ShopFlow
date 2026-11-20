@@ -91,33 +91,33 @@ function ShopRegistration() {
         const lat = pos.coords.latitude.toFixed(6);
         const lng = pos.coords.longitude.toFixed(6);
 
-        // Immediately update coordinates in form state
+        // Immediately update coordinates and provide immediate visual feedback in address field
         setFormData((prev) => ({
           ...prev,
           latitude: lat,
           longitude: lng,
+          address: prev.address?.trim() ? prev.address : "Resolving street address from GPS...",
         }));
-        setLocSuccess(true);
 
         try {
           // Reverse geocode to auto-fill physical address according to detected location
           const detectedAddress = await reverseGeocode(pos.coords.latitude, pos.coords.longitude);
-          if (detectedAddress && detectedAddress.trim()) {
-            setFormData((prev) => ({
-              ...prev,
-              address: detectedAddress.trim(),
-            }));
-            setAddressDetected(true);
-          } else {
-            // Fallback so address is not left completely empty
-            setFormData((prev) => ({
-              ...prev,
-              address: prev.address || `Location near GPS (${lat}, ${lng})`,
-            }));
-            setAddressDetected(true);
-          }
+          const finalAddress = (detectedAddress && detectedAddress.trim()) || `Location near GPS (${lat}, ${lng})`;
+          
+          setFormData((prev) => ({
+            ...prev,
+            address: finalAddress,
+          }));
+          setAddressDetected(true);
+          setLocSuccess(true);
         } catch (e) {
           console.warn("Reverse geocode failed:", e);
+          setFormData((prev) => ({
+            ...prev,
+            address: `Location near GPS (${lat}, ${lng})`,
+          }));
+          setAddressDetected(true);
+          setLocSuccess(true);
         } finally {
           setLocating(false);
         }

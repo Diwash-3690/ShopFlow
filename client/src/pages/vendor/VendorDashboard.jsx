@@ -151,18 +151,22 @@ function VendorDashboard() {
           ...prev,
           latitude: lat,
           longitude: lng,
+          address: prev.address?.trim() ? prev.address : "Resolving street address from GPS...",
         }));
 
         try {
           const detectedAddress = await reverseGeocode(pos.coords.latitude, pos.coords.longitude);
-          if (detectedAddress) {
-            setEditForm((prev) => ({
-              ...prev,
-              address: detectedAddress,
-            }));
-          }
+          const finalAddress = (detectedAddress && detectedAddress.trim()) || `Location near GPS (${lat}, ${lng})`;
+          setEditForm((prev) => ({
+            ...prev,
+            address: finalAddress,
+          }));
         } catch (e) {
           console.warn("Reverse geocode failed:", e);
+          setEditForm((prev) => ({
+            ...prev,
+            address: `Location near GPS (${lat}, ${lng})`,
+          }));
         }
 
         setGpsSuccessMsg("GPS coordinates and address detected! Address is fully editable.");
